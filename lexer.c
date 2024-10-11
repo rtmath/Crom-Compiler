@@ -23,6 +23,10 @@ static char Peek() {
   return Lexer.end[0];
 }
 
+static char PeekNext() {
+  return Lexer.end[1];
+}
+
 static char Advance() {
   Lexer.end++;
   return Lexer.end[-1];
@@ -41,6 +45,14 @@ static void SkipWhitespace() {
       case '\n': {
         Lexer.current_line++;
         Advance();
+      } break;
+
+      case '/': {
+        if (PeekNext() == '/') {
+          while (Peek() != '\n' && !AtEOF()) Advance();
+        } else {
+          return;
+        }
       } break;
 
       default: return;
