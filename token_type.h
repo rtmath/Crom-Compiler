@@ -40,7 +40,7 @@ typedef enum {
   LEFT_SHIFT_EQUALS, RIGHT_SHIFT_EQUALS,
 
   // Misc
-  TOKEN_EOF
+  ERROR, TOKEN_EOF
 } TokenType;
 
 #endif

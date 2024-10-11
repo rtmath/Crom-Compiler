@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h> // for strlen
 
 #include "lexer.h"
 #include "token_type.h"
@@ -60,6 +61,16 @@ static void SkipWhitespace() {
   }
 }
 
+static Token MakeErrorToken(const char *msg) {
+  Token t = {0};
+  t.type = ERROR;
+  t.position_in_source = msg;
+  t.length = (int)strlen(msg);
+  t.on_line = Lexer.current_line;
+
+  return t;
+}
+
 static Token MakeToken(TokenType type) {
   Token t = {0};
   t.type = type;
@@ -78,5 +89,11 @@ Token ScanToken() {
   if (AtEOF()) return MakeToken(TOKEN_EOF);
 
   char c = Advance();
-  return MakeToken(c);
+
+  switch (c) {
+    default:
+      break;
+  }
+
+  return MakeErrorToken("Unexpected token");
 }
