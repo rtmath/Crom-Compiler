@@ -16,6 +16,16 @@ void InitLexer(const char *source) {
   Lexer.current_line = 1;
 }
 
+static bool IsAlpha(char c) {
+  return (c >= 'A' && c <= 'Z') ||
+         (c >= 'a' && c <= 'z') ||
+         (c == '_');
+}
+
+static bool IsNumber(char c) {
+  return c >= '0' && c <= '9';
+}
+
 static bool AtEOF() {
   return *Lexer.start == '\0';
 }
@@ -81,6 +91,26 @@ static Token MakeToken(TokenType type) {
   return t;
 }
 
+static Token Number() {
+  bool is_float = false;
+
+  while (IsNumber(Peek())) Advance();
+
+  if (Peek() == '.' && IsNumber(PeekNext())) {
+    is_float = true;
+    Advance();
+
+    while (IsNumber(Peek())) Advance();
+  }
+
+  return MakeToken((is_float) ? FLOAT_CONSTANT : INT_CONSTANT);
+}
+
+static Token Identifier() {
+  while (IsAlpha(Peek()) || IsNumber(Peek())) Advance();
+  return MakeToken(IDENTIFIER);
+}
+
 Token ScanToken() {
   SkipWhitespace();
 
@@ -89,6 +119,9 @@ Token ScanToken() {
   if (AtEOF()) return MakeToken(TOKEN_EOF);
 
   char c = Advance();
+
+  if (IsNumber(c)) return Number();
+  if (IsAlpha(c)) return Identifier();
 
   switch (c) {
     default:
