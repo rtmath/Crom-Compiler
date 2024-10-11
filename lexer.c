@@ -124,6 +124,14 @@ Token ScanToken() {
   if (IsAlpha(c)) return Identifier();
 
   switch (c) {
+    case '(': return MakeToken(LPAREN);
+    case ')': return MakeToken(RPAREN);
+    case ';': return MakeToken(SEMICOLON);
+    case '+': return MakeToken(PLUS);
+    case '-': return MakeToken(MINUS);
+    case '*': return MakeToken(ASTERISK);
+    case '/': return MakeToken(DIVIDE);
+    case '=': return MakeToken(EQUALS);
     default:
       break;
   }
