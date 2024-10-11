@@ -38,6 +38,9 @@ typedef enum {
   PLUS_PLUS, MINUS_MINUS,
   LEFT_SHIFT, RIGHT_SHIFT,
   LEFT_SHIFT_EQUALS, RIGHT_SHIFT_EQUALS,
+
+  // Misc
+  TOKEN_EOF
 } TokenType;
 
 #endif
