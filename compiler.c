@@ -11,7 +11,7 @@ struct {
 } Parser;
 
 typedef struct {
-  char value;
+  Token value;
 } AST_Entry;
 
 typedef struct AST_Node {
@@ -99,7 +99,7 @@ static AST_Node *NewNode() {
 static AST_Node *Number() {
   AST_Node *n = NewNode();
 
-  n->e.value = Parser.current.position_in_source[0];
+  n->e.value = Parser.current;
 
   return n;
 }
@@ -117,7 +117,7 @@ static AST_Node *Binary() {
     case MINUS:
     case ASTERISK:
     case DIVIDE:
-      n->e.value = remember_token.position_in_source[0];
+      n->e.value = remember_token;
       return n;
     default:
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(operator_type));
@@ -130,11 +130,13 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
 
   char buf[100] = {0};
   int i = 0;
-  for (; i < depth * 4 && i < 100; i++) {
+  for (; i < depth * 4 && i + node->e.value.length < 100; i++) {
     buf[i] = ' ';
   }
   buf[i] = '\0';
-  printf("%s%c: %c\n", buf, label, node->e.value);
+  printf("%s%c: %.*s\n", buf, label,
+      node->e.value.length,
+      node->e.value.position_in_source);
 
   PrintASTRecurse(node->left, depth + 1, 'L');
   PrintASTRecurse(node->right, depth + 1, 'R');
@@ -148,7 +150,8 @@ void Compile(const char *source) {
   InitLexer(source);
 
   Advance();
-  ParseTree = Parse(NO_PRECEDENCE); if (ParseTree == NULL) {
+  ParseTree = Parse(NO_PRECEDENCE);
+  if (ParseTree == NULL) {
     printf("[%s:%d] Parse() returned NULL. ParseTree could not be created.\n", __FILE__, __LINE__);
     return;
   }
