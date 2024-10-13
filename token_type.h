@@ -43,4 +43,6 @@ typedef enum {
   ERROR, TOKEN_EOF
 } TokenType;
 
+const char *TokenTypeTranslation(TokenType t);
+
 #endif
