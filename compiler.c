@@ -26,7 +26,8 @@ typedef enum {
   PREC_EOF = -1,
   NO_PRECEDENCE,
   TERM,
-  FACTOR
+  FACTOR,
+  UNARY,
 } Precedence;
 
 typedef AST_Node* (*ParseFn)();
@@ -38,6 +39,7 @@ typedef struct {
 } ParseRule;
 
 static AST_Node *Number();
+static AST_Node *Unary();
 static AST_Node *Binary();
 
 ParseRule Rules[] = {
@@ -45,7 +47,7 @@ ParseRule Rules[] = {
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
   [PLUS]           = {   NULL, Binary,          TERM },
-  [MINUS]          = {   NULL, Binary,          TERM },
+  [MINUS]          = {  Unary, Binary,          TERM },
   [ASTERISK]       = {   NULL, Binary,        FACTOR },
   [DIVIDE]         = {   NULL, Binary,        FACTOR }
 };
@@ -103,6 +105,23 @@ static AST_Node *Number() {
   n->e.value = Parser.current;
 
   return n;
+}
+
+static AST_Node *Unary() {
+  Token remember_token = Parser.current;
+
+  AST_Node *n = NewNode();
+  n->left = Parse(UNARY);
+
+  switch(remember_token.type) {
+    case MINUS:
+      n->e.value = remember_token;
+      return n;
+    default:
+      printf("Unknown Unary operator '%s'\n",
+          TokenTypeTranslation(remember_token.type));
+      return n;
+  }
 }
 
 static AST_Node *Binary() {
