@@ -41,12 +41,13 @@ static AST_Node *Number();
 static AST_Node *Binary();
 
 ParseRule Rules[] = {
-  [TOKEN_EOF]    = {   NULL,   NULL,      PREC_EOF },
-  [INT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
-  [PLUS]         = {   NULL, Binary,          TERM },
-  [MINUS]        = {   NULL, Binary,          TERM },
-  [ASTERISK]     = {   NULL, Binary,        FACTOR },
-  [DIVIDE]       = {   NULL, Binary,        FACTOR }
+  [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
+  [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
+  [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
+  [PLUS]           = {   NULL, Binary,          TERM },
+  [MINUS]          = {   NULL, Binary,          TERM },
+  [ASTERISK]       = {   NULL, Binary,        FACTOR },
+  [DIVIDE]         = {   NULL, Binary,        FACTOR }
 };
 
 void Advance() {
