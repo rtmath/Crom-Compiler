@@ -106,9 +106,49 @@ static Token Number() {
   return MakeToken((is_float) ? FLOAT_CONSTANT : INT_CONSTANT);
 }
 
+static bool LexemeEquals(const char *str, int len) {
+  return (Lexer.end - Lexer.start == len) &&
+         (memcmp(Lexer.start, str, len) == 0);
+}
+
+static TokenType IdentifierType() {
+  if (LexemeEquals( "i8", 2)) return I8;
+  if (LexemeEquals("i16", 3)) return I16;
+  if (LexemeEquals("i32", 3)) return I32;
+  if (LexemeEquals("i64", 3)) return I64;
+
+  if (LexemeEquals( "u8", 2)) return U8;
+  if (LexemeEquals("u16", 3)) return U16;
+  if (LexemeEquals("u32", 3)) return U32;
+  if (LexemeEquals("u64", 3)) return U64;
+
+  if (LexemeEquals("f32", 3)) return F32;
+  if (LexemeEquals("f64", 3)) return F64;
+
+  if (LexemeEquals("char", 4)) return CHAR;
+  if (LexemeEquals("string", 6)) return STRING;
+
+  if (LexemeEquals("bool", 4)) return BOOL;
+  if (LexemeEquals("void", 4)) return VOID;
+
+  if (LexemeEquals("enum", 4)) return ENUM;
+  if (LexemeEquals("struct", 6)) return STRUCT;
+
+  if (LexemeEquals("if", 2)) return IF;
+  if (LexemeEquals("else", 4)) return ELSE;
+  if (LexemeEquals("while", 5)) return WHILE;
+  if (LexemeEquals("for", 3)) return FOR;
+
+  if (LexemeEquals("break", 5)) return BREAK;
+  if (LexemeEquals("continue", 8)) return CONTINUE;
+  if (LexemeEquals("return", 6)) return RETURN;
+
+  return IDENTIFIER;
+}
+
 static Token Identifier() {
   while (IsAlpha(Peek()) || IsNumber(Peek())) Advance();
-  return MakeToken(IDENTIFIER);
+  return MakeToken(IdentifierType());
 }
 
 Token ScanToken() {
