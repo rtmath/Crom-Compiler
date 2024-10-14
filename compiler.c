@@ -38,34 +38,36 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+static AST_Node *Type();
+static AST_Node *Identifier();
 static AST_Node *Number();
 static AST_Node *Unary();
 static AST_Node *Binary();
 
 ParseRule Rules[] = {
   // Type Keywords
-  [I8]             = {   NULL,   NULL, NO_PRECEDENCE },
-  [I16]            = {   NULL,   NULL, NO_PRECEDENCE },
-  [I32]            = {   NULL,   NULL, NO_PRECEDENCE },
-  [I64]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [I8]             = {   Type,   NULL, NO_PRECEDENCE },
+  [I16]            = {   Type,   NULL, NO_PRECEDENCE },
+  [I32]            = {   Type,   NULL, NO_PRECEDENCE },
+  [I64]            = {   Type,   NULL, NO_PRECEDENCE },
 
-  [U8]             = {   NULL,   NULL, NO_PRECEDENCE },
-  [U16]            = {   NULL,   NULL, NO_PRECEDENCE },
-  [U32]            = {   NULL,   NULL, NO_PRECEDENCE },
-  [U64]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [U8]             = {   Type,   NULL, NO_PRECEDENCE },
+  [U16]            = {   Type,   NULL, NO_PRECEDENCE },
+  [U32]            = {   Type,   NULL, NO_PRECEDENCE },
+  [U64]            = {   Type,   NULL, NO_PRECEDENCE },
 
-  [F32]            = {   NULL,   NULL, NO_PRECEDENCE },
-  [F64]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [F32]            = {   Type,   NULL, NO_PRECEDENCE },
+  [F64]            = {   Type,   NULL, NO_PRECEDENCE },
 
-  [CHAR]           = {   NULL,   NULL, NO_PRECEDENCE },
-  [STRING]         = {   NULL,   NULL, NO_PRECEDENCE },
+  [CHAR]           = {   Type,   NULL, NO_PRECEDENCE },
+  [STRING]         = {   Type,   NULL, NO_PRECEDENCE },
 
-  [BOOL]           = {   NULL,   NULL, NO_PRECEDENCE },
-  [VOID]           = {   NULL,   NULL, NO_PRECEDENCE },
-  [ENUM]           = {   NULL,   NULL, NO_PRECEDENCE },
-  [STRUCT]         = {   NULL,   NULL, NO_PRECEDENCE },
+  [BOOL]           = {   Type,   NULL, NO_PRECEDENCE },
+  [VOID]           = {   Type,   NULL, NO_PRECEDENCE },
+  [ENUM]           = {   Type,   NULL, NO_PRECEDENCE },
+  [STRUCT]         = {   Type,   NULL, NO_PRECEDENCE },
 
-  [IDENTIFIER]     = {   NULL,   NULL, NO_PRECEDENCE },
+  [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
   // Constants
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
@@ -101,7 +103,11 @@ AST_Node *Parse(int PrecedenceLevel) {
   AST_Node *return_node = NULL;
 
   ParseFn prefix_rule = Rules[Parser.current.type].prefix;
-  if (prefix_rule == NULL) /* TODO: Report error */ return NULL;
+  if (prefix_rule == NULL) {
+    printf("Prefix Rule for '%s' is NULL.\n",
+        TokenTypeTranslation(Parser.current.type));
+    return NULL;
+  }
 
   AST_Node *prefix_node = prefix_rule();
 
@@ -133,6 +139,25 @@ static AST_Node *NewNode() {
 static AST_Node *Number() {
   AST_Node *n = NewNode();
 
+  n->e.value = Parser.current;
+
+  return n;
+}
+
+static AST_Node *Type() {
+  Token remember_token = Parser.current;
+  AST_Node *n = NewNode();
+
+  n->e.value = remember_token;
+
+  // TODO: Expect identifier
+  n->left = Parse(NO_PRECEDENCE);
+
+  return n;
+}
+
+static AST_Node *Identifier() {
+  AST_Node *n = NewNode();
   n->e.value = Parser.current;
 
   return n;
