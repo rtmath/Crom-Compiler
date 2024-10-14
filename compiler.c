@@ -43,13 +43,44 @@ static AST_Node *Unary();
 static AST_Node *Binary();
 
 ParseRule Rules[] = {
-  [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
+  // Type Keywords
+  [I8]             = {   NULL,   NULL, NO_PRECEDENCE },
+  [I16]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [I32]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [I64]            = {   NULL,   NULL, NO_PRECEDENCE },
+
+  [U8]             = {   NULL,   NULL, NO_PRECEDENCE },
+  [U16]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [U32]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [U64]            = {   NULL,   NULL, NO_PRECEDENCE },
+
+  [F32]            = {   NULL,   NULL, NO_PRECEDENCE },
+  [F64]            = {   NULL,   NULL, NO_PRECEDENCE },
+
+  [CHAR]           = {   NULL,   NULL, NO_PRECEDENCE },
+  [STRING]         = {   NULL,   NULL, NO_PRECEDENCE },
+
+  [BOOL]           = {   NULL,   NULL, NO_PRECEDENCE },
+  [VOID]           = {   NULL,   NULL, NO_PRECEDENCE },
+  [ENUM]           = {   NULL,   NULL, NO_PRECEDENCE },
+  [STRUCT]         = {   NULL,   NULL, NO_PRECEDENCE },
+
+  [IDENTIFIER]     = {   NULL,   NULL, NO_PRECEDENCE },
+
+  // Constants
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
+
+  [STRING_LITERAL] = {   NULL,   NULL, NO_PRECEDENCE },
+
+  // Punctuators
   [PLUS]           = {   NULL, Binary,          TERM },
   [MINUS]          = {  Unary, Binary,          TERM },
   [ASTERISK]       = {   NULL, Binary,        FACTOR },
-  [DIVIDE]         = {   NULL, Binary,        FACTOR }
+  [DIVIDE]         = {   NULL, Binary,        FACTOR },
+
+  // Misc
+  [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
 
 void Advance() {
