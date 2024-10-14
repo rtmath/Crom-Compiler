@@ -106,6 +106,21 @@ static Token Number() {
   return MakeToken((is_float) ? FLOAT_CONSTANT : INT_CONSTANT);
 }
 
+static Token String() {
+  while (Peek() != '"' && !AtEOF()) {
+    if (Peek() == '\n') {
+      return MakeErrorToken("Multi-line strings are not allowed");
+    }
+
+    Advance();
+  }
+
+  if (AtEOF()) return MakeErrorToken("Unterminated string.");
+
+  Advance();
+  return MakeToken(STRING_LITERAL);
+}
+
 static bool LexemeEquals(const char *str, int len) {
   return (Lexer.end - Lexer.start == len) &&
          (memcmp(Lexer.start, str, len) == 0);
@@ -172,6 +187,7 @@ Token ScanToken() {
     case '*': return MakeToken(ASTERISK);
     case '/': return MakeToken(DIVIDE);
     case '=': return MakeToken(EQUALS);
+    case '"': return String();
     default:
       break;
   }
