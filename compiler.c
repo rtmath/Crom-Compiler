@@ -1,8 +1,11 @@
+#include <stdarg.h> // for va_list
+#include <stdbool.h>
 #include <stdio.h>  // for printf and friends
 #include <stdlib.h> // for calloc
 
 #include "common.h"
 #include "compiler.h"
+#include "error.h"
 #include "lexer.h"
 
 struct {
@@ -43,6 +46,7 @@ static AST_Node *Identifier();
 static AST_Node *Number();
 static AST_Node *Unary();
 static AST_Node *Binary();
+static AST_Node *Expression();
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -96,6 +100,29 @@ void Advance() {
   } while (1);
 }
 
+bool Match(TokenType type) {
+  if (Parser.next.type != type) return false;
+
+  Advance();
+
+  return true;
+}
+
+void Consume(TokenType type, const char *msg, ...) {
+  if (Parser.next.type == type) {
+    Advance();
+    return;
+  }
+
+  // va_list necessary for passing '...' to another function
+  va_list args;
+  va_start(args, msg);
+
+  ERROR_AND_CONTINUE(msg, args);
+
+  va_end(args);
+}
+
 AST_Node *Parse(int PrecedenceLevel) {
   if (PrecedenceLevel == PREC_EOF) return NULL;
   Advance();
@@ -115,7 +142,11 @@ AST_Node *Parse(int PrecedenceLevel) {
     Advance();
 
     ParseFn infix_rule = Rules[Parser.current.type].infix;
-    if (infix_rule == NULL) /* TODO: Report error? */ break;
+    if (infix_rule == NULL) {
+      printf("Infix Rule for '%s' is NULL.\n",
+          TokenTypeTranslation(Parser.current.type));
+      break;
+    }
 
     AST_Node *infix_node = infix_rule();
 
@@ -160,6 +191,13 @@ static AST_Node *Identifier() {
   AST_Node *n = NewNode();
   n->e.value = Parser.current;
 
+  if (Match(EQUALS)) {
+    n->left = Expression();
+  }
+
+  //Consume(SEMICOLON, "Expect ';' after declaration of '%.*s'.", n->e.value.length + ROOM_FOR_NULL_BYTE, n->e.value.position_in_source);
+  ERROR_AND_EXIT("Expect ';' after declaration of '%.*s'.", n->e.value.length, n->e.value.position_in_source);
+
   return n;
 }
 
@@ -199,6 +237,10 @@ static AST_Node *Binary() {
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(operator_type));
       return n;
   }
+}
+
+static AST_Node *Expression() {
+  return Parse((Precedence)1);
 }
 
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {

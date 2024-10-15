@@ -14,7 +14,7 @@ void ErrorAndContinue(const char *src_filename, int line_number,
   va_list args;
   va_start(args, fmt_string);
 
-  printf("[%s:%i] ", src_filename, line_number);
+  printf("[%s:%d] ", src_filename, line_number);
   PrintVariadic(fmt_string, args);
   printf("\n");
 
@@ -28,7 +28,9 @@ void ErrorAndExit(const char* src_filename, int line_number,
   va_list args;
   va_start(args, fmt_string);
 
-  ErrorAndContinue(src_filename, line_number, fmt_string, args);
+  printf("[%s:%d] ", src_filename, line_number);
+  PrintVariadic(fmt_string, args);
+  printf("\n");
 
   va_end(args);
 
