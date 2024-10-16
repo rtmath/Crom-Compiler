@@ -24,7 +24,8 @@ static const char* const _TokenTypeTranslation[] =
 
   [EQUALS] = "EQUALS",
 
-  [ERROR] = "ERROR"
+  [ERROR] = "ERROR",
+  [TOKEN_EOF] = "EOF"
 };
 
 const char *TokenTypeTranslation(TokenType t) {
