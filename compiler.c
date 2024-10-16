@@ -47,6 +47,7 @@ static AST_Node *Number();
 static AST_Node *Unary();
 static AST_Node *Binary();
 static AST_Node *Expression();
+static AST_Node *Parens();
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -80,6 +81,7 @@ ParseRule Rules[] = {
   [STRING_LITERAL] = {   NULL,   NULL, NO_PRECEDENCE },
 
   // Punctuators
+  [LPAREN]         = { Parens,   NULL, NO_PRECEDENCE },
   [PLUS]           = {   NULL, Binary,          TERM },
   [MINUS]          = {  Unary, Binary,          TERM },
   [ASTERISK]       = {   NULL, Binary,        FACTOR },
@@ -239,6 +241,13 @@ static AST_Node *Binary() {
 
 static AST_Node *Expression() {
   return Parse((Precedence)1);
+}
+
+static AST_Node *Parens() {
+  AST_Node *n = Expression();
+  Consume(RPAREN, "Missing ')' after expression");
+
+  return n;
 }
 
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {
