@@ -1,4 +1,3 @@
-#include <stdarg.h> // for variadic args, va_list et al.
 #include <stdlib.h> // for exit()
 #include <stdio.h>  // for printf(), vprintf()
 
@@ -33,6 +32,20 @@ void ErrorAndExit(const char* src_filename, int line_number,
   printf("\n");
 
   va_end(args);
+
+  exit(100);
+}
+
+void ErrorAndContinueVAList(const char *src_filename, int line_number,
+                           const char *fmt_string, va_list args) {
+  printf("[%s:%d] ", src_filename, line_number);
+  PrintVariadic(fmt_string, args);
+  printf("\n");
+}
+
+void ErrorAndExitVAList(const char *src_filename, int line_number,
+                       const char *fmt_string, va_list args) {
+  ErrorAndContinueVAList(src_filename, line_number, fmt_string, args);
 
   exit(100);
 }
