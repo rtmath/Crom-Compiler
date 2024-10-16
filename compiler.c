@@ -114,11 +114,10 @@ void Consume(TokenType type, const char *msg, ...) {
     return;
   }
 
-  // va_list necessary for passing '...' to another function
   va_list args;
   va_start(args, msg);
 
-  ERROR_AND_CONTINUE(msg, args);
+  ERROR_AND_CONTINUE_VALIST(msg, args);
 
   va_end(args);
 }
@@ -195,8 +194,7 @@ static AST_Node *Identifier() {
     n->left = Expression();
   }
 
-  //Consume(SEMICOLON, "Expect ';' after declaration of '%.*s'.", n->e.value.length + ROOM_FOR_NULL_BYTE, n->e.value.position_in_source);
-  ERROR_AND_EXIT("Expect ';' after declaration of '%.*s'.", n->e.value.length, n->e.value.position_in_source);
+  Consume(SEMICOLON, "Expect ';' after declaration of '%.*s'.", n->e.value.length, n->e.value.position_in_source);
 
   return n;
 }
