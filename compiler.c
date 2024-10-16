@@ -1,56 +1,20 @@
 #include <stdarg.h> // for va_list
 #include <stdbool.h>
 #include <stdio.h>  // for printf and friends
-#include <stdlib.h> // for calloc
 
+#include "ast.h"
 #include "common.h"
 #include "compiler.h"
 #include "error.h"
 #include "lexer.h"
 
-#define AS_NODE(n) ((AST_Node*)n)
-#define AS_UNARY(n) ((AST_Unary_Node*)n)
-#define AS_BINARY(n) ((AST_Binary_Node*)n)
-#define AS_TERNARY(n) ((AST_Ternary_Node*)n)
+typedef AST_Node* (*ParseFn)();
+AST_Node *ParseTree;
 
 struct {
   Token current;
   Token next;
 } Parser;
-
-typedef enum {
-  AST_UNARY,
-  AST_BINARY,
-  AST_TERNARY
-} AST_Arity;
-
-typedef struct {
-  Token token;
-  AST_Arity arity;
-} AST_Node;
-
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-} AST_Unary_Node;
-
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-  AST_Node *right;
-} AST_Binary_Node;
-
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-  AST_Node *middle;
-  AST_Node *right;
-} AST_Ternary_Node;
-
-AST_Node *ParseTree;
 
 typedef enum {
   PREC_EOF = -1,
@@ -59,8 +23,6 @@ typedef enum {
   FACTOR,
   UNARY,
 } Precedence;
-
-typedef AST_Node* (*ParseFn)();
 
 typedef struct {
   ParseFn prefix;
@@ -118,84 +80,14 @@ ParseRule Rules[] = {
   [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
 
-static AST_Unary_Node *NewUnaryNode() {
-  AST_Unary_Node *n = calloc(1, sizeof(AST_Unary_Node));
-  n->node.arity = AST_UNARY;
-  return n;
-}
-
-static AST_Binary_Node *NewBinaryNode() {
-  AST_Binary_Node *n = calloc(1, sizeof(AST_Binary_Node));
-  n->node.arity = AST_BINARY;
-  return n;
-}
-
-static AST_Ternary_Node *NewTernaryNode() {
-  AST_Ternary_Node *n = calloc(1, sizeof(AST_Ternary_Node));
-  n->node.arity = AST_TERNARY;
-  return n;
-}
-
-static void SetLeftChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case AST_UNARY: {
-      AS_UNARY(dest)->left = value;
-    } break;
-    case AST_BINARY: {
-      AS_BINARY(dest)->left = value;
-    } break;
-    case AST_TERNARY: {
-      AS_TERNARY(dest)->left = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE("SetLeftChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
-}
-
-static void SetRightChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case AST_UNARY: {
-      ERROR_AND_CONTINUE("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case AST_BINARY: {
-      AS_BINARY(dest)->right = value;
-    } break;
-    case AST_TERNARY: {
-      AS_TERNARY(dest)->right = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE("SetRightChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
-}
-
-static void SetMiddleChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case AST_UNARY: {
-      ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case AST_BINARY: {
-      ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case AST_TERNARY: {
-      AS_TERNARY(dest)->middle = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE("SetMiddleChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
-}
-
 void Advance() {
   Parser.current = Parser.next;
+  Parser.next = ScanToken();
 
-  do {
-    Parser.next = ScanToken();
+  if (Parser.next.type != ERROR) return;
 
-    if (Parser.next.type != ERROR) break;
-    // TODO: Report error
-  } while (1);
+  ERROR_AND_EXIT("Advance(): Error token encountered after token '%s'",
+      TokenTypeTranslation(Parser.next.type));
 }
 
 bool Match(TokenType type) {
@@ -274,7 +166,9 @@ static AST_Node *Type() {
 
   n->node.token = remember_token;
 
-  // TODO: Expect identifier
+  Consume(IDENTIFIER, "Expecting IDENTIFIER after Type, got '%s' Token instead.\n",
+      TokenTypeTranslation(remember_token.type));
+
   AST_Node *parse_result = Parse(NO_PRECEDENCE);
   SetLeftChild(AS_NODE(n), parse_result);
 
@@ -370,12 +264,15 @@ void Compile(const char *source) {
   InitLexer(source);
 
   Advance();
-  ParseTree = Parse(NO_PRECEDENCE);
-  if (ParseTree == NULL) {
-    printf("[%s:%d] Parse() returned NULL. ParseTree could not be created.\n", __FILE__, __LINE__);
-    return;
-  }
 
-  printf("\n[AST]\n");
-  PrintAST(ParseTree);
+  while (!Match(TOKEN_EOF)) {
+    ParseTree = Parse(1);
+    if (ParseTree == NULL) {
+      printf("[%s:%d] Parse() returned NULL. ParseTree could not be created.\n", __FILE__, __LINE__);
+      return;
+    }
+
+    printf("\n[AST]\n");
+    PrintAST(ParseTree);
+  }
 }
