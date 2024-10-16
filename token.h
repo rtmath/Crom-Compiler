@@ -10,4 +10,6 @@ typedef struct {
   int on_line;
 } Token;
 
+void PrintToken(Token t);
+
 #endif
