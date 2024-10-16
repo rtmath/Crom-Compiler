@@ -8,6 +8,11 @@
 #include "error.h"
 #include "lexer.h"
 
+#define AS_NODE(n) ((AST_Node*)n)
+#define AS_UNARY(n) ((AST_Unary_Node*)n)
+#define AS_BINARY(n) ((AST_Binary_Node*)n)
+#define AS_TERNARY(n) ((AST_Ternary_Node*)n)
+
 struct {
   Token current;
   Token next;
@@ -134,13 +139,13 @@ static AST_Ternary_Node *NewTernaryNode() {
 static void SetLeftChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
     case AST_UNARY: {
-      ((AST_Unary_Node*)dest)->left = value;
+      AS_UNARY(dest)->left = value;
     } break;
     case AST_BINARY: {
-      ((AST_Binary_Node*)dest)->left = value;
+      AS_BINARY(dest)->left = value;
     } break;
     case AST_TERNARY: {
-      ((AST_Ternary_Node*)dest)->left = value;
+      AS_TERNARY(dest)->left = value;
     } break;
     default:
       ERROR_AND_CONTINUE("SetLeftChild(): Unknown arity '%d'\n", dest->arity);
@@ -154,10 +159,10 @@ static void SetRightChild(AST_Node *dest, AST_Node *value) {
       ERROR_AND_CONTINUE("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
     case AST_BINARY: {
-      ((AST_Binary_Node*)dest)->right = value;
+      AS_BINARY(dest)->right = value;
     } break;
     case AST_TERNARY: {
-      ((AST_Ternary_Node*)dest)->right = value;
+      AS_TERNARY(dest)->right = value;
     } break;
     default:
       ERROR_AND_CONTINUE("SetRightChild(): Unknown arity '%d'\n", dest->arity);
@@ -174,7 +179,7 @@ static void SetMiddleChild(AST_Node *dest, AST_Node *value) {
       ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
     case AST_TERNARY: {
-      ((AST_Ternary_Node*)dest)->middle = value;
+      AS_TERNARY(dest)->middle = value;
     } break;
     default:
       ERROR_AND_CONTINUE("SetMiddleChild(): Unknown arity '%d'\n", dest->arity);
@@ -270,7 +275,8 @@ static AST_Node *Type() {
   n->node.token = remember_token;
 
   // TODO: Expect identifier
-  n->left = Parse(NO_PRECEDENCE);
+  AST_Node *parse_result = Parse(NO_PRECEDENCE);
+  SetLeftChild(AS_NODE(n), parse_result);
 
   return (AST_Node*)n;
 }
@@ -280,7 +286,7 @@ static AST_Node *Identifier() {
   n->node.token = Parser.current;
 
   if (Match(EQUALS)) {
-    n->left = Expression();
+    SetLeftChild(AS_NODE(n), Expression());
   }
 
   Consume(SEMICOLON, "Expect ';' after declaration of '%.*s'.", n->node.token.length, n->node.token.position_in_source);
@@ -292,7 +298,8 @@ static AST_Node *Unary() {
   Token remember_token = Parser.current;
 
   AST_Unary_Node *n = NewUnaryNode();
-  n->left = Parse(UNARY);
+  AST_Node *parse_result = Parse(UNARY);
+  SetLeftChild(AS_NODE(n), parse_result);
 
   switch(remember_token.type) {
     case MINUS:
@@ -306,14 +313,14 @@ static AST_Node *Unary() {
 }
 
 static AST_Node *Binary() {
-  TokenType operator_type = Parser.current.type;
-  ParseRule *rule = &Rules[Parser.current.type];
+  Precedence precedence = Rules[Parser.current.type].precedence;
   Token remember_token = Parser.current;
-
   AST_Binary_Node *n = NewBinaryNode();
-  n->right = Parse(rule->precedence + 1);
 
-  switch(operator_type) {
+  AST_Node *parse_result = Parse(precedence + 1);
+  SetRightChild(AS_NODE(n), parse_result);
+
+  switch(remember_token.type) {
     case PLUS:
     case MINUS:
     case ASTERISK:
@@ -321,7 +328,7 @@ static AST_Node *Binary() {
       n->node.token = remember_token;
       return (AST_Node*)n;
     default:
-      printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(operator_type));
+      printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return (AST_Node*)n;
   }
 }
@@ -350,9 +357,9 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
       node->token.length,
       node->token.position_in_source);
 
-  PrintASTRecurse(((AST_Unary_Node*)node)->left, depth + 1, 'L');
-  if (node->arity == AST_TERNARY) PrintASTRecurse(((AST_Ternary_Node*)node)->right, depth + 1, 'M');
-  if (node->arity == AST_BINARY) PrintASTRecurse(((AST_Binary_Node*)node)->right, depth + 1, 'R');
+  PrintASTRecurse(AS_UNARY(node)->left, depth + 1, 'L');
+  if (node->arity == AST_TERNARY) PrintASTRecurse(AS_TERNARY(node)->middle, depth + 1, 'M');
+  if (node->arity == AST_BINARY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
 }
 
 static void PrintAST(AST_Node *root) {
