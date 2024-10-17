@@ -2,6 +2,8 @@
 #define TOKEN_TYPE_H
 
 typedef enum {
+  UNINITIALIZED,
+
   // Keywords
   I8, I16, I32, I64,
   U8, U16, U32, U64,
@@ -40,7 +42,8 @@ typedef enum {
   LEFT_SHIFT_EQUALS, RIGHT_SHIFT_EQUALS,
 
   // Misc
-  ERROR, TOKEN_EOF
+  ERROR, TOKEN_EOF,
+  TOKEN_TYPE_COUNT,
 } TokenType;
 
 const char *TokenTypeTranslation(TokenType t);
