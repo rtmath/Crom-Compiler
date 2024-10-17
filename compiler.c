@@ -35,8 +35,9 @@ static AST_Node *Identifier();
 static AST_Node *Number();
 static AST_Node *Unary();
 static AST_Node *Binary();
-static AST_Node *Expression();
 static AST_Node *Parens();
+static AST_Node *Expression();
+static AST_Node *Statement();
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -90,8 +91,12 @@ void Advance() {
       TokenTypeTranslation(Parser.next.type));
 }
 
+bool NextTokenIs(TokenType type) {
+  return (Parser.next.type == type);
+}
+
 bool Match(TokenType type) {
-  if (Parser.next.type != type) return false;
+  if (!NextTokenIs(type)) return false;
 
   Advance();
 
@@ -99,7 +104,7 @@ bool Match(TokenType type) {
 }
 
 void Consume(TokenType type, const char *msg, ...) {
-  if (Parser.next.type == type) {
+  if (NextTokenIs(type)) {
     Advance();
     return;
   }
@@ -107,7 +112,7 @@ void Consume(TokenType type, const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AND_CONTINUE_VALIST(msg, args);
+  ERROR_AND_EXIT_VALIST(msg, args);
 
   va_end(args);
 }
@@ -132,9 +137,8 @@ AST_Node *Parse(int PrecedenceLevel) {
 
     ParseFn infix_rule = Rules[Parser.current.type].infix;
     if (infix_rule == NULL) {
-      printf("Infix Rule for '%s' is NULL.\n",
-          TokenTypeTranslation(Parser.current.type));
-      break;
+      ERROR_AND_EXIT("Infix Rule for '%s' is NULL.\n",
+                     TokenTypeTranslation(Parser.current.type));
     }
 
     AST_Node *infix_node = infix_rule();
@@ -165,12 +169,11 @@ static AST_Node *Type() {
   AST_Unary_Node *n = NewUnaryNode();
 
   n->node.token = remember_token;
+  Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+          TokenTypeTranslation(remember_token.type),
+          TokenTypeTranslation(Parser.next.type));
 
-  Consume(IDENTIFIER, "Expecting IDENTIFIER after Type, got '%s' Token instead.\n",
-      TokenTypeTranslation(remember_token.type));
-
-  AST_Node *parse_result = Parse(NO_PRECEDENCE);
-  SetLeftChild(AS_NODE(n), parse_result);
+  SetLeftChild(AS_NODE(n), Identifier());
 
   return (AST_Node*)n;
 }
@@ -181,9 +184,14 @@ static AST_Node *Identifier() {
 
   if (Match(EQUALS)) {
     SetLeftChild(AS_NODE(n), Expression());
+  } else if (NextTokenIs(SEMICOLON)) {
+    // TODO: Variable declaration
+  } else {
+    ERROR_AND_EXIT("Expected '=' or ';' after identifier '%.*s', got '%s' instead",
+        Parser.current.length,
+        Parser.current.position_in_source,
+        TokenTypeTranslation(Parser.next.type));
   }
-
-  Consume(SEMICOLON, "Expect ';' after declaration of '%.*s'.", n->node.token.length, n->node.token.position_in_source);
 
   return (AST_Node*)n;
 }
@@ -231,6 +239,14 @@ static AST_Node *Expression() {
   return Parse((Precedence)1);
 }
 
+static AST_Node *Statement() {
+  AST_Node *expr_result = Expression();
+  Consume(SEMICOLON, "A ';' is expected after an expression statement, got '%s' instead",
+      TokenTypeTranslation(Parser.next.type));
+
+  return expr_result;
+}
+
 static AST_Node *Parens() {
   AST_Node *n = Expression();
   Consume(RPAREN, "Missing ')' after expression");
@@ -266,7 +282,7 @@ void Compile(const char *source) {
   Advance();
 
   while (!Match(TOKEN_EOF)) {
-    ParseTree = Parse(1);
+    ParseTree = Statement();
     if (ParseTree == NULL) {
       printf("[%s:%d] Parse() returned NULL. ParseTree could not be created.\n", __FILE__, __LINE__);
       return;
