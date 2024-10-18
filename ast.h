@@ -14,9 +14,15 @@ typedef enum {
   AST_TERNARY
 } AST_Arity;
 
+typedef enum {
+  AST_PROGRAM_START,
+  AST_STATEMENT,
+} AST_Node_Type;
+
 typedef struct {
   Token token;
   AST_Arity arity;
+  AST_Node_Type type;
 } AST_Node;
 
 typedef struct {
