@@ -17,7 +17,9 @@ typedef enum {
 typedef enum {
   UNTYPED,
   START_NODE,
-  STATEMENT_NODE,
+  CHAIN_NODE,
+  IF_NODE,
+  NODE_TYPE_COUNT
 } NodeType;
 
 typedef struct {
@@ -43,8 +45,8 @@ typedef struct {
   AST_Node node;
 
   AST_Node *left;
-  AST_Node *middle;
   AST_Node *right;
+  AST_Node *middle;
 } AST_Ternary_Node;
 
 AST_Unary_Node *NewUnaryNode(NodeType t);
@@ -54,5 +56,7 @@ AST_Ternary_Node *NewTernaryNode(NodeType t);
 void SetLeftChild(AST_Node *dest, AST_Node *value);
 void SetRightChild(AST_Node *dest, AST_Node *value);
 void SetMiddleChild(AST_Node *dest, AST_Node *value);
+
+const char *NodeTypeTranslation(NodeType t);
 
 #endif
