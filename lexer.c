@@ -52,6 +52,14 @@ static char Advance() {
   return Lexer.end[-1];
 }
 
+static bool Match(char c) {
+  if (Lexer.end[0] != c) return false;
+
+  Advance();
+
+  return true;
+}
+
 static void SkipWhitespace() {
   while(1) {
     char c = Peek();
@@ -218,13 +226,42 @@ Token ScanToken() {
   if (IsAlpha(c)) return Identifier();
 
   switch (c) {
+    case '{': return MakeToken(LCURLY);
+    case '}': return MakeToken(RCURLY);
     case '(': return MakeToken(LPAREN);
     case ')': return MakeToken(RPAREN);
+    case '[': return MakeToken(LBRACKET);
+    case ']': return MakeToken(RBRACKET);
+    case '.': return MakeToken(COMMA);
+    case ',': return MakeToken(COMMA);
     case ';': return MakeToken(SEMICOLON);
-    case '+': return MakeToken(PLUS);
-    case '-': return MakeToken(MINUS);
-    case '*': return MakeToken(ASTERISK);
-    case '/': return MakeToken(DIVIDE);
+    case '+': {
+      if (Match('=')) return MakeToken(PLUS_EQUALS);
+      if (Match('+')) return MakeToken(PLUS_PLUS);
+      return MakeToken(PLUS);
+    }
+    case '-': {
+      if (Match('=')) return MakeToken(MINUS_EQUALS);
+      if (Match('+')) return MakeToken(MINUS_MINUS);
+      return MakeToken(MINUS);
+    }
+    case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);
+    case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
+    case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
+    case '`': return MakeToken(TILDE);
+    case '^': return MakeToken(Match('=') ? XOR_EQUALS : CIRCUMFLEX);
+    case '&': return MakeToken(Match('=') ? AND_EQUALS : AMPERSAND);
+    case '|': return MakeToken(Match('=') ? OR_EQUALS : PIPE);
+    case '!': return MakeToken(Match('=') ? NOT_EQUALS : EXCLAM);
+    case '?': return MakeToken(QUESTIONMARK);
+    case '<': {
+      if (Match('<')) return MakeToken(Match('=') ? LEFT_SHIFT_EQUALS : LEFT_SHIFT);
+      return MakeToken(LESS_THAN);
+    }
+    case '>': {
+      if (Match('>')) return MakeToken(Match('=') ? RIGHT_SHIFT_EQUALS : RIGHT_SHIFT);
+      return MakeToken(GREATER_THAN);
+    }
     case '=': return MakeToken(EQUALS);
     case '"': return String();
     default:
