@@ -16,74 +16,36 @@ const char *NodeTypeTranslation(NodeType t) {
   return _NodeTypeTranslation[t];
 }
 
-AST_Unary_Node *NewUnaryNode(NodeType t) {
-  AST_Unary_Node *n = calloc(1, sizeof(AST_Unary_Node));
-  n->node.arity = UNARY_ARITY;
-  n->node.type = t;
+AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right) {
+  AST_Node *n = calloc(1, sizeof(AST_Node));
+  n->type = type;
+  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
+  n->nodes[LEFT] = left;
+  n->nodes[MIDDLE] = middle;
+  n->nodes[RIGHT] = right;
+
   return n;
 }
 
-AST_Binary_Node *NewBinaryNode(NodeType t) {
-  AST_Binary_Node *n = calloc(1, sizeof(AST_Binary_Node));
-  n->node.arity = BINARY_ARITY;
-  n->node.type = t;
+AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token) {
+  AST_Node *n = calloc(1, sizeof(AST_Node));
+  n->token = token;
+  n->type = type;
+  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
+  n->nodes[LEFT] = left;
+  n->nodes[MIDDLE] = middle;
+  n->nodes[RIGHT] = right;
+
   return n;
 }
 
-AST_Ternary_Node *NewTernaryNode(NodeType t) {
-  AST_Ternary_Node *n = calloc(1, sizeof(AST_Ternary_Node));
-  n->node.arity = TERNARY_ARITY;
-  n->node.type = t;
+AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity) {
+  AST_Node *n = calloc(1, sizeof(AST_Node));
+  n->type = type;
+  n->arity = arity;
+  n->nodes[LEFT] = left;
+  n->nodes[MIDDLE] = middle;
+  n->nodes[RIGHT] = right;
+
   return n;
-}
-
-void SetLeftChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case UNARY_ARITY: {
-      AS_UNARY(dest)->left = value;
-    } break;
-    case BINARY_ARITY: {
-      AS_BINARY(dest)->left = value;
-    } break;
-    case TERNARY_ARITY: {
-      AS_TERNARY(dest)->left = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE_FMTMSG("SetLeftChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
-}
-
-void SetRightChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case UNARY_ARITY: {
-      ERROR_AND_CONTINUE_FMTMSG("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case BINARY_ARITY: {
-      AS_BINARY(dest)->right = value;
-    } break;
-    case TERNARY_ARITY: {
-      AS_TERNARY(dest)->right = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE_FMTMSG("SetRightChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
-}
-
-void SetMiddleChild(AST_Node *dest, AST_Node *value) {
-  switch(dest->arity) {
-    case UNARY_ARITY: {
-      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Cannot set middle child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case BINARY_ARITY: {
-      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
-    } break;
-    case TERNARY_ARITY: {
-      AS_TERNARY(dest)->middle = value;
-    } break;
-    default:
-      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Unknown arity '%d'\n", dest->arity);
-      break;
-  }
 }

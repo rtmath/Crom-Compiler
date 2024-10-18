@@ -161,9 +161,9 @@ AST_Node *Parse(int PrecedenceLevel) {
     AST_Node *infix_node = infix_rule();
 
     if (return_node == NULL) {
-      SetLeftChild(infix_node, prefix_node);
+      infix_node->nodes[LEFT] = prefix_node;
     } else {
-      SetLeftChild(infix_node, return_node);
+      infix_node->nodes[LEFT] = return_node;
       return_node = infix_node;
     }
 
@@ -174,41 +174,29 @@ AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *StringLiteral() {
-  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
-
-  n->node.token = Parser.current;
-
-  return (AST_Node*)n;
+  return NewNodeWithToken(UNTYPED, NULL, NULL, NULL, Parser.current);
 }
 
 static AST_Node *Number() {
-  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
-
-  n->node.token = Parser.current;
-
-  return (AST_Node*)n;
+  return NewNodeWithToken(UNTYPED, NULL, NULL, NULL, Parser.current);
 }
 
 static AST_Node *Type() {
   Token remember_token = Parser.current;
-  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
 
-  n->node.token = remember_token;
   Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(remember_token.type),
           TokenTypeTranslation(Parser.next.type));
 
-  SetLeftChild(AS_NODE(n), Identifier());
-
-  return (AST_Node*)n;
+  return NewNodeWithToken(UNTYPED, Identifier(), NULL, NULL, remember_token);
 }
 
 static AST_Node *Identifier() {
-  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
-  n->node.token = Parser.current;
+  Token remember_token = Parser.current;
+  AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
-    SetLeftChild(AS_NODE(n), Expression());
+    parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
     // TODO: Variable declaration
   } else {
@@ -218,62 +206,55 @@ static AST_Node *Identifier() {
                           TokenTypeTranslation(Parser.next.type));
   }
 
-  return (AST_Node*)n;
+  return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token);
 }
 
 static AST_Node *Unary() {
   Token remember_token = Parser.current;
-
-  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
   AST_Node *parse_result = Parse(UNARY);
-  SetLeftChild(AS_NODE(n), parse_result);
 
   switch(remember_token.type) {
     case MINUS:
-      n->node.token = remember_token;
-      return (AST_Node*)n;
+      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token);
     default:
       printf("Unknown Unary operator '%s'\n",
           TokenTypeTranslation(remember_token.type));
-      return (AST_Node*)n;
+      return NULL;
   }
 }
 
 static AST_Node *Binary() {
-  Precedence precedence = Rules[Parser.current.type].precedence;
   Token remember_token = Parser.current;
-  AST_Binary_Node *n = NewBinaryNode(UNTYPED);
 
+  Precedence precedence = Rules[Parser.current.type].precedence;
   AST_Node *parse_result = Parse(precedence + 1);
-  SetRightChild(AS_NODE(n), parse_result);
 
   switch(remember_token.type) {
     case PLUS:
     case MINUS:
     case ASTERISK:
     case DIVIDE:
-      n->node.token = remember_token;
-      return (AST_Node*)n;
+      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token);
     default:
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
-      return (AST_Node*)n;
+      return NULL;
   }
 }
 
 static AST_Node *Block() {
-  AST_Binary_Node *n = NewBinaryNode(CHAIN_NODE);
-  AST_Binary_Node **current = &n;
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
+  AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    SetLeftChild(AS_NODE(*current), Statement());
-    SetRightChild(AS_NODE(*current), AS_NODE(NewBinaryNode(CHAIN_NODE)));
+    (*current)->nodes[LEFT] = Statement();
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
 
-    current = (AST_Binary_Node**)(&(*current)->right);
+    current = &(*current)->nodes[RIGHT];
   }
 
   Consume(RCURLY, "Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
 
-  return AS_NODE(n);
+  return n;
 }
 
 static AST_Node *Expression() {
@@ -291,48 +272,40 @@ static AST_Node *Statement() {
 }
 
 static AST_Node *IfStmt() {
-  AST_Ternary_Node *n = NewTernaryNode(IF_NODE);
-
   Consume(LPAREN, "Expected '(' after IF token, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
-  SetLeftChild(AS_NODE(n), Expression());
+  AST_Node *condition = Expression();
   Consume(RPAREN, "Expected ')' after IF condition, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
   Consume(LCURLY, "Expected '{', got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  SetMiddleChild(AS_NODE(n), Block());
+  AST_Node *body_if_true = Block();
+  AST_Node *body_if_false = NULL;
 
   if (Match(ELSE)) {
     if (Match(IF))  {
-      SetRightChild(AS_NODE(n), IfStmt());
+      body_if_false = IfStmt();
     } else {
       Consume(LCURLY, "Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-      SetRightChild(AS_NODE(n), Block());
+      body_if_false = Block();
     }
   }
 
-  return AS_NODE(n);
+  return NewNode(IF_NODE, condition, body_if_true, body_if_false);
 }
 
 static AST_Node *Parens() {
-  AST_Node *n = Expression();
+  AST_Node *parse_result = Expression();
   Consume(RPAREN, "Missing ')' after expression");
 
-  return n;
+  return parse_result;
 }
 
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   if (node == NULL) return;
-  if (node->arity == UNARY_ARITY && AS_UNARY(node)->left == NULL
-                                 && node->token.type == UNINITIALIZED) return;
-  if (node->arity == BINARY_ARITY && AS_BINARY(node)->left == NULL
-                                  && AS_BINARY(node)->right == NULL
-                                  && node->token.type == UNINITIALIZED) return;
-  if (node->arity == TERNARY_ARITY && AS_TERNARY(node)->left == NULL
-                                   && AS_TERNARY(node)->middle == NULL
-                                   && AS_TERNARY(node)->right == NULL
-                                   && node->token.type == UNINITIALIZED) return;
-
+  if (node->nodes[LEFT]   == NULL &&
+      node->nodes[MIDDLE] == NULL &&
+      node->nodes[RIGHT]  == NULL) return;
 
   char buf[100] = {0};
   int i = 0;
@@ -349,9 +322,9 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
         node->token.position_in_source);
   }
 
-  PrintASTRecurse(AS_UNARY(node)->left, depth + 1, 'L');
-  if (node->arity == TERNARY_ARITY) PrintASTRecurse(AS_TERNARY(node)->middle, depth + 1, 'M');
-  if (node->arity >= BINARY_ARITY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
+  PrintASTRecurse(node->nodes[LEFT], depth + 1, 'L');
+  PrintASTRecurse(node->nodes[MIDDLE], depth + 1, 'M');
+  PrintASTRecurse(node->nodes[RIGHT], depth + 1, 'R');
 }
 
 static void PrintAST(AST_Node *root) {
@@ -359,9 +332,9 @@ static void PrintAST(AST_Node *root) {
 }
 
 static AST_Node *BuildAST() {
-  AST_Binary_Node *root = NewBinaryNode(START_NODE);
+  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY);
 
-  AST_Binary_Node **current_node = &root;
+  AST_Node **current_node = &root;
 
   while (!Match(TOKEN_EOF)) {
     AST_Node *parse_result = Statement();
@@ -369,15 +342,15 @@ static AST_Node *BuildAST() {
       ERROR_AND_EXIT("AST could not be created");
     }
 
-    AST_Binary_Node *next_statement = NewBinaryNode(CHAIN_NODE);
+    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
 
-    SetLeftChild(AS_NODE(*current_node), parse_result);
-    SetRightChild(AS_NODE(*current_node), AS_NODE(next_statement));
+    (*current_node)->nodes[LEFT] = parse_result;
+    (*current_node)->nodes[RIGHT] = next_statement;
 
-    current_node = (AST_Binary_Node**)(&(*current_node)->right);
+    current_node = &(*current_node)->nodes[RIGHT];
   }
 
-  return AS_NODE(root);
+  return root;
 }
 
 void Compile(const char *source) {

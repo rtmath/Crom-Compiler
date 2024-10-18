@@ -3,10 +3,9 @@
 
 #include "token.h"
 
-#define AS_NODE(n) ((AST_Node*)n)
-#define AS_UNARY(n) ((AST_Unary_Node*)n)
-#define AS_BINARY(n) ((AST_Binary_Node*)n)
-#define AS_TERNARY(n) ((AST_Ternary_Node*)n)
+#define LEFT 0
+#define RIGHT 1
+#define MIDDLE 2
 
 typedef enum {
   UNARY_ARITY,
@@ -22,40 +21,17 @@ typedef enum {
   NODE_TYPE_COUNT
 } NodeType;
 
-typedef struct {
+typedef struct AST_Node {
   Token token;
   Arity arity;
   NodeType type;
+
+  struct AST_Node *nodes[3];
 } AST_Node;
 
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-} AST_Unary_Node;
-
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-  AST_Node *right;
-} AST_Binary_Node;
-
-typedef struct {
-  AST_Node node;
-
-  AST_Node *left;
-  AST_Node *right;
-  AST_Node *middle;
-} AST_Ternary_Node;
-
-AST_Unary_Node *NewUnaryNode(NodeType t);
-AST_Binary_Node *NewBinaryNode(NodeType t);
-AST_Ternary_Node *NewTernaryNode(NodeType t);
-
-void SetLeftChild(AST_Node *dest, AST_Node *value);
-void SetRightChild(AST_Node *dest, AST_Node *value);
-void SetMiddleChild(AST_Node *dest, AST_Node *value);
+AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right);
+AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token);
+AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity);
 
 const char *NodeTypeTranslation(NodeType t);
 
