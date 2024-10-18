@@ -8,6 +8,14 @@
 #define ERROR_AND_CONTINUE_VALIST(fmt, valist) ErrorAndContinueVAList(__FILE__, __LINE__, fmt, valist)
 #define ERROR_AND_EXIT_VALIST(fmt, valist) ErrorAndExitVAList(__FILE__, __LINE__, fmt, valist)
 
+/*  For the ERROR_AND_* macros, the '...' macro syntax requires
+ *  at least one argument. ERROR_NO_VARIADIC_ARGS is intended to
+ *  get around this for now, in situations where the fmt_string
+ *  is just a regular string with no format specifiers.
+ *
+ *  TODO: "Nothing is more permanent than a temporary fix." */
+#define ERROR_NO_VARIADIC_ARGS 0
+
 void ErrorAndContinue(const char *src_filename, int line_number,
                       const char *fmt_string, ...);
 
