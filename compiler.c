@@ -9,7 +9,6 @@
 #include "lexer.h"
 
 typedef AST_Node* (*ParseFn)();
-AST_Node *ParseTree;
 
 struct {
   Token current;
@@ -96,6 +95,17 @@ void Advance() {
       Parser.next.position_in_source);
 }
 
+static void InitParser() {
+  /* One call to Advance() will prime the parser, such that
+   * Parser.current will still be zeroed out, and
+   * Parser.next will hold the First Token(TM) from the lexer.
+   * The first call to Advance() from inside Parse() will then
+   * set Parser.current to the First Token, and Parser.next to
+   * look ahead one token, and parsing will proceed normally. */
+
+  Advance();
+}
+
 bool NextTokenIs(TokenType type) {
   return (Parser.next.type == type);
 }
@@ -162,7 +172,7 @@ AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *StringLiteral() {
-  AST_Unary_Node *n = NewUnaryNode();
+  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
 
   n->node.token = Parser.current;
 
@@ -170,7 +180,7 @@ static AST_Node *StringLiteral() {
 }
 
 static AST_Node *Number() {
-  AST_Unary_Node *n = NewUnaryNode();
+  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
 
   n->node.token = Parser.current;
 
@@ -179,7 +189,7 @@ static AST_Node *Number() {
 
 static AST_Node *Type() {
   Token remember_token = Parser.current;
-  AST_Unary_Node *n = NewUnaryNode();
+  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
 
   n->node.token = remember_token;
   Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
@@ -192,7 +202,7 @@ static AST_Node *Type() {
 }
 
 static AST_Node *Identifier() {
-  AST_Unary_Node *n = NewUnaryNode();
+  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
   n->node.token = Parser.current;
 
   if (Match(EQUALS)) {
@@ -212,7 +222,7 @@ static AST_Node *Identifier() {
 static AST_Node *Unary() {
   Token remember_token = Parser.current;
 
-  AST_Unary_Node *n = NewUnaryNode();
+  AST_Unary_Node *n = NewUnaryNode(UNTYPED);
   AST_Node *parse_result = Parse(UNARY);
   SetLeftChild(AS_NODE(n), parse_result);
 
@@ -230,7 +240,7 @@ static AST_Node *Unary() {
 static AST_Node *Binary() {
   Precedence precedence = Rules[Parser.current.type].precedence;
   Token remember_token = Parser.current;
-  AST_Binary_Node *n = NewBinaryNode();
+  AST_Binary_Node *n = NewBinaryNode(UNTYPED);
 
   AST_Node *parse_result = Parse(precedence + 1);
   SetRightChild(AS_NODE(n), parse_result);
@@ -276,32 +286,52 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
     buf[i] = ' ';
   }
   buf[i] = '\0';
-  printf("%s%c: %.*s\n", buf, label,
-      node->token.length,
-      node->token.position_in_source);
+
+  if (node->token.type == UNINITIALIZED) {
+    printf("%s<%s>\n", buf, (node->type == START_NODE) ? "Program Start" : "Statement");
+  } else {
+    printf("%s%c: %.*s\n", buf, label,
+        node->token.length,
+        node->token.position_in_source);
+  }
 
   PrintASTRecurse(AS_UNARY(node)->left, depth + 1, 'L');
-  if (node->arity == AST_TERNARY) PrintASTRecurse(AS_TERNARY(node)->middle, depth + 1, 'M');
-  if (node->arity == AST_BINARY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
+  if (node->arity == TERNARY_ARITY) PrintASTRecurse(AS_TERNARY(node)->middle, depth + 1, 'M');
+  if (node->arity == BINARY_ARITY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
 }
 
 static void PrintAST(AST_Node *root) {
   PrintASTRecurse(root, 0, 'S');
 }
 
-void Compile(const char *source) {
-  InitLexer(source);
+static AST_Node *BuildAST() {
+  AST_Binary_Node *root = NewBinaryNode(START_NODE);
 
-  Advance();
+  AST_Binary_Node **current_node = &root;
 
   while (!Match(TOKEN_EOF)) {
-    ParseTree = Statement();
-    if (ParseTree == NULL) {
-      printf("[%s:%d] Parse() returned NULL. ParseTree could not be created.\n", __FILE__, __LINE__);
-      return;
+    AST_Node *parse_result = Statement();
+    if (parse_result == NULL) {
+      ERROR_AND_EXIT("AST could not be created", ERROR_NO_VARIADIC_ARGS);
     }
 
-    printf("\n[AST]\n");
-    PrintAST(ParseTree);
+    AST_Binary_Node *next_statement = NewBinaryNode(STATEMENT_NODE);
+
+    SetLeftChild(AS_NODE(*current_node), parse_result);
+    SetRightChild(AS_NODE(*current_node), AS_NODE(next_statement));
+
+    current_node = (AST_Binary_Node**)(&(*current_node)->right);
   }
+
+  return AS_NODE(root);
+}
+
+void Compile(const char *source) {
+  InitLexer(source);
+  InitParser();
+
+  AST_Node *ast = BuildAST();
+
+  printf("\n[AST]\n");
+  PrintAST(ast);
 }
