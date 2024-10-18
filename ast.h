@@ -9,20 +9,21 @@
 #define AS_TERNARY(n) ((AST_Ternary_Node*)n)
 
 typedef enum {
-  AST_UNARY,
-  AST_BINARY,
-  AST_TERNARY
-} AST_Arity;
+  UNARY_ARITY,
+  BINARY_ARITY,
+  TERNARY_ARITY,
+} Arity;
 
 typedef enum {
-  AST_PROGRAM_START,
-  AST_STATEMENT,
-} AST_Node_Type;
+  UNTYPED,
+  START_NODE,
+  STATEMENT_NODE,
+} NodeType;
 
 typedef struct {
   Token token;
-  AST_Arity arity;
-  AST_Node_Type type;
+  Arity arity;
+  NodeType type;
 } AST_Node;
 
 typedef struct {
@@ -46,9 +47,9 @@ typedef struct {
   AST_Node *right;
 } AST_Ternary_Node;
 
-AST_Unary_Node *NewUnaryNode();
-AST_Binary_Node *NewBinaryNode();
-AST_Ternary_Node *NewTernaryNode();
+AST_Unary_Node *NewUnaryNode(NodeType t);
+AST_Binary_Node *NewBinaryNode(NodeType t);
+AST_Ternary_Node *NewTernaryNode(NodeType t);
 
 void SetLeftChild(AST_Node *dest, AST_Node *value);
 void SetRightChild(AST_Node *dest, AST_Node *value);

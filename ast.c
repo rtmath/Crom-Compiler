@@ -3,33 +3,36 @@
 #include "ast.h"
 #include "error.h"
 
-AST_Unary_Node *NewUnaryNode() {
+AST_Unary_Node *NewUnaryNode(NodeType t) {
   AST_Unary_Node *n = calloc(1, sizeof(AST_Unary_Node));
-  n->node.arity = AST_UNARY;
+  n->node.arity = UNARY_ARITY;
+  n->node.type = t;
   return n;
 }
 
-AST_Binary_Node *NewBinaryNode() {
+AST_Binary_Node *NewBinaryNode(NodeType t) {
   AST_Binary_Node *n = calloc(1, sizeof(AST_Binary_Node));
-  n->node.arity = AST_BINARY;
+  n->node.arity = BINARY_ARITY;
+  n->node.type = t;
   return n;
 }
 
-AST_Ternary_Node *NewTernaryNode() {
+AST_Ternary_Node *NewTernaryNode(NodeType t) {
   AST_Ternary_Node *n = calloc(1, sizeof(AST_Ternary_Node));
-  n->node.arity = AST_TERNARY;
+  n->node.arity = TERNARY_ARITY;
+  n->node.type = t;
   return n;
 }
 
 void SetLeftChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
-    case AST_UNARY: {
+    case UNARY_ARITY: {
       AS_UNARY(dest)->left = value;
     } break;
-    case AST_BINARY: {
+    case BINARY_ARITY: {
       AS_BINARY(dest)->left = value;
     } break;
-    case AST_TERNARY: {
+    case TERNARY_ARITY: {
       AS_TERNARY(dest)->left = value;
     } break;
     default:
@@ -40,13 +43,13 @@ void SetLeftChild(AST_Node *dest, AST_Node *value) {
 
 void SetRightChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
-    case AST_UNARY: {
+    case UNARY_ARITY: {
       ERROR_AND_CONTINUE("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
-    case AST_BINARY: {
+    case BINARY_ARITY: {
       AS_BINARY(dest)->right = value;
     } break;
-    case AST_TERNARY: {
+    case TERNARY_ARITY: {
       AS_TERNARY(dest)->right = value;
     } break;
     default:
@@ -57,13 +60,13 @@ void SetRightChild(AST_Node *dest, AST_Node *value) {
 
 void SetMiddleChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
-    case AST_UNARY: {
+    case UNARY_ARITY: {
       ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
-    case AST_BINARY: {
+    case BINARY_ARITY: {
       ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
-    case AST_TERNARY: {
+    case TERNARY_ARITY: {
       AS_TERNARY(dest)->middle = value;
     } break;
     default:
