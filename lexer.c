@@ -16,6 +16,10 @@ void InitLexer(const char *source) {
   Lexer.current_line = 1;
 }
 
+static int LexemeLength() {
+  return Lexer.end - Lexer.start;
+}
+
 static bool IsAlpha(char c) {
   return (c >= 'A' && c <= 'Z') ||
          (c >= 'a' && c <= 'z') ||
@@ -24,6 +28,11 @@ static bool IsAlpha(char c) {
 
 static bool IsNumber(char c) {
   return c >= '0' && c <= '9';
+}
+
+static bool IsHex(char c) {
+  return IsNumber(c) || (c >= 'A' && c <= 'H') ||
+                        (c >= 'a' && c <= 'h');
 }
 
 static bool AtEOF() {
@@ -89,6 +98,33 @@ static Token MakeToken(TokenType type) {
   t.on_line = Lexer.current_line;
 
   return t;
+}
+
+static Token Hex() {
+  Advance(); // consume the Peek()'d 'x'
+
+  while (IsHex(Peek())) Advance();
+
+  if (LexemeLength() > (2 + 16)) { // 2 = '0x'
+    return MakeErrorToken("Hex Constant cannot be more than 64 bits wide");
+  }
+
+  return MakeToken(HEX_CONSTANT);
+}
+
+static Token Binary() {
+  Advance(); // consume the Peek()'d "'"
+
+  while (Peek() == '0' || Peek() == '1') Advance();
+
+  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Constant");
+  Advance(); // consume the Peek()'d "'"
+
+  if (LexemeLength() > (3 + 64)) { // 3 = one 'b' and two single quotes
+    return MakeErrorToken("Binary Constant cannot be more than 64 bits wide");
+  }
+
+  return MakeToken(BINARY_CONSTANT);
 }
 
 static Token Number() {
@@ -175,7 +211,10 @@ Token ScanToken() {
 
   char c = Advance();
 
+  if (c == '0' && Peek() == 'x') return Hex();
   if (IsNumber(c)) return Number();
+
+  if (c == 'b' && Peek() == '\'') return Binary();
   if (IsAlpha(c)) return Identifier();
 
   switch (c) {

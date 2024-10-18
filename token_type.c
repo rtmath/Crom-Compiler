@@ -17,6 +17,8 @@ static const char* const _TokenTypeTranslation[] =
 
   [IDENTIFIER] = "IDENTIFIER",
 
+  [HEX_CONSTANT] = "HEX",
+  [BINARY_CONSTANT] = "BINARY",
   [INT_CONSTANT] = "INT",
   [FLOAT_CONSTANT] = "FLOAT",
   [ENUM_CONSTANT] = "ENUM",

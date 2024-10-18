@@ -18,6 +18,8 @@ typedef enum {
   IDENTIFIER,
 
   // Constants
+  BINARY_CONSTANT,
+  HEX_CONSTANT,
   INT_CONSTANT,
   FLOAT_CONSTANT,
   ENUM_CONSTANT,

@@ -65,6 +65,8 @@ ParseRule Rules[] = {
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
   // Constants
+  [BINARY_CONSTANT] = { Number,  NULL, NO_PRECEDENCE },
+  [HEX_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
 
@@ -87,8 +89,10 @@ void Advance() {
 
   if (Parser.next.type != ERROR) return;
 
-  ERROR_AND_EXIT("Advance(): Error token encountered after token '%s'",
-      TokenTypeTranslation(Parser.next.type));
+  ERROR_AND_EXIT("Advance(): Error token encountered after token '%s': %.*s",
+      TokenTypeTranslation(Parser.current.type),
+      Parser.next.length,
+      Parser.next.position_in_source);
 }
 
 bool NextTokenIs(TokenType type) {
