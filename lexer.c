@@ -113,7 +113,7 @@ static Token Hex() {
 
   while (IsHex(Peek())) Advance();
 
-  if (LexemeLength() > (2 + 16)) { // 2 = '0x'
+  if (LexemeLength() > (2 + 16)) { // "0x" + up to 16 Hex Digits (0-F)
     return MakeErrorToken("Hex Constant cannot be more than 64 bits wide");
   }
 
@@ -128,7 +128,7 @@ static Token Binary() {
   if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Constant");
   Advance(); // consume the Peek()'d "'"
 
-  if (LexemeLength() > (3 + 64)) { // 3 = one 'b' and two single quotes
+  if (LexemeLength() > (3 + 64)) { // "b'" + up to 64 0s or 1s + "'"
     return MakeErrorToken("Binary Constant cannot be more than 64 bits wide");
   }
 
