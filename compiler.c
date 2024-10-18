@@ -33,6 +33,7 @@ typedef struct {
 static AST_Node *Type();
 static AST_Node *Identifier();
 static AST_Node *Number();
+static AST_Node *StringLiteral();
 static AST_Node *Unary();
 static AST_Node *Binary();
 static AST_Node *Parens();
@@ -70,7 +71,7 @@ ParseRule Rules[] = {
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
 
-  [STRING_LITERAL] = {   NULL,   NULL, NO_PRECEDENCE },
+  [STRING_LITERAL] = { StringLiteral,   NULL, NO_PRECEDENCE },
 
   // Punctuators
   [LPAREN]         = { Parens,   NULL, NO_PRECEDENCE },
@@ -158,6 +159,14 @@ AST_Node *Parse(int PrecedenceLevel) {
   }
 
   return (return_node == NULL) ? prefix_node : return_node;
+}
+
+static AST_Node *StringLiteral() {
+  AST_Unary_Node *n = NewUnaryNode();
+
+  n->node.token = Parser.current;
+
+  return (AST_Node*)n;
 }
 
 static AST_Node *Number() {
