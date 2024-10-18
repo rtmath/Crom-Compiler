@@ -11,39 +11,35 @@ void ErrorAndContinue(const char *src_filename, int line_number, const char *msg
   printf("[%s:%d] %s\n", src_filename, line_number, msg);
 }
 
-void ErrorAndExit(const char* src_filename, int line_number, const char *msg)
-{
+void ErrorAndExit(const char* src_filename, int line_number, const char *msg) {
   ErrorAndContinue(src_filename, line_number, msg);
 
   exit(100);
 }
 
-
 void ErrorAndContinue_Variadic(const char *src_filename, int line_number,
                                 const char *fmt_string, ...) {
-  // va_list necessary for passing '...' to another function
+  printf("[%s:%d] ", src_filename, line_number);
+
   va_list args;
   va_start(args, fmt_string);
-
-  printf("[%s:%d] ", src_filename, line_number);
   PrintFormattedStr(fmt_string, args);
-  printf("\n");
-
   va_end(args);
+
+  printf("\n");
 }
 
 void ErrorAndExit_Variadic(const char* src_filename, int line_number,
                   const char *fmt_string, ...)
 {
-  // va_list necessary for passing '...' to another function
+  printf("[%s:%d] ", src_filename, line_number);
+
   va_list args;
   va_start(args, fmt_string);
-
-  printf("[%s:%d] ", src_filename, line_number);
   PrintFormattedStr(fmt_string, args);
-  printf("\n");
-
   va_end(args);
+
+  printf("\n");
 
   exit(100);
 }
