@@ -36,7 +36,7 @@ void SetLeftChild(AST_Node *dest, AST_Node *value) {
       AS_TERNARY(dest)->left = value;
     } break;
     default:
-      ERROR_AND_CONTINUE("SetLeftChild(): Unknown arity '%d'\n", dest->arity);
+      ERROR_AND_CONTINUE_FMTMSG("SetLeftChild(): Unknown arity '%d'\n", dest->arity);
       break;
   }
 }
@@ -44,7 +44,7 @@ void SetLeftChild(AST_Node *dest, AST_Node *value) {
 void SetRightChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
     case UNARY_ARITY: {
-      ERROR_AND_CONTINUE("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
+      ERROR_AND_CONTINUE_FMTMSG("SetRightChild(): Cannot set right child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
     case BINARY_ARITY: {
       AS_BINARY(dest)->right = value;
@@ -53,7 +53,7 @@ void SetRightChild(AST_Node *dest, AST_Node *value) {
       AS_TERNARY(dest)->right = value;
     } break;
     default:
-      ERROR_AND_CONTINUE("SetRightChild(): Unknown arity '%d'\n", dest->arity);
+      ERROR_AND_CONTINUE_FMTMSG("SetRightChild(): Unknown arity '%d'\n", dest->arity);
       break;
   }
 }
@@ -61,16 +61,16 @@ void SetRightChild(AST_Node *dest, AST_Node *value) {
 void SetMiddleChild(AST_Node *dest, AST_Node *value) {
   switch(dest->arity) {
     case UNARY_ARITY: {
-      ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
+      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Cannot set middle child of a unary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
     case BINARY_ARITY: {
-      ERROR_AND_CONTINUE("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
+      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Cannot set middle child of a binary node (TokenType %s).", TokenTypeTranslation(dest->token.type));
     } break;
     case TERNARY_ARITY: {
       AS_TERNARY(dest)->middle = value;
     } break;
     default:
-      ERROR_AND_CONTINUE("SetMiddleChild(): Unknown arity '%d'\n", dest->arity);
+      ERROR_AND_CONTINUE_FMTMSG("SetMiddleChild(): Unknown arity '%d'\n", dest->arity);
       break;
   }
 }

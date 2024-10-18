@@ -89,7 +89,7 @@ void Advance() {
 
   if (Parser.next.type != ERROR) return;
 
-  ERROR_AND_EXIT("Advance(): Error token encountered after token '%s': %.*s",
+  ERROR_AND_EXIT_FMTMSG("Advance(): Error token encountered after token '%s': %.*s",
       TokenTypeTranslation(Parser.current.type),
       Parser.next.length,
       Parser.next.position_in_source);
@@ -152,8 +152,8 @@ AST_Node *Parse(int PrecedenceLevel) {
 
     ParseFn infix_rule = Rules[Parser.current.type].infix;
     if (infix_rule == NULL) {
-      ERROR_AND_EXIT("Infix Rule for '%s' is NULL.\n",
-                     TokenTypeTranslation(Parser.current.type));
+      ERROR_AND_EXIT_FMTMSG("Infix Rule for '%s' is NULL.\n",
+                            TokenTypeTranslation(Parser.current.type));
     }
 
     AST_Node *infix_node = infix_rule();
@@ -210,10 +210,10 @@ static AST_Node *Identifier() {
   } else if (NextTokenIs(SEMICOLON)) {
     // TODO: Variable declaration
   } else {
-    ERROR_AND_EXIT("Expected '=' or ';' after identifier '%.*s', got '%s' instead",
-        Parser.current.length,
-        Parser.current.position_in_source,
-        TokenTypeTranslation(Parser.next.type));
+    ERROR_AND_EXIT_FMTMSG("Expected '=' or ';' after identifier '%.*s', got '%s' instead",
+                          Parser.current.length,
+                          Parser.current.position_in_source,
+                          TokenTypeTranslation(Parser.next.type));
   }
 
   return (AST_Node*)n;
@@ -312,7 +312,7 @@ static AST_Node *BuildAST() {
   while (!Match(TOKEN_EOF)) {
     AST_Node *parse_result = Statement();
     if (parse_result == NULL) {
-      ERROR_AND_EXIT("AST could not be created", ERROR_NO_VARIADIC_ARGS);
+      ERROR_AND_EXIT("AST could not be created");
     }
 
     AST_Binary_Node *next_statement = NewBinaryNode(STATEMENT_NODE);

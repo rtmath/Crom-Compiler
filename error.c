@@ -3,24 +3,36 @@
 
 #include "error.h"
 
-static void PrintVariadic(const char *fmt_string, va_list args) {
+static void PrintFormattedStr(const char *fmt_string, va_list args) {
   vprintf(fmt_string, args);
 }
 
-void ErrorAndContinue(const char *src_filename, int line_number,
-                      const char *fmt_string, ...) {
+void ErrorAndContinue(const char *src_filename, int line_number, const char *msg) {
+  printf("[%s:%d] %s\n", src_filename, line_number, msg);
+}
+
+void ErrorAndExit(const char* src_filename, int line_number, const char *msg)
+{
+  ErrorAndContinue(src_filename, line_number, msg);
+
+  exit(100);
+}
+
+
+void ErrorAndContinue_Variadic(const char *src_filename, int line_number,
+                                const char *fmt_string, ...) {
   // va_list necessary for passing '...' to another function
   va_list args;
   va_start(args, fmt_string);
 
   printf("[%s:%d] ", src_filename, line_number);
-  PrintVariadic(fmt_string, args);
+  PrintFormattedStr(fmt_string, args);
   printf("\n");
 
   va_end(args);
 }
 
-void ErrorAndExit(const char* src_filename, int line_number,
+void ErrorAndExit_Variadic(const char* src_filename, int line_number,
                   const char *fmt_string, ...)
 {
   // va_list necessary for passing '...' to another function
@@ -28,7 +40,7 @@ void ErrorAndExit(const char* src_filename, int line_number,
   va_start(args, fmt_string);
 
   printf("[%s:%d] ", src_filename, line_number);
-  PrintVariadic(fmt_string, args);
+  PrintFormattedStr(fmt_string, args);
   printf("\n");
 
   va_end(args);
@@ -36,16 +48,16 @@ void ErrorAndExit(const char* src_filename, int line_number,
   exit(100);
 }
 
-void ErrorAndContinueVAList(const char *src_filename, int line_number,
+void ErrorAndContinue_VAList(const char *src_filename, int line_number,
                            const char *fmt_string, va_list args) {
   printf("[%s:%d] ", src_filename, line_number);
-  PrintVariadic(fmt_string, args);
+  PrintFormattedStr(fmt_string, args);
   printf("\n");
 }
 
-void ErrorAndExitVAList(const char *src_filename, int line_number,
+void ErrorAndExit_VAList(const char *src_filename, int line_number,
                        const char *fmt_string, va_list args) {
-  ErrorAndContinueVAList(src_filename, line_number, fmt_string, args);
+  ErrorAndContinue_VAList(src_filename, line_number, fmt_string, args);
 
   exit(100);
 }
