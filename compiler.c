@@ -36,8 +36,10 @@ static AST_Node *StringLiteral();
 static AST_Node *Unary();
 static AST_Node *Binary();
 static AST_Node *Parens();
+static AST_Node *Block();
 static AST_Node *Expression();
 static AST_Node *Statement();
+static AST_Node *IfStmt();
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -258,16 +260,58 @@ static AST_Node *Binary() {
   }
 }
 
+static AST_Node *Block() {
+  AST_Binary_Node *n = NewBinaryNode(CHAIN_NODE);
+  AST_Binary_Node **current = &n;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    SetLeftChild(AS_NODE(*current), Statement());
+    SetRightChild(AS_NODE(*current), AS_NODE(NewBinaryNode(CHAIN_NODE)));
+
+    current = (AST_Binary_Node**)(&(*current)->right);
+  }
+
+  Consume(RCURLY, "Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
+
+  return AS_NODE(n);
+}
+
 static AST_Node *Expression() {
   return Parse((Precedence)1);
 }
 
 static AST_Node *Statement() {
+  if (Match(IF)) return IfStmt();
+
   AST_Node *expr_result = Expression();
   Consume(SEMICOLON, "A ';' is expected after an expression statement, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
   return expr_result;
+}
+
+static AST_Node *IfStmt() {
+  AST_Ternary_Node *n = NewTernaryNode(IF_NODE);
+
+  Consume(LPAREN, "Expected '(' after IF token, got '%s' instead",
+      TokenTypeTranslation(Parser.next.type));
+  SetLeftChild(AS_NODE(n), Expression());
+  Consume(RPAREN, "Expected ')' after IF condition, got '%s' instead",
+      TokenTypeTranslation(Parser.next.type));
+
+  Consume(LCURLY, "Expected '{', got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  SetMiddleChild(AS_NODE(n), Block());
+
+  if (Match(ELSE)) {
+    if (Match(IF))  {
+      SetRightChild(AS_NODE(n), IfStmt());
+    } else {
+      Consume(LCURLY, "Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+      SetRightChild(AS_NODE(n), Block());
+    }
+  }
+
+  return AS_NODE(n);
 }
 
 static AST_Node *Parens() {
@@ -279,6 +323,16 @@ static AST_Node *Parens() {
 
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   if (node == NULL) return;
+  if (node->arity == UNARY_ARITY && AS_UNARY(node)->left == NULL
+                                 && node->token.type == UNINITIALIZED) return;
+  if (node->arity == BINARY_ARITY && AS_BINARY(node)->left == NULL
+                                  && AS_BINARY(node)->right == NULL
+                                  && node->token.type == UNINITIALIZED) return;
+  if (node->arity == TERNARY_ARITY && AS_TERNARY(node)->left == NULL
+                                   && AS_TERNARY(node)->middle == NULL
+                                   && AS_TERNARY(node)->right == NULL
+                                   && node->token.type == UNINITIALIZED) return;
+
 
   char buf[100] = {0};
   int i = 0;
@@ -288,7 +342,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   buf[i] = '\0';
 
   if (node->token.type == UNINITIALIZED) {
-    printf("%s<%s>\n", buf, (node->type == START_NODE) ? "Program Start" : "Statement");
+    printf("%s%c: <%s>\n", buf, label, NodeTypeTranslation(node->type));
   } else {
     printf("%s%c: %.*s\n", buf, label,
         node->token.length,
@@ -297,7 +351,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
 
   PrintASTRecurse(AS_UNARY(node)->left, depth + 1, 'L');
   if (node->arity == TERNARY_ARITY) PrintASTRecurse(AS_TERNARY(node)->middle, depth + 1, 'M');
-  if (node->arity == BINARY_ARITY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
+  if (node->arity >= BINARY_ARITY) PrintASTRecurse(AS_BINARY(node)->right, depth + 1, 'R');
 }
 
 static void PrintAST(AST_Node *root) {
@@ -315,7 +369,7 @@ static AST_Node *BuildAST() {
       ERROR_AND_EXIT("AST could not be created");
     }
 
-    AST_Binary_Node *next_statement = NewBinaryNode(STATEMENT_NODE);
+    AST_Binary_Node *next_statement = NewBinaryNode(CHAIN_NODE);
 
     SetLeftChild(AS_NODE(*current_node), parse_result);
     SetRightChild(AS_NODE(*current_node), AS_NODE(next_statement));
