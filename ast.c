@@ -1,3 +1,4 @@
+#include <stdio.h>  // for printf
 #include <stdlib.h> // for calloc
 
 #include "ast.h"
@@ -48,4 +49,34 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
   n->nodes[RIGHT] = right;
 
   return n;
+}
+
+static void PrintASTRecurse(AST_Node *node, int depth, char label) {
+  if (node == NULL) return;
+  if (node->nodes[LEFT]   == NULL &&
+      node->nodes[MIDDLE] == NULL &&
+      node->nodes[RIGHT]  == NULL) return;
+
+  char buf[100] = {0};
+  int i = 0;
+  for (; i < depth * 4 && i + node->token.length < 100; i++) {
+    buf[i] = ' ';
+  }
+  buf[i] = '\0';
+
+  if (node->token.type == UNINITIALIZED) {
+    printf("%s%c: <%s>\n", buf, label, NodeTypeTranslation(node->type));
+  } else {
+    printf("%s%c: %.*s\n", buf, label,
+        node->token.length,
+        node->token.position_in_source);
+  }
+
+  PrintASTRecurse(node->nodes[LEFT], depth + 1, 'L');
+  PrintASTRecurse(node->nodes[MIDDLE], depth + 1, 'M');
+  PrintASTRecurse(node->nodes[RIGHT], depth + 1, 'R');
+}
+
+void PrintAST(AST_Node *root) {
+  PrintASTRecurse(root, 0, 'S');
 }
