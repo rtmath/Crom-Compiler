@@ -18,13 +18,15 @@ static Token HT_NOT_FOUND = {
 static ParserAnnotation NO_ANNOTATION = {
   .ostensible_type = OST_UNKNOWN,
   .bit_width = 0,
-  .is_signed = 0
+  .is_signed = 0,
+  .declared_on_line = -1
 };
 
-HT_Entry Entry(Token t, ParserAnnotation a) {
+HT_Entry Entry(Token t, ParserAnnotation a, DeclarationType d) {
   HT_Entry hte = {
     .token = t,
-    .annotation = a
+    .annotation = a,
+    .declaration_type = d
   };
 
   return hte;
@@ -167,7 +169,7 @@ HT_Entry GetEntry(HashTable *ht, const char *key) {
     i++;
   }
 
-  return Entry(HT_NOT_FOUND, NO_ANNOTATION);
+  return Entry(HT_NOT_FOUND, NO_ANNOTATION, DECL_NOT_APPLICABLE);
 }
 
 void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
