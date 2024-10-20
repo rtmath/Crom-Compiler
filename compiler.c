@@ -85,7 +85,7 @@ ParseRule Rules[] = {
   [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
 
-void Advance() {
+static void Advance() {
   Parser.current = Parser.next;
   Parser.next = ScanToken();
 
@@ -108,11 +108,11 @@ static void InitParser() {
   Advance();
 }
 
-bool NextTokenIs(TokenType type) {
+static bool NextTokenIs(TokenType type) {
   return (Parser.next.type == type);
 }
 
-bool Match(TokenType type) {
+static bool Match(TokenType type) {
   if (!NextTokenIs(type)) return false;
 
   Advance();
@@ -120,7 +120,7 @@ bool Match(TokenType type) {
   return true;
 }
 
-void Consume(TokenType type, const char *msg, ...) {
+static void Consume(TokenType type, const char *msg, ...) {
   if (NextTokenIs(type)) {
     Advance();
     return;
@@ -134,7 +134,7 @@ void Consume(TokenType type, const char *msg, ...) {
   va_end(args);
 }
 
-AST_Node *Parse(int PrecedenceLevel) {
+static AST_Node *Parse(int PrecedenceLevel) {
   if (PrecedenceLevel == PREC_EOF) return NULL;
   Advance();
 
