@@ -53,7 +53,8 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
 
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   if (node == NULL) return;
-  if (node->nodes[LEFT]   == NULL &&
+  if (node->type != TERMINAL_DATA &&
+      node->nodes[LEFT]   == NULL &&
       node->nodes[MIDDLE] == NULL &&
       node->nodes[RIGHT]  == NULL) return;
 

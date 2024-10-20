@@ -18,6 +18,7 @@ typedef enum {
   START_NODE,
   CHAIN_NODE,
   IF_NODE,
+  TERMINAL_DATA,
   NODE_TYPE_COUNT
 } NodeType;
 

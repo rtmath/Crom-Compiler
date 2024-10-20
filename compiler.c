@@ -1,14 +1,17 @@
 #include <stdarg.h> // for va_list
 #include <stdbool.h>
 #include <stdio.h>  // for printf and friends
+#include <stdlib.h> // for malloc
 
 #include "ast.h"
 #include "common.h"
 #include "compiler.h"
 #include "error.h"
+#include "hashtable.h"
 #include "lexer.h"
 
 typedef AST_Node* (*ParseFn)();
+HashTable *SymbolTable;
 
 struct {
   Token current;
@@ -84,6 +87,57 @@ ParseRule Rules[] = {
   // Misc
   [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
+
+static void AddToSymbolTable(Token token) {
+  if (token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
+
+  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
+  for (int i = 0; i < token.length; i++) {
+    key[i] = token.position_in_source[i];
+  }
+  key[token.length] = '\0';
+
+  SetToken(SymbolTable, key, token);
+
+  free(key);
+}
+
+static Token RetrieveFromSymbolTable(Token token) {
+  if (token.type == ERROR) ERROR_AND_EXIT("Cannot retrieve ERROR token from Symbol Table");
+
+  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
+  for (int i = 0; i < token.length; i++) {
+    key[i] = token.position_in_source[i];
+  }
+  key[token.length] = '\0';
+
+  Token t = GetToken(SymbolTable, key);
+
+  free(key);
+  return t;
+}
+
+static bool IsInSymbolTable(Token token) {
+  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
+  for (int i = 0; i < token.length; i++) {
+    key[i] = token.position_in_source[i];
+  }
+  key[token.length] = '\0';
+
+  Token t = GetToken(SymbolTable, key);
+
+  free(key);
+  return (t.type != ERROR);
+}
+
+static Token ResolveIdentifierAsValue(Token token) {
+  Token t = RetrieveFromSymbolTable(token);
+
+  // TODO: Don't treat all identifiers as Ints, use their actual types
+  // TODO: Also maybe there is a better way to resolve identifiers
+  t.type = INT_CONSTANT;
+  return t;
+}
 
 static void Advance() {
   Parser.current = Parser.next;
@@ -174,11 +228,11 @@ static AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *StringLiteral() {
-  return NewNodeWithToken(UNTYPED, NULL, NULL, NULL, Parser.current);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current);
 }
 
 static AST_Node *Number() {
-  return NewNodeWithToken(UNTYPED, NULL, NULL, NULL, Parser.current);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current);
 }
 
 static AST_Node *Type() {
@@ -193,19 +247,31 @@ static AST_Node *Type() {
 
 static AST_Node *Identifier() {
   Token remember_token = Parser.current;
+  bool identifier_exists = IsInSymbolTable(remember_token);
   AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
     parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
+    if (identifier_exists) {
+      Token already_declared = RetrieveFromSymbolTable(remember_token);
+      ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                            remember_token.length,
+                            remember_token.position_in_source,
+                            already_declared.on_line);
+    }
+
     // TODO: Variable declaration
+  } else if (identifier_exists) {
+    Token t = ResolveIdentifierAsValue(remember_token);
+    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, t);
   } else {
-    ERROR_AND_EXIT_FMTMSG("Expected '=' or ';' after identifier '%.*s', got '%s' instead",
-                          Parser.current.length,
-                          Parser.current.position_in_source,
-                          TokenTypeTranslation(Parser.next.type));
+    ERROR_AND_EXIT_FMTMSG("Undeclared identifier '%.*s'",
+                          remember_token.length,
+                          remember_token.position_in_source);
   }
 
+  AddToSymbolTable(remember_token);
   return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token);
 }
 
@@ -326,6 +392,7 @@ static AST_Node *BuildAST() {
 void Compile(const char *source) {
   InitLexer(source);
   InitParser();
+  SymbolTable = NewHashTable();
 
   AST_Node *ast = BuildAST();
 
