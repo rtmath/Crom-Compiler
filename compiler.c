@@ -251,6 +251,12 @@ static AST_Node *Identifier() {
   AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
+    if (!identifier_exists) {
+      ERROR_AND_EXIT_FMTMSG("Cannot assign to undeclared identifier '%.*s'",
+                            remember_token.length,
+                            remember_token.position_in_source);
+    }
+
     parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
     if (identifier_exists) {
@@ -271,8 +277,10 @@ static AST_Node *Identifier() {
                           remember_token.position_in_source);
   }
 
+  // TODO: This is kind of a variable declaration,
+  // but variable declaration should happen up above
   AddToSymbolTable(remember_token);
-  return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token);
+  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token);
 }
 
 static AST_Node *Unary() {
