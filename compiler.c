@@ -7,8 +7,8 @@
 #include "common.h"
 #include "compiler.h"
 #include "error.h"
-#include "hashtable.h"
 #include "lexer.h"
+#include "symbol_table.h"
 
 HashTable *SymbolTable;
 
@@ -94,57 +94,6 @@ ParseRule Rules[] = {
   // Misc
   [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
-
-static char *ExtractString(Token token) {
-  char *str = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
-  for (int i = 0; i < token.length; i++) {
-    str[i] = token.position_in_source[i];
-  }
-  str[token.length] = '\0';
-
-  return str;
-}
-
-/* Symbol Table Fns */
-static void AddToSymbolTable(Token token) {
-  if (token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
-
-  char *key = ExtractString(token);
-
-  SetToken(SymbolTable, key, token);
-
-  free(key);
-}
-
-static Token RetrieveFromSymbolTable(Token token) {
-  if (token.type == ERROR) ERROR_AND_EXIT("Cannot retrieve ERROR token from Symbol Table");
-
-  char *key = ExtractString(token);
-
-  Token t = GetToken(SymbolTable, key);
-
-  free(key);
-  return t;
-}
-
-static bool IsInSymbolTable(Token token) {
-  char *key = ExtractString(token);
-
-  Token t = GetToken(SymbolTable, key);
-
-  free(key);
-  return (t.type != ERROR);
-}
-
-static Token ResolveIdentifierAsValue(Token token) {
-  Token t = RetrieveFromSymbolTable(token);
-
-  // TODO: Don't treat all identifiers as Ints, use their actual types
-  // TODO: Also maybe there is a better way to resolve identifiers
-  t.type = INT_CONSTANT;
-  return t;
-}
-/* End Symbol Table Fns */
 
 static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
   ParserAnnotation a = {
@@ -289,7 +238,7 @@ static AST_Node *Type() {
 
 static AST_Node *Identifier(ParserAnnotation type) {
   Token remember_token = Parser.current;
-  bool identifier_exists = IsInSymbolTable(remember_token);
+  bool identifier_exists = IsInSymbolTable(SymbolTable, remember_token);
   AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
@@ -304,7 +253,7 @@ static AST_Node *Identifier(ParserAnnotation type) {
     parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
     if (identifier_exists) {
-      Token already_declared = RetrieveFromSymbolTable(remember_token);
+      Token already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
@@ -313,7 +262,7 @@ static AST_Node *Identifier(ParserAnnotation type) {
 
     // TODO: Variable declaration
   } else if (identifier_exists) {
-    Token t = ResolveIdentifierAsValue(remember_token);
+    Token t = ResolveIdentifierAsValue(SymbolTable, remember_token);
     return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, t, AnnotateType(t.type));
   } else {
     ERROR_AND_EXIT_FMTMSG("Undeclared identifier '%.*s'",
@@ -323,7 +272,7 @@ static AST_Node *Identifier(ParserAnnotation type) {
 
   // TODO: This is kind of a variable declaration,
   // but variable declaration should happen up above
-  AddToSymbolTable(remember_token);
+  AddToSymbolTable(SymbolTable, remember_token);
   return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, type);
 }
 
