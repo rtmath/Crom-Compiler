@@ -15,6 +15,21 @@ static Token HT_NOT_FOUND = {
   .on_line = -1
 };
 
+static ParserAnnotation NO_ANNOTATION = {
+  .ostensible_type = OST_UNKNOWN,
+  .bit_width = 0,
+  .is_signed = 0
+};
+
+HT_Entry Entry(Token t, ParserAnnotation a) {
+  HT_Entry hte = {
+    .token = t,
+    .annotation = a
+  };
+
+  return hte;
+}
+
 static char *CopyString(const char *s) {
   int length = strlen(s);
   char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
@@ -80,10 +95,10 @@ static int NextPrime(int x) {
   return x;
 }
 
-static Bucket *NewBucket(const char *k, Token t) {
+static Bucket *NewBucket(const char *k, HT_Entry e) {
   Bucket *b = malloc(sizeof(Bucket));
   b->key = CopyString(k);
-  b->token = t;
+  b->entry = e;
 
   return b;
 }
@@ -121,7 +136,7 @@ static void ResizeHashTable(HashTable *ht, int new_capacity) {
 
   for (int i = 0; i < ht->capacity; i++) {
     Bucket *b = ht->buckets[i];
-    if (b != NULL) SetToken(temp_ht, b->key, b->token);
+    if (b != NULL) SetEntry(temp_ht, b->key, b->entry);
   }
 
   ht->initial_capacity = temp_ht->initial_capacity;
@@ -138,13 +153,13 @@ static void ResizeHashTable(HashTable *ht, int new_capacity) {
   DeleteHashTable(temp_ht);
 }
 
-Token GetToken(HashTable *ht, const char *key) {
+HT_Entry GetEntry(HashTable *ht, const char *key) {
   int index = GetHash(key, ht->capacity, 0);
   Bucket *b = ht->buckets[index];
 
   int i = 1;
   while (b != NULL) {
-    if (strcmp(b->key, key) == 0) return b->token;
+    if (strcmp(b->key, key) == 0) return b->entry;
 
     // Collision occurred, try next bucket
     index = GetHash(key, ht->capacity, i);
@@ -152,14 +167,14 @@ Token GetToken(HashTable *ht, const char *key) {
     i++;
   }
 
-  return HT_NOT_FOUND;
+  return Entry(HT_NOT_FOUND, NO_ANNOTATION);
 }
 
-void SetToken(HashTable *ht, const char *key, Token t) {
+void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
   float table_load = (float)(ht->num_buckets / ht->capacity);
   if (table_load > 0.7) ResizeHashTable(ht, ht->initial_capacity * 2);
 
-  Bucket *b = NewBucket(key, t);
+  Bucket *b = NewBucket(key, e);
   int index = GetHash(key, ht->capacity, 0);
   Bucket *check_bucket = ht->buckets[index];
 

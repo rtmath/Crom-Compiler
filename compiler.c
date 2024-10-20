@@ -253,11 +253,11 @@ static AST_Node *Identifier(ParserAnnotation type) {
     parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
     if (identifier_exists) {
-      Token already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
+      HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
-                            already_declared.on_line);
+                            already_declared.token.on_line);
     }
 
     // TODO: Variable declaration
@@ -272,7 +272,7 @@ static AST_Node *Identifier(ParserAnnotation type) {
 
   // TODO: This is kind of a variable declaration,
   // but variable declaration should happen up above
-  AddToSymbolTable(SymbolTable, remember_token);
+  AddToSymbolTable(SymbolTable, Entry(remember_token, NO_ANNOTATION));
   return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, type);
 }
 

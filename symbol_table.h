@@ -6,9 +6,10 @@
 #include "hashtable.h"
 #include "token.h"
 
-void AddToSymbolTable(HashTable *ht, Token token);
-Token RetrieveFromSymbolTable(HashTable *ht, Token token);
-bool IsInSymbolTable(HashTable *ht, Token token);
-Token ResolveIdentifierAsValue(HashTable *ht, Token token);
+HT_Entry Entry(Token t, ParserAnnotation a);
+void AddToSymbolTable(HashTable *ht, HT_Entry e);
+HT_Entry RetrieveFromSymbolTable(HashTable *ht, Token t);
+bool IsInSymbolTable(HashTable *ht, Token t);
+Token ResolveIdentifierAsValue(HashTable *ht, Token t);
 
 #endif

@@ -14,41 +14,41 @@ static char *ExtractString(Token token) {
   return str;
 }
 
-void AddToSymbolTable(HashTable *ht, Token token) {
-  if (token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
+void AddToSymbolTable(HashTable *ht, HT_Entry e) {
+  if (e.token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
 
-  char *key = ExtractString(token);
+  char *key = ExtractString(e.token);
 
-  SetToken(ht, key, token);
+  SetEntry(ht, key, e);
 
   free(key);
 }
 
-Token RetrieveFromSymbolTable(HashTable *ht, Token token) {
+HT_Entry RetrieveFromSymbolTable(HashTable *ht, Token token) {
   if (token.type == ERROR) ERROR_AND_EXIT("Cannot retrieve ERROR token from Symbol Table");
 
   char *key = ExtractString(token);
 
-  Token t = GetToken(ht, key);
+  HT_Entry e = GetEntry(ht, key);
 
   free(key);
-  return t;
+  return e;
 }
 
 bool IsInSymbolTable(HashTable *ht, Token token) {
   char *key = ExtractString(token);
 
-  Token t = GetToken(ht, key);
+  HT_Entry e = GetEntry(ht, key);
 
   free(key);
-  return (t.type != ERROR);
+  return (e.token.type != ERROR);
 }
 
 Token ResolveIdentifierAsValue(HashTable *ht, Token token) {
-  Token t = RetrieveFromSymbolTable(ht, token);
+  HT_Entry e = RetrieveFromSymbolTable(ht, token);
 
   // TODO: Don't treat all identifiers as Ints, use their actual types
   // TODO: Also maybe there is a better way to resolve identifiers
-  t.type = INT_CONSTANT;
-  return t;
+  e.token.type = INT_CONSTANT;
+  return e.token;
 }

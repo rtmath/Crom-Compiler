@@ -1,11 +1,17 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
+#include "ast.h"
 #include "token.h"
 
 typedef struct {
-  char *key;
+  ParserAnnotation annotation;
   Token token;
+} HT_Entry;
+
+typedef struct {
+  char *key;
+  HT_Entry entry;
 } Bucket;
 
 typedef struct {
@@ -16,7 +22,7 @@ typedef struct {
 } HashTable;
 
 HashTable *NewHashTable();
-Token GetToken(HashTable *ht, const char *key);
-void SetToken(HashTable *ht, const char *key, Token t);
+HT_Entry GetEntry(HashTable *ht, const char *key);
+void SetEntry(HashTable *ht, const char *key, HT_Entry e);
 
 #endif
