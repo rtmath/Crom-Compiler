@@ -12,10 +12,14 @@
 
 HashTable *SymbolTable;
 
+#define UNUSED false
+#define CAN_ASSIGN true
+
 static ParserAnnotation NO_ANNOTATION = {
   .ostensible_type = OST_UNKNOWN,
   .bit_width = 0,
-  .is_signed = 0
+  .is_signed = 0,
+  .declared_on_line = -1
 };
 
 struct {
@@ -31,7 +35,7 @@ typedef enum {
   UNARY,
 } Precedence;
 
-typedef AST_Node* (*ParseFn)();
+typedef AST_Node* (*ParseFn)(bool);
 
 typedef struct {
   ParseFn prefix;
@@ -39,17 +43,17 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
-static AST_Node *Type();
-static AST_Node *Identifier(ParserAnnotation type);
-static AST_Node *Number();
-static AST_Node *StringLiteral();
-static AST_Node *Unary();
-static AST_Node *Binary();
-static AST_Node *Parens();
-static AST_Node *Block();
-static AST_Node *Expression();
-static AST_Node *Statement();
-static AST_Node *IfStmt();
+static AST_Node *Type(bool unused);
+static AST_Node *Identifier(bool can_assign);
+static AST_Node *Number(bool unused);
+static AST_Node *StringLiteral(bool unused);
+static AST_Node *Unary(bool unused);
+static AST_Node *Binary(bool unused);
+static AST_Node *Parens(bool unused);
+static AST_Node *Block(bool unused);
+static AST_Node *Expression(bool unused);
+static AST_Node *Statement(bool unused);
+static AST_Node *IfStmt(bool unused);
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -192,7 +196,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
     return NULL;
   }
 
-  AST_Node *prefix_node = prefix_rule();
+  AST_Node *prefix_node = prefix_rule(UNUSED);
 
   while (PrecedenceLevel <= Rules[Parser.next.type].precedence) {
     Advance();
@@ -203,7 +207,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
                             TokenTypeTranslation(Parser.current.type));
     }
 
-    AST_Node *infix_node = infix_rule();
+    AST_Node *infix_node = infix_rule(UNUSED);
 
     if (return_node == NULL) {
       infix_node->nodes[LEFT] = prefix_node;
@@ -218,52 +222,68 @@ static AST_Node *Parse(int PrecedenceLevel) {
   return (return_node == NULL) ? prefix_node : return_node;
 }
 
-static AST_Node *StringLiteral() {
+static AST_Node *StringLiteral(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
 }
 
-static AST_Node *Number() {
+static AST_Node *Number(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
 }
 
-static AST_Node *Type() {
+static AST_Node *Type(bool) {
   Token remember_token = Parser.current;
+
+  if (NextTokenIs(IDENTIFIER)) {
+    if (IsInSymbolTable(SymbolTable, Parser.next)) {
+      HT_Entry e = RetrieveFromSymbolTable(SymbolTable, Parser.next);
+      ERROR_AND_EXIT_FMTMSG("Re-declaration of identifier '%.*s', previously declared on line %d\n",
+                            Parser.next.length,
+                            Parser.next.position_in_source,
+                            e.annotation.declared_on_line);
+    }
+
+    ParserAnnotation a = AnnotateType(Parser.current.type);
+    a.declared_on_line = Parser.next.on_line;
+    AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
+  }
 
   Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(remember_token.type),
           TokenTypeTranslation(Parser.next.type));
 
-  return Identifier(AnnotateType(remember_token.type));
+  return Identifier(CAN_ASSIGN);
 }
 
-static AST_Node *Identifier(ParserAnnotation type) {
+static AST_Node *Identifier(bool can_assign) {
+  HT_Entry symbol_table_entry = RetrieveFromSymbolTable(SymbolTable, Parser.current);
+  bool identifier_exists = symbol_table_entry.token.type != ERROR; // this should always be true?
+  ParserAnnotation annotation = (identifier_exists) ? symbol_table_entry.annotation : NO_ANNOTATION;
+  bool awaiting_init = symbol_table_entry.declaration_type == DECL_AWAITING_INIT;
+  DeclarationType decl_type = DECL_NOT_APPLICABLE;
+
   Token remember_token = Parser.current;
-  bool identifier_exists = IsInSymbolTable(SymbolTable, remember_token);
   AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
-    /*
-    if (!identifier_exists) {
+    if (!identifier_exists && !can_assign) {
       ERROR_AND_EXIT_FMTMSG("Cannot assign to undeclared identifier '%.*s'",
                             remember_token.length,
                             remember_token.position_in_source);
     }
-    */
 
-    parse_result = Expression();
+    parse_result = Expression(UNUSED);
+    decl_type = DECL_INITIALIZED;
   } else if (NextTokenIs(SEMICOLON)) {
-    if (identifier_exists) {
+    if (identifier_exists && !awaiting_init) {
       HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
-                            already_declared.token.on_line);
+                            already_declared.annotation.declared_on_line);
     }
-
-    // TODO: Variable declaration
   } else if (identifier_exists) {
-    Token t = ResolveIdentifierAsValue(SymbolTable, remember_token);
-    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, t, AnnotateType(t.type));
+    HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
+    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, e.token, e.annotation);
   } else {
     ERROR_AND_EXIT_FMTMSG("Undeclared identifier '%.*s'",
                           remember_token.length,
@@ -272,11 +292,11 @@ static AST_Node *Identifier(ParserAnnotation type) {
 
   // TODO: This is kind of a variable declaration,
   // but variable declaration should happen up above
-  AddToSymbolTable(SymbolTable, Entry(remember_token, NO_ANNOTATION));
-  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, type);
+  AddToSymbolTable(SymbolTable, Entry(remember_token, annotation, decl_type));
+  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, annotation);
 }
 
-static AST_Node *Unary() {
+static AST_Node *Unary(bool) {
   Token remember_token = Parser.current;
   AST_Node *parse_result = Parse(UNARY);
 
@@ -290,7 +310,7 @@ static AST_Node *Unary() {
   }
 }
 
-static AST_Node *Binary() {
+static AST_Node *Binary(bool) {
   Token remember_token = Parser.current;
 
   Precedence precedence = Rules[Parser.current.type].precedence;
@@ -308,12 +328,12 @@ static AST_Node *Binary() {
   }
 }
 
-static AST_Node *Block() {
+static AST_Node *Block(bool) {
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement();
+    (*current)->nodes[LEFT] = Statement(UNUSED);
     (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
 
     current = &(*current)->nodes[RIGHT];
@@ -324,45 +344,45 @@ static AST_Node *Block() {
   return n;
 }
 
-static AST_Node *Expression() {
+static AST_Node *Expression(bool) {
   return Parse((Precedence)1);
 }
 
-static AST_Node *Statement() {
-  if (Match(IF)) return IfStmt();
+static AST_Node *Statement(bool) {
+  if (Match(IF)) return IfStmt(UNUSED);
 
-  AST_Node *expr_result = Expression();
+  AST_Node *expr_result = Expression(UNUSED);
   Consume(SEMICOLON, "A ';' is expected after an expression statement, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
   return expr_result;
 }
 
-static AST_Node *IfStmt() {
+static AST_Node *IfStmt(bool) {
   Consume(LPAREN, "Expected '(' after IF token, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
-  AST_Node *condition = Expression();
+  AST_Node *condition = Expression(UNUSED);
   Consume(RPAREN, "Expected ')' after IF condition, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
   Consume(LCURLY, "Expected '{', got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  AST_Node *body_if_true = Block();
+  AST_Node *body_if_true = Block(UNUSED);
   AST_Node *body_if_false = NULL;
 
   if (Match(ELSE)) {
     if (Match(IF))  {
-      body_if_false = IfStmt();
+      body_if_false = IfStmt(UNUSED);
     } else {
       Consume(LCURLY, "Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-      body_if_false = Block();
+      body_if_false = Block(UNUSED);
     }
   }
 
   return NewNode(IF_NODE, condition, body_if_true, body_if_false, NO_ANNOTATION);
 }
 
-static AST_Node *Parens() {
-  AST_Node *parse_result = Expression();
+static AST_Node *Parens(bool) {
+  AST_Node *parse_result = Expression(UNUSED);
   Consume(RPAREN, "Missing ')' after expression");
 
   return parse_result;
@@ -374,7 +394,7 @@ static AST_Node *BuildAST() {
   AST_Node **current_node = &root;
 
   while (!Match(TOKEN_EOF)) {
-    AST_Node *parse_result = Statement();
+    AST_Node *parse_result = Statement(UNUSED);
     if (parse_result == NULL) {
       ERROR_AND_EXIT("AST could not be created");
     }
