@@ -4,8 +4,8 @@
 #include "ast.h"
 #include "error.h"
 
-static void _InlinePrintAnnotation(const char *s, int bit_width, int is_signed) {
-  printf("[Annotation(%s:%d:%s)]", s, bit_width, (is_signed) ? "SIGNED" : "UNSIGNED");
+static void _InlinePrintAnnotation(const char *s, int bit_width, int is_signed, int line) {
+  printf("[Annotation(%s:%d:%s | decl @ line %d)]", s, bit_width, (is_signed) ? "SIGNED" : "UNSIGNED", line);
 }
 
 void InlinePrintAnnotation(ParserAnnotation a) {
@@ -13,28 +13,28 @@ void InlinePrintAnnotation(ParserAnnotation a) {
     case OST_UNKNOWN: {
     } break;
     case OST_INT: {
-      _InlinePrintAnnotation("INTEGER", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("INTEGER", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_FLOAT: {
-      _InlinePrintAnnotation("FLOAT", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("FLOAT", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_BOOL: {
-      _InlinePrintAnnotation("BOOL", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("BOOL", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_CHAR: {
-      _InlinePrintAnnotation("CHAR", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("CHAR", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_STRING: {
-      _InlinePrintAnnotation("STRING", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("STRING", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_VOID: {
-      _InlinePrintAnnotation("VOID", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("VOID", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_ENUM: {
-      _InlinePrintAnnotation("ENUM", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("ENUM", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
     case OST_STRUCT: {
-      _InlinePrintAnnotation("STRUCT", a.bit_width, a.is_signed);
+      _InlinePrintAnnotation("STRUCT", a.bit_width, a.is_signed, a.declared_on_line);
     } break;
   }
 }

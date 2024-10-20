@@ -42,6 +42,7 @@ typedef struct {
   OstensibleType ostensible_type;
   int bit_width; // for I8, U16, etc
   bool is_signed;
+  int declared_on_line;
 } ParserAnnotation;
 
 void InlinePrintAnnotation(ParserAnnotation);
