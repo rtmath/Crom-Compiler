@@ -10,8 +10,13 @@
 #include "hashtable.h"
 #include "lexer.h"
 
-typedef AST_Node* (*ParseFn)();
 HashTable *SymbolTable;
+
+static ParserAnnotation NO_ANNOTATION = {
+  .ostensible_type = OST_UNKNOWN,
+  .bit_width = 0,
+  .is_signed = 0
+};
 
 struct {
   Token current;
@@ -26,6 +31,8 @@ typedef enum {
   UNARY,
 } Precedence;
 
+typedef AST_Node* (*ParseFn)();
+
 typedef struct {
   ParseFn prefix;
   ParseFn infix;
@@ -33,7 +40,7 @@ typedef struct {
 } ParseRule;
 
 static AST_Node *Type();
-static AST_Node *Identifier();
+static AST_Node *Identifier(ParserAnnotation type);
 static AST_Node *Number();
 static AST_Node *StringLiteral();
 static AST_Node *Unary();
@@ -88,14 +95,21 @@ ParseRule Rules[] = {
   [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
 };
 
+static char *ExtractString(Token token) {
+  char *str = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
+  for (int i = 0; i < token.length; i++) {
+    str[i] = token.position_in_source[i];
+  }
+  str[token.length] = '\0';
+
+  return str;
+}
+
+/* Symbol Table Fns */
 static void AddToSymbolTable(Token token) {
   if (token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
 
-  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
-  for (int i = 0; i < token.length; i++) {
-    key[i] = token.position_in_source[i];
-  }
-  key[token.length] = '\0';
+  char *key = ExtractString(token);
 
   SetToken(SymbolTable, key, token);
 
@@ -105,11 +119,7 @@ static void AddToSymbolTable(Token token) {
 static Token RetrieveFromSymbolTable(Token token) {
   if (token.type == ERROR) ERROR_AND_EXIT("Cannot retrieve ERROR token from Symbol Table");
 
-  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
-  for (int i = 0; i < token.length; i++) {
-    key[i] = token.position_in_source[i];
-  }
-  key[token.length] = '\0';
+  char *key = ExtractString(token);
 
   Token t = GetToken(SymbolTable, key);
 
@@ -118,11 +128,7 @@ static Token RetrieveFromSymbolTable(Token token) {
 }
 
 static bool IsInSymbolTable(Token token) {
-  char *key = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
-  for (int i = 0; i < token.length; i++) {
-    key[i] = token.position_in_source[i];
-  }
-  key[token.length] = '\0';
+  char *key = ExtractString(token);
 
   Token t = GetToken(SymbolTable, key);
 
@@ -137,6 +143,42 @@ static Token ResolveIdentifierAsValue(Token token) {
   // TODO: Also maybe there is a better way to resolve identifiers
   t.type = INT_CONSTANT;
   return t;
+}
+/* End Symbol Table Fns */
+
+static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
+  ParserAnnotation a = {
+    .ostensible_type = type,
+    .bit_width = bit_width,
+    .is_signed = is_signed
+  };
+
+  return a;
+}
+
+static ParserAnnotation AnnotateType(TokenType t) {
+  const bool SIGNED = true;
+  const bool UNSIGNED = false;
+
+  switch (t) {
+    case I8:  return Annotation(OST_INT,  8, SIGNED);
+    case I16: return Annotation(OST_INT, 16, SIGNED);
+    case I32: return Annotation(OST_INT, 32, SIGNED);
+    case I64: return Annotation(OST_INT, 64, SIGNED);
+    case U8:  return Annotation(OST_INT,  8, UNSIGNED);
+    case U16: return Annotation(OST_INT, 16, UNSIGNED);
+    case U32: return Annotation(OST_INT, 32, UNSIGNED);
+    case U64: return Annotation(OST_INT, 64, UNSIGNED);
+    case F32: return Annotation(OST_FLOAT, 32, SIGNED);
+    case F64: return Annotation(OST_FLOAT, 32, SIGNED);
+    case BOOL: return Annotation(OST_BOOL, 0, 0);
+    case CHAR: return Annotation(OST_CHAR, 0, 0);
+    case STRING: return Annotation(OST_STRING, 0, 0);
+
+    default:
+      printf("Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
+      return Annotation(OST_UNKNOWN, 0, 0);
+  }
 }
 
 static void Advance() {
@@ -228,11 +270,11 @@ static AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *StringLiteral() {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
 }
 
 static AST_Node *Number() {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
 }
 
 static AST_Node *Type() {
@@ -242,20 +284,22 @@ static AST_Node *Type() {
           TokenTypeTranslation(remember_token.type),
           TokenTypeTranslation(Parser.next.type));
 
-  return NewNodeWithToken(UNTYPED, Identifier(), NULL, NULL, remember_token);
+  return Identifier(AnnotateType(remember_token.type));
 }
 
-static AST_Node *Identifier() {
+static AST_Node *Identifier(ParserAnnotation type) {
   Token remember_token = Parser.current;
   bool identifier_exists = IsInSymbolTable(remember_token);
   AST_Node *parse_result = NULL;
 
   if (Match(EQUALS)) {
+    /*
     if (!identifier_exists) {
       ERROR_AND_EXIT_FMTMSG("Cannot assign to undeclared identifier '%.*s'",
                             remember_token.length,
                             remember_token.position_in_source);
     }
+    */
 
     parse_result = Expression();
   } else if (NextTokenIs(SEMICOLON)) {
@@ -270,7 +314,7 @@ static AST_Node *Identifier() {
     // TODO: Variable declaration
   } else if (identifier_exists) {
     Token t = ResolveIdentifierAsValue(remember_token);
-    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, t);
+    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, t, AnnotateType(t.type));
   } else {
     ERROR_AND_EXIT_FMTMSG("Undeclared identifier '%.*s'",
                           remember_token.length,
@@ -280,7 +324,7 @@ static AST_Node *Identifier() {
   // TODO: This is kind of a variable declaration,
   // but variable declaration should happen up above
   AddToSymbolTable(remember_token);
-  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token);
+  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, type);
 }
 
 static AST_Node *Unary() {
@@ -289,7 +333,7 @@ static AST_Node *Unary() {
 
   switch(remember_token.type) {
     case MINUS:
-      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token);
+      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token, NO_ANNOTATION);
     default:
       printf("Unknown Unary operator '%s'\n",
           TokenTypeTranslation(remember_token.type));
@@ -308,7 +352,7 @@ static AST_Node *Binary() {
     case MINUS:
     case ASTERISK:
     case DIVIDE:
-      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token);
+      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token, NO_ANNOTATION);
     default:
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return NULL;
@@ -316,12 +360,12 @@ static AST_Node *Binary() {
 }
 
 static AST_Node *Block() {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->nodes[LEFT] = Statement();
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
 
     current = &(*current)->nodes[RIGHT];
   }
@@ -365,7 +409,7 @@ static AST_Node *IfStmt() {
     }
   }
 
-  return NewNode(IF_NODE, condition, body_if_true, body_if_false);
+  return NewNode(IF_NODE, condition, body_if_true, body_if_false, NO_ANNOTATION);
 }
 
 static AST_Node *Parens() {
@@ -376,7 +420,7 @@ static AST_Node *Parens() {
 }
 
 static AST_Node *BuildAST() {
-  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY);
+  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
 
   AST_Node **current_node = &root;
 
@@ -386,7 +430,7 @@ static AST_Node *BuildAST() {
       ERROR_AND_EXIT("AST could not be created");
     }
 
-    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY);
+    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
 
     (*current_node)->nodes[LEFT] = parse_result;
     (*current_node)->nodes[RIGHT] = next_statement;

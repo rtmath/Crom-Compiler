@@ -4,6 +4,41 @@
 #include "ast.h"
 #include "error.h"
 
+static void _InlinePrintAnnotation(const char *s, int bit_width, int is_signed) {
+  printf("[Annotation(%s:%d:%s)]", s, bit_width, (is_signed) ? "SIGNED" : "UNSIGNED");
+}
+
+void InlinePrintAnnotation(ParserAnnotation a) {
+  switch (a.ostensible_type) {
+    case OST_UNKNOWN: {
+    } break;
+    case OST_INT: {
+      _InlinePrintAnnotation("INTEGER", a.bit_width, a.is_signed);
+    } break;
+    case OST_FLOAT: {
+      _InlinePrintAnnotation("FLOAT", a.bit_width, a.is_signed);
+    } break;
+    case OST_BOOL: {
+      _InlinePrintAnnotation("BOOL", a.bit_width, a.is_signed);
+    } break;
+    case OST_CHAR: {
+      _InlinePrintAnnotation("CHAR", a.bit_width, a.is_signed);
+    } break;
+    case OST_STRING: {
+      _InlinePrintAnnotation("STRING", a.bit_width, a.is_signed);
+    } break;
+    case OST_VOID: {
+      _InlinePrintAnnotation("VOID", a.bit_width, a.is_signed);
+    } break;
+    case OST_ENUM: {
+      _InlinePrintAnnotation("ENUM", a.bit_width, a.is_signed);
+    } break;
+    case OST_STRUCT: {
+      _InlinePrintAnnotation("STRUCT", a.bit_width, a.is_signed);
+    } break;
+  }
+}
+
 static const char* const _NodeTypeTranslation[] =
 {
   [UNTYPED] = "UNTYPED",
@@ -17,10 +52,11 @@ const char *NodeTypeTranslation(NodeType t) {
   return _NodeTypeTranslation[t];
 }
 
-AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right) {
+AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
   n->type = type;
   n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
+  n->annotation = a;
   n->nodes[LEFT] = left;
   n->nodes[MIDDLE] = middle;
   n->nodes[RIGHT] = right;
@@ -28,11 +64,12 @@ AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *rig
   return n;
 }
 
-AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token) {
+AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
   n->token = token;
   n->type = type;
   n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
+  n->annotation = a;
   n->nodes[LEFT] = left;
   n->nodes[MIDDLE] = middle;
   n->nodes[RIGHT] = right;
@@ -40,10 +77,11 @@ AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_
   return n;
 }
 
-AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity) {
+AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
   n->type = type;
   n->arity = arity;
+  n->annotation = a;
   n->nodes[LEFT] = left;
   n->nodes[MIDDLE] = middle;
   n->nodes[RIGHT] = right;
@@ -67,11 +105,15 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   buf[i] = '\0';
 
   if (node->token.type == UNINITIALIZED) {
-    printf("%s%c: <%s>\n", buf, label, NodeTypeTranslation(node->type));
+    printf("%s%c: <%s> ", buf, label, NodeTypeTranslation(node->type));
+    InlinePrintAnnotation(node->annotation);
+    printf("\n");
   } else {
-    printf("%s%c: %.*s\n", buf, label,
+    printf("%s%c: %.*s ", buf, label,
         node->token.length,
         node->token.position_in_source);
+    InlinePrintAnnotation(node->annotation);
+    printf("\n");
   }
 
   PrintASTRecurse(node->nodes[LEFT], depth + 1, 'L');
