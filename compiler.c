@@ -30,6 +30,7 @@ struct {
 typedef enum {
   PREC_EOF = -1,
   NO_PRECEDENCE,
+  ASSIGNMENT,
   TERM,
   FACTOR,
   UNARY,
@@ -196,7 +197,8 @@ static AST_Node *Parse(int PrecedenceLevel) {
     return NULL;
   }
 
-  AST_Node *prefix_node = prefix_rule(UNUSED);
+  bool can_assign = PrecedenceLevel <= ASSIGNMENT;
+  AST_Node *prefix_node = prefix_rule(can_assign);
 
   while (PrecedenceLevel <= Rules[Parser.next.type].precedence) {
     Advance();
@@ -207,7 +209,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
                             TokenTypeTranslation(Parser.current.type));
     }
 
-    AST_Node *infix_node = infix_rule(UNUSED);
+    AST_Node *infix_node = infix_rule(can_assign);
 
     if (return_node == NULL) {
       infix_node->nodes[LEFT] = prefix_node;
@@ -255,45 +257,44 @@ static AST_Node *Type(bool) {
 }
 
 static AST_Node *Identifier(bool can_assign) {
-  HT_Entry symbol_table_entry = RetrieveFromSymbolTable(SymbolTable, Parser.current);
-  bool identifier_exists = symbol_table_entry.token.type != ERROR; // this should always be true?
-  ParserAnnotation annotation = (identifier_exists) ? symbol_table_entry.annotation : NO_ANNOTATION;
-  bool awaiting_init = symbol_table_entry.declaration_type == DECL_AWAITING_INIT;
-  DeclarationType decl_type = DECL_NOT_APPLICABLE;
+  HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
+  bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+  bool awaiting_init = symbol.declaration_type == DECL_AWAITING_INIT;
 
   Token remember_token = Parser.current;
-  AST_Node *parse_result = NULL;
+
+  if (!is_in_symbol_table) {
+    ERROR_AND_EXIT_FMTMSG("Line %d: Undeclared identifier '%.*s'",
+                          remember_token.on_line,
+                          remember_token.length,
+                          remember_token.position_in_source);
+  }
 
   if (Match(EQUALS)) {
-    if (!identifier_exists && !can_assign) {
-      ERROR_AND_EXIT_FMTMSG("Cannot assign to undeclared identifier '%.*s'",
+    if (!can_assign) {
+      ERROR_AND_EXIT_FMTMSG("Cannot assign to identifier '%.*s'",
                             remember_token.length,
                             remember_token.position_in_source);
     }
 
-    parse_result = Expression(UNUSED);
-    decl_type = DECL_INITIALIZED;
-  } else if (NextTokenIs(SEMICOLON)) {
-    if (identifier_exists && !awaiting_init) {
+    AddToSymbolTable(SymbolTable, Entry(remember_token, symbol.annotation, DECL_INITIALIZED));
+    return NewNodeWithToken(IDENTIFIER_NODE, Expression(UNUSED), NULL, NULL, remember_token, symbol.annotation);
+  }
+
+  if (NextTokenIs(SEMICOLON)) {
+    if (!awaiting_init) {
       HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
                             already_declared.annotation.declared_on_line);
     }
-  } else if (identifier_exists) {
-    HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
-    return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, e.token, e.annotation);
-  } else {
-    ERROR_AND_EXIT_FMTMSG("Undeclared identifier '%.*s'",
-                          remember_token.length,
-                          remember_token.position_in_source);
+
+    return NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, remember_token, NO_ANNOTATION);
   }
 
-  // TODO: This is kind of a variable declaration,
-  // but variable declaration should happen up above
-  AddToSymbolTable(SymbolTable, Entry(remember_token, annotation, decl_type));
-  return NewNodeWithToken(IDENTIFIER_NODE, parse_result, NULL, NULL, remember_token, annotation);
+  HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, e.token, e.annotation);
 }
 
 static AST_Node *Unary(bool) {
