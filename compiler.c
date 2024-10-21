@@ -47,6 +47,7 @@ typedef struct {
 static AST_Node *Type(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Number(bool unused);
+static AST_Node *Char(bool unused);
 static AST_Node *StringLiteral(bool unused);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
@@ -86,6 +87,7 @@ ParseRule Rules[] = {
   [HEX_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
+  [CHAR_CONSTANT]  = {   Char,   NULL, NO_PRECEDENCE },
 
   [STRING_LITERAL] = { StringLiteral,   NULL, NO_PRECEDENCE },
 
@@ -229,6 +231,10 @@ static AST_Node *StringLiteral(bool) {
 }
 
 static AST_Node *Number(bool) {
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
+}
+
+static AST_Node *Char(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
 }
 

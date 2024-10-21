@@ -25,6 +25,7 @@ typedef enum {
   ENUM_CONSTANT,
   CHAR_CONSTANT,
 
+  CHAR_LITERAL,
   STRING_LITERAL,
 
   // Punctuators

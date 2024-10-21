@@ -150,6 +150,13 @@ static Token Number() {
   return MakeToken((is_float) ? FLOAT_CONSTANT : INT_CONSTANT);
 }
 
+static Token Char() {
+  Advance(); // consume char value
+  Advance(); // consume '
+
+  return MakeToken(CHAR_CONSTANT);
+}
+
 static Token String() {
   while (Peek() != '"' && !AtEOF()) {
     if (Peek() == '\n') {
@@ -263,6 +270,7 @@ Token ScanToken() {
       return MakeToken(GREATER_THAN);
     }
     case '=': return MakeToken(EQUALS);
+    case '\'': return Char();
     case '"': return String();
     default:
       break;
