@@ -89,25 +89,25 @@ ParseRule Rules[] = {
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
   // Constants
-  [BINARY_CONSTANT] = { Number,  NULL, NO_PRECEDENCE },
-  [HEX_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
-  [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
-  [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
-  [ENUM_CONSTANT]  = { Identifier, NULL, NO_PRECEDENCE },
-  [CHAR_CONSTANT]  = {   Char,   NULL, NO_PRECEDENCE },
+  [BINARY_CONSTANT] = {     Number, NULL, NO_PRECEDENCE },
+  [HEX_CONSTANT]    = {     Number, NULL, NO_PRECEDENCE },
+  [INT_CONSTANT]    = {     Number, NULL, NO_PRECEDENCE },
+  [FLOAT_CONSTANT]  = {     Number, NULL, NO_PRECEDENCE },
+  [ENUM_CONSTANT]   = { Identifier, NULL, NO_PRECEDENCE },
+  [CHAR_CONSTANT]   = {       Char, NULL, NO_PRECEDENCE },
 
-  [STRING_LITERAL] = { StringLiteral,   NULL, NO_PRECEDENCE },
+  [STRING_LITERAL] = { StringLiteral, NULL, NO_PRECEDENCE },
 
   // Punctuators
-  [LPAREN]         = { Parens,   NULL, NO_PRECEDENCE },
-  [LBRACKET]       = { NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
-  [PLUS]           = {   NULL, Binary,          TERM },
-  [MINUS]          = {  Unary, Binary,          TERM },
-  [ASTERISK]       = {   NULL, Binary,        FACTOR },
-  [DIVIDE]         = {   NULL, Binary,        FACTOR },
+  [LPAREN]         = { Parens,              NULL,      NO_PRECEDENCE },
+  [LBRACKET]       = {   NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
+  [PLUS]           = {   NULL,            Binary,               TERM },
+  [MINUS]          = {  Unary,            Binary,               TERM },
+  [ASTERISK]       = {   NULL,            Binary,             FACTOR },
+  [DIVIDE]         = {   NULL,            Binary,             FACTOR },
 
   // Misc
-  [TOKEN_EOF]      = {   NULL,   NULL,      PREC_EOF },
+  [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
 };
 
 static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
