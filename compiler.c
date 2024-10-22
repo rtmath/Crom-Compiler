@@ -16,15 +16,6 @@ HashTable *SymbolTable;
 #define UNUSED false
 #define CAN_ASSIGN true
 
-static ParserAnnotation NO_ANNOTATION = {
-  .ostensible_type = OST_UNKNOWN,
-  .bit_width = 0,
-  .is_signed = 0,
-  .declared_on_line = -1,
-  .is_array = 0,
-  .array_size = 0,
-};
-
 struct {
   Token current;
   Token next;
@@ -237,19 +228,19 @@ static AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *StringLiteral(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *Number(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *Char(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *EnumBlock() {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
 
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
@@ -265,13 +256,13 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    AddToSymbolTable(SymbolTable, Entry(Parser.next, NO_ANNOTATION, DECL_NOT_APPLICABLE));
+    AddToSymbolTable(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NOT_APPLICABLE));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
 
     (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
 
@@ -317,7 +308,7 @@ static AST_Node *ArraySubscripting(bool) {
                             Parser.current.position_in_source);
     }
 
-    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NO_ANNOTATION);
+    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NoAnnotation());
   } else if (Match(INT_CONSTANT)) {
     return_value = Number(UNUSED);
   }
@@ -426,7 +417,7 @@ static AST_Node *Unary(bool) {
 
   switch(remember_token.type) {
     case MINUS:
-      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token, NO_ANNOTATION);
+      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token, NoAnnotation());
     default:
       printf("Unary(): Unknown Unary operator '%s'\n",
           TokenTypeTranslation(remember_token.type));
@@ -445,7 +436,7 @@ static AST_Node *Binary(bool) {
     case MINUS:
     case ASTERISK:
     case DIVIDE:
-      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token, NO_ANNOTATION);
+      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return NULL;
@@ -453,12 +444,12 @@ static AST_Node *Binary(bool) {
 }
 
 static AST_Node *Block(bool) {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
@@ -502,7 +493,7 @@ static AST_Node *IfStmt(bool) {
     }
   }
 
-  return NewNode(IF_NODE, condition, body_if_true, body_if_false, NO_ANNOTATION);
+  return NewNode(IF_NODE, condition, body_if_true, body_if_false, NoAnnotation());
 }
 
 static AST_Node *Parens(bool) {
@@ -513,7 +504,7 @@ static AST_Node *Parens(bool) {
 }
 
 static AST_Node *BuildAST() {
-  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
   AST_Node **current_node = &root;
 
@@ -523,7 +514,7 @@ static AST_Node *BuildAST() {
       ERROR_AND_EXIT("BuildAST(): AST could not be created");
     }
 
-    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     (*current_node)->nodes[LEFT] = parse_result;
     (*current_node)->nodes[RIGHT] = next_statement;

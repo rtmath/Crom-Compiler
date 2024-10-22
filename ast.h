@@ -65,6 +65,8 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
 
 const char *NodeTypeTranslation(NodeType t);
 
+ParserAnnotation NoAnnotation();
+
 void PrintAST(AST_Node *root);
 
 #endif

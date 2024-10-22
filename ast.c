@@ -104,6 +104,19 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
   return n;
 }
 
+ParserAnnotation NoAnnotation() {
+  ParserAnnotation a = {
+    .ostensible_type = OST_UNKNOWN,
+    .bit_width = 0,
+    .is_signed = 0,
+    .declared_on_line = -1,
+    .is_array = 0,
+    .array_size = 0,
+  };
+
+  return a;
+}
+
 static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   if (node == NULL) return;
   if (node->type != TERMINAL_DATA &&
