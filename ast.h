@@ -43,6 +43,8 @@ typedef struct {
   int bit_width; // for I8, U16, etc
   bool is_signed;
   int declared_on_line;
+  bool is_array;
+  int array_size;
 } ParserAnnotation;
 
 void InlinePrintAnnotation(ParserAnnotation);

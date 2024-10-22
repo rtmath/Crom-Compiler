@@ -19,7 +19,9 @@ static ParserAnnotation NO_ANNOTATION = {
   .ostensible_type = OST_UNKNOWN,
   .bit_width = 0,
   .is_signed = 0,
-  .declared_on_line = -1
+  .declared_on_line = -1,
+  .is_array = 0,
+  .array_size = 0,
 };
 
 HT_Entry Entry(Token t, ParserAnnotation a, DeclarationType d) {

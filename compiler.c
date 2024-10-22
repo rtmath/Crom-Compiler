@@ -1,3 +1,4 @@
+#include <limits.h> // for LONG_MIN and LONG_MAX (strtol error checking)
 #include <stdarg.h> // for va_list
 #include <stdbool.h>
 #include <stdio.h>  // for printf and friends
@@ -19,7 +20,9 @@ static ParserAnnotation NO_ANNOTATION = {
   .ostensible_type = OST_UNKNOWN,
   .bit_width = 0,
   .is_signed = 0,
-  .declared_on_line = -1
+  .declared_on_line = -1,
+  .is_array = 0,
+  .array_size = 0,
 };
 
 struct {
@@ -50,6 +53,7 @@ static AST_Node *Number(bool unused);
 static AST_Node *Char(bool unused);
 static AST_Node *Enum(bool unused);
 static AST_Node *StringLiteral(bool unused);
+static AST_Node *ArrayIndexing(bool unused);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
 static AST_Node *Parens(bool unused);
@@ -95,6 +99,7 @@ ParseRule Rules[] = {
 
   // Punctuators
   [LPAREN]         = { Parens,   NULL, NO_PRECEDENCE },
+  [LBRACKET]       = { NULL, ArrayIndexing, NO_PRECEDENCE },
   [PLUS]           = {   NULL, Binary,          TERM },
   [MINUS]          = {  Unary, Binary,          TERM },
   [ASTERISK]       = {   NULL, Binary,        FACTOR },
@@ -132,10 +137,11 @@ static ParserAnnotation AnnotateType(TokenType t) {
     case BOOL: return Annotation(OST_BOOL, 0, 0);
     case CHAR: return Annotation(OST_CHAR, 0, 0);
     case ENUM: return Annotation(OST_ENUM, 0, 0);
+    case VOID: return Annotation(OST_VOID, 0, 0);
     case STRING: return Annotation(OST_STRING, 0, 0);
 
     default:
-      printf("Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
+      ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
       return Annotation(OST_UNKNOWN, 0, 0);
   }
 }
@@ -143,6 +149,7 @@ static ParserAnnotation AnnotateType(TokenType t) {
 static void Advance() {
   Parser.current = Parser.next;
   Parser.next = ScanToken();
+  PrintToken(Parser.current);
 
   if (Parser.next.type != ERROR) return;
 
@@ -245,21 +252,21 @@ static AST_Node *EnumBlock() {
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
   AST_Node **current = &n;
 
-  Consume(LCURLY, "Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
+  Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
     bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
 
     if (is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("Enum identifier '%.*s' already exists, declared on line %d",
+      ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
                             Parser.next.length,
                             Parser.next.position_in_source,
                             symbol.annotation.declared_on_line);
     }
 
     AddToSymbolTable(SymbolTable, Entry(Parser.next, NO_ANNOTATION, DECL_NOT_APPLICABLE));
-    Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+    Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
 
@@ -271,7 +278,7 @@ static AST_Node *EnumBlock() {
     if (NextTokenIs(COMMA)) Consume(COMMA, "");
   }
 
-  Consume(RCURLY, "Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
+  Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
 
   return n;
 }
@@ -281,7 +288,7 @@ static AST_Node *Enum(bool) {
   a.declared_on_line = Parser.next.on_line;
   AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
 
-  Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+  Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
           TokenTypeTranslation(Parser.next.type));
 
@@ -291,24 +298,54 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
+static AST_Node *ArrayIndexing(bool) {
+  printf("ArrayIndexing() not implemented yet\n");
+  return NULL;
+}
+
 static AST_Node *Type(bool) {
   Token remember_token = Parser.current;
+  bool is_array = false;
+  long array_size = 0;
+
+  if (NextTokenIs(LBRACKET)) {
+    Consume(LBRACKET, "Type(): Expected [ after '%s', got '%s' instead.",
+            TokenTypeTranslation(remember_token.type),
+            TokenTypeTranslation(Parser.next.type));
+
+    if (NextTokenIs(INT_CONSTANT)) {
+      array_size = strtol(Parser.next.position_in_source, NULL, 10);
+      if (array_size == LONG_MIN) ERROR_AND_EXIT("Type(): strtol underflowed");
+      if (array_size == LONG_MAX) ERROR_AND_EXIT("Type(): strtol overflowed");
+
+      Consume(INT_CONSTANT, "Type(): Expected size after '[', got '%s' instead",
+              TokenTypeTranslation(Parser.next.type));
+    }
+
+    Consume(RBRACKET, "Type(): Expected ] after '%s', got '%s' instead.",
+            TokenTypeTranslation(remember_token.type),
+            TokenTypeTranslation(Parser.next.type));
+
+    is_array = true;
+  }
 
   if (NextTokenIs(IDENTIFIER)) {
     if (IsInSymbolTable(SymbolTable, Parser.next)) {
       HT_Entry e = RetrieveFromSymbolTable(SymbolTable, Parser.next);
-      ERROR_AND_EXIT_FMTMSG("Re-declaration of identifier '%.*s', previously declared on line %d\n",
+      ERROR_AND_EXIT_FMTMSG("Type(): Re-declaration of identifier '%.*s', previously declared on line %d\n",
                             Parser.next.length,
                             Parser.next.position_in_source,
                             e.annotation.declared_on_line);
     }
 
-    ParserAnnotation a = AnnotateType(Parser.current.type);
+    ParserAnnotation a = AnnotateType(remember_token.type);
     a.declared_on_line = Parser.next.on_line;
+    a.is_array = is_array;
+    a.array_size = array_size;
     AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
   }
 
-  Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+  Consume(IDENTIFIER, "Type(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(remember_token.type),
           TokenTypeTranslation(Parser.next.type));
 
@@ -323,7 +360,7 @@ static AST_Node *Identifier(bool can_assign) {
   Token remember_token = Parser.current;
 
   if (!is_in_symbol_table) {
-    ERROR_AND_EXIT_FMTMSG("Line %d: Undeclared identifier '%.*s'",
+    ERROR_AND_EXIT_FMTMSG("Identifier(): Line %d: Undeclared identifier '%.*s'",
                           remember_token.on_line,
                           remember_token.length,
                           remember_token.position_in_source);
@@ -331,7 +368,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(EQUALS)) {
     if (!can_assign) {
-      ERROR_AND_EXIT_FMTMSG("Cannot assign to identifier '%.*s'",
+      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot assign to identifier '%.*s'",
                             remember_token.length,
                             remember_token.position_in_source);
     }
@@ -343,13 +380,13 @@ static AST_Node *Identifier(bool can_assign) {
   if (NextTokenIs(SEMICOLON)) {
     if (!awaiting_init && can_assign) {
       HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
-      ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
+      ERROR_AND_EXIT_FMTMSG("Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
                             already_declared.annotation.declared_on_line);
     }
 
-    return NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, remember_token, NO_ANNOTATION);
+    return NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, remember_token, symbol.annotation);
   }
 
   HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
@@ -364,7 +401,7 @@ static AST_Node *Unary(bool) {
     case MINUS:
       return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token, NO_ANNOTATION);
     default:
-      printf("Unknown Unary operator '%s'\n",
+      printf("Unary(): Unknown Unary operator '%s'\n",
           TokenTypeTranslation(remember_token.type));
       return NULL;
   }
@@ -399,7 +436,7 @@ static AST_Node *Block(bool) {
     current = &(*current)->nodes[RIGHT];
   }
 
-  Consume(RCURLY, "Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
+  Consume(RCURLY, "Block(): Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
 
   return n;
 }
@@ -412,20 +449,20 @@ static AST_Node *Statement(bool) {
   if (Match(IF)) return IfStmt(UNUSED);
 
   AST_Node *expr_result = Expression(UNUSED);
-  Consume(SEMICOLON, "A ';' is expected after an expression statement, got '%s' instead",
+  Consume(SEMICOLON, "Statement(): A ';' is expected after an expression statement, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
   return expr_result;
 }
 
 static AST_Node *IfStmt(bool) {
-  Consume(LPAREN, "Expected '(' after IF token, got '%s' instead",
+  Consume(LPAREN, "IfStmt(): Expected '(' after IF token, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
   AST_Node *condition = Expression(UNUSED);
-  Consume(RPAREN, "Expected ')' after IF condition, got '%s' instead",
+  Consume(RPAREN, "IfStmt(): Expected ')' after IF condition, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
-  Consume(LCURLY, "Expected '{', got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(LCURLY, "IfStmt(): Expected '{', got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *body_if_true = Block(UNUSED);
   AST_Node *body_if_false = NULL;
 
@@ -433,7 +470,7 @@ static AST_Node *IfStmt(bool) {
     if (Match(IF))  {
       body_if_false = IfStmt(UNUSED);
     } else {
-      Consume(LCURLY, "Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+      Consume(LCURLY, "IfStmt(): Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
       body_if_false = Block(UNUSED);
     }
   }
@@ -443,7 +480,7 @@ static AST_Node *IfStmt(bool) {
 
 static AST_Node *Parens(bool) {
   AST_Node *parse_result = Expression(UNUSED);
-  Consume(RPAREN, "Missing ')' after expression");
+  Consume(RPAREN, "Parens(): Missing ')' after expression");
 
   return parse_result;
 }
@@ -456,7 +493,7 @@ static AST_Node *BuildAST() {
   while (!Match(TOKEN_EOF)) {
     AST_Node *parse_result = Statement(UNUSED);
     if (parse_result == NULL) {
-      ERROR_AND_EXIT("AST could not be created");
+      ERROR_AND_EXIT("BuildAST(): AST could not be created");
     }
 
     AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
