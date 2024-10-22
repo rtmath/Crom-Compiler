@@ -37,6 +37,7 @@ typedef enum {
   TERM,
   FACTOR,
   UNARY,
+  ARRAY_SUBSCRIPTING,
 } Precedence;
 
 typedef AST_Node* (*ParseFn)(bool);
@@ -53,7 +54,7 @@ static AST_Node *Number(bool unused);
 static AST_Node *Char(bool unused);
 static AST_Node *Enum(bool unused);
 static AST_Node *StringLiteral(bool unused);
-static AST_Node *ArrayIndexing(bool unused);
+static AST_Node *ArraySubscripting(bool unused);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
 static AST_Node *Parens(bool unused);
@@ -99,7 +100,7 @@ ParseRule Rules[] = {
 
   // Punctuators
   [LPAREN]         = { Parens,   NULL, NO_PRECEDENCE },
-  [LBRACKET]       = { NULL, ArrayIndexing, NO_PRECEDENCE },
+  [LBRACKET]       = { NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
   [PLUS]           = {   NULL, Binary,          TERM },
   [MINUS]          = {  Unary, Binary,          TERM },
   [ASTERISK]       = {   NULL, Binary,        FACTOR },
@@ -149,7 +150,6 @@ static ParserAnnotation AnnotateType(TokenType t) {
 static void Advance() {
   Parser.current = Parser.next;
   Parser.next = ScanToken();
-  PrintToken(Parser.current);
 
   if (Parser.next.type != ERROR) return;
 
@@ -298,9 +298,33 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
-static AST_Node *ArrayIndexing(bool) {
-  printf("ArrayIndexing() not implemented yet\n");
-  return NULL;
+static AST_Node *ArraySubscripting(bool) {
+  AST_Node *return_value = NULL;
+
+  if (Match(IDENTIFIER)) {
+    HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+
+    if (!is_in_symbol_table) {
+      ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
+                            Parser.current.length,
+                            Parser.current.position_in_source);
+    }
+
+    if (symbol.declaration_type != DECL_INITIALIZED) {
+      ERROR_AND_EXIT_FMTMSG("Can't access array with uninitialized identifier '%.*s'",
+                            Parser.current.length,
+                            Parser.current.position_in_source);
+    }
+
+    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NO_ANNOTATION);
+  } else if (Match(INT_CONSTANT)) {
+    return_value = Number(UNUSED);
+  }
+
+  Consume(RBRACKET, "ArraySubscripting(): Where's the ']'?");
+
+  return return_value;
 }
 
 static AST_Node *Type(bool) {
@@ -355,8 +379,7 @@ static AST_Node *Type(bool) {
 static AST_Node *Identifier(bool can_assign) {
   HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
   bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
-  bool awaiting_init = symbol.declaration_type == DECL_AWAITING_INIT;
-
+  AST_Node *array_index = NULL;
   Token remember_token = Parser.current;
 
   if (!is_in_symbol_table) {
@@ -364,6 +387,10 @@ static AST_Node *Identifier(bool can_assign) {
                           remember_token.on_line,
                           remember_token.length,
                           remember_token.position_in_source);
+  }
+
+  if (Match(LBRACKET)) {
+    array_index = ArraySubscripting(UNUSED);
   }
 
   if (Match(EQUALS)) {
@@ -374,11 +401,11 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     AddToSymbolTable(SymbolTable, Entry(remember_token, symbol.annotation, DECL_INITIALIZED));
-    return NewNodeWithToken(IDENTIFIER_NODE, Expression(UNUSED), NULL, NULL, remember_token, symbol.annotation);
+    return NewNodeWithToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
   }
 
   if (NextTokenIs(SEMICOLON)) {
-    if (!awaiting_init && can_assign) {
+    if (symbol.declaration_type == DECL_NOT_APPLICABLE && can_assign) {
       HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
@@ -386,11 +413,11 @@ static AST_Node *Identifier(bool can_assign) {
                             already_declared.annotation.declared_on_line);
     }
 
-    return NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, remember_token, symbol.annotation);
+    return NewNodeWithToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
   }
 
   HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, e.token, e.annotation);
+  return NewNodeWithToken(TERMINAL_DATA, NULL, array_index, NULL, e.token, e.annotation);
 }
 
 static AST_Node *Unary(bool) {
