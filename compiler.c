@@ -285,8 +285,6 @@ static AST_Node *Enum(bool) {
           TokenTypeTranslation(Parser.next.type),
           TokenTypeTranslation(Parser.next.type));
 
-  //Token remember_token = Parser.current;
-
   AST_Node *enum_name = Identifier(false);
   enum_name->nodes[LEFT] = EnumBlock();
 
@@ -343,7 +341,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (NextTokenIs(SEMICOLON)) {
-    if (!awaiting_init) {
+    if (!awaiting_init && can_assign) {
       HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
