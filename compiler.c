@@ -48,6 +48,7 @@ static AST_Node *Type(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Number(bool unused);
 static AST_Node *Char(bool unused);
+static AST_Node *Enum(bool unused);
 static AST_Node *StringLiteral(bool unused);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
@@ -77,7 +78,7 @@ ParseRule Rules[] = {
 
   [BOOL]           = {   Type,   NULL, NO_PRECEDENCE },
   [VOID]           = {   Type,   NULL, NO_PRECEDENCE },
-  [ENUM]           = {   Type,   NULL, NO_PRECEDENCE },
+  [ENUM]           = {   Enum,   NULL, NO_PRECEDENCE },
   [STRUCT]         = {   Type,   NULL, NO_PRECEDENCE },
 
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
@@ -87,6 +88,7 @@ ParseRule Rules[] = {
   [HEX_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [INT_CONSTANT]   = { Number,   NULL, NO_PRECEDENCE },
   [FLOAT_CONSTANT] = { Number,   NULL, NO_PRECEDENCE },
+  [ENUM_CONSTANT]  = { Identifier, NULL, NO_PRECEDENCE },
   [CHAR_CONSTANT]  = {   Char,   NULL, NO_PRECEDENCE },
 
   [STRING_LITERAL] = { StringLiteral,   NULL, NO_PRECEDENCE },
@@ -129,6 +131,7 @@ static ParserAnnotation AnnotateType(TokenType t) {
     case F64: return Annotation(OST_FLOAT, 32, SIGNED);
     case BOOL: return Annotation(OST_BOOL, 0, 0);
     case CHAR: return Annotation(OST_CHAR, 0, 0);
+    case ENUM: return Annotation(OST_ENUM, 0, 0);
     case STRING: return Annotation(OST_STRING, 0, 0);
 
     default:
@@ -236,6 +239,58 @@ static AST_Node *Number(bool) {
 
 static AST_Node *Char(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NO_ANNOTATION);
+}
+
+static AST_Node *EnumBlock() {
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+  AST_Node **current = &n;
+
+  Consume(LCURLY, "Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+
+    if (is_in_symbol_table) {
+      ERROR_AND_EXIT_FMTMSG("Enum identifier '%.*s' already exists, declared on line %d",
+                            Parser.next.length,
+                            Parser.next.position_in_source,
+                            symbol.annotation.declared_on_line);
+    }
+
+    AddToSymbolTable(SymbolTable, Entry(Parser.next, NO_ANNOTATION, DECL_NOT_APPLICABLE));
+    Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+            TokenTypeTranslation(Parser.current.type),
+            TokenTypeTranslation(Parser.next.type));
+
+    (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NO_ANNOTATION);
+
+    current = &(*current)->nodes[RIGHT];
+
+    if (NextTokenIs(COMMA)) Consume(COMMA, "");
+  }
+
+  Consume(RCURLY, "Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
+
+  return n;
+}
+
+static AST_Node *Enum(bool) {
+  ParserAnnotation a = AnnotateType(Parser.current.type);
+  a.declared_on_line = Parser.next.on_line;
+  AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
+
+  Consume(IDENTIFIER, "Expected IDENTIFIER after Type '%s', got '%s' instead.",
+          TokenTypeTranslation(Parser.next.type),
+          TokenTypeTranslation(Parser.next.type));
+
+  //Token remember_token = Parser.current;
+
+  AST_Node *enum_name = Identifier(false);
+  enum_name->nodes[LEFT] = EnumBlock();
+
+  return enum_name;
 }
 
 static AST_Node *Type(bool) {
