@@ -266,7 +266,7 @@ static AST_Node *EnumBlock() {
 
     current = &(*current)->nodes[RIGHT];
 
-    if (NextTokenIs(COMMA)) Consume(COMMA, "");
+    Match(COMMA);
   }
 
   Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
@@ -323,18 +323,11 @@ static AST_Node *Type(bool) {
   bool is_array = false;
   long array_size = 0;
 
-  if (NextTokenIs(LBRACKET)) {
-    Consume(LBRACKET, "Type(): Expected [ after '%s', got '%s' instead.",
-            TokenTypeTranslation(remember_token.type),
-            TokenTypeTranslation(Parser.next.type));
-
-    if (NextTokenIs(INT_CONSTANT)) {
-      array_size = strtol(Parser.next.position_in_source, NULL, 10);
+  if (Match(LBRACKET)) {
+    if (Match(INT_CONSTANT)) {
+      array_size = strtol(Parser.current.position_in_source, NULL, 10);
       if (array_size == LONG_MIN) ERROR_AND_EXIT("Type(): strtol underflowed");
       if (array_size == LONG_MAX) ERROR_AND_EXIT("Type(): strtol overflowed");
-
-      Consume(INT_CONSTANT, "Type(): Expected size after '[', got '%s' instead",
-              TokenTypeTranslation(Parser.next.type));
     }
 
     Consume(RBRACKET, "Type(): Expected ] after '%s', got '%s' instead.",
