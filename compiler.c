@@ -44,6 +44,7 @@ static AST_Node *Identifier(bool can_assign);
 static AST_Node *Number(bool unused);
 static AST_Node *Char(bool unused);
 static AST_Node *Enum(bool unused);
+static AST_Node *Struct(bool unused);
 static AST_Node *StringLiteral(bool unused);
 static AST_Node *ArraySubscripting(bool unused);
 static AST_Node *Unary(bool unused);
@@ -75,7 +76,7 @@ ParseRule Rules[] = {
   [BOOL]           = {   Type,   NULL, NO_PRECEDENCE },
   [VOID]           = {   Type,   NULL, NO_PRECEDENCE },
   [ENUM]           = {   Enum,   NULL, NO_PRECEDENCE },
-  [STRUCT]         = {   Type,   NULL, NO_PRECEDENCE },
+  [STRUCT]         = { Struct,   NULL, NO_PRECEDENCE },
 
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
@@ -102,11 +103,11 @@ ParseRule Rules[] = {
 };
 
 static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
-  ParserAnnotation a = {
-    .ostensible_type = type,
-    .bit_width = bit_width,
-    .is_signed = is_signed
-  };
+  ParserAnnotation a = NoAnnotation();
+
+  a.ostensible_type = type;
+  a.bit_width = bit_width;
+  a.is_signed = is_signed;
 
   return a;
 }
@@ -131,6 +132,7 @@ static ParserAnnotation AnnotateType(TokenType t) {
     case ENUM: return Annotation(OST_ENUM, 0, 0);
     case VOID: return Annotation(OST_VOID, 0, 0);
     case STRING: return Annotation(OST_STRING, 0, 0);
+    case STRUCT: return Annotation(OST_STRUCT, 0, 0);
 
     default:
       ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
@@ -239,6 +241,47 @@ static AST_Node *Char(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
+static AST_Node *Struct() {
+  Token remember_token = Parser.next;
+  Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
+          TokenTypeTranslation(Parser.current.type),
+          TokenTypeTranslation(Parser.next.type));
+
+  if (IsIn(SymbolTable, remember_token)) {
+    HT_Entry existing_struct = RetrieveFrom(SymbolTable, remember_token);
+    ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
+      remember_token.length,
+      remember_token.position_in_source,
+      existing_struct.annotation.declared_on_line);
+  }
+  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_AWAITING_INIT));
+  HT_Entry symbol = RetrieveFrom(SymbolTable, remember_token);
+
+  HashTable *symbol_table = SymbolTable;
+  SymbolTable = symbol.struct_fields;
+
+  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%.*s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &n;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+  }
+
+  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%.*s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  SymbolTable = symbol_table;
+
+  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_INITIALIZED));
+  return NewNodeWithToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
+}
+
 static AST_Node *EnumBlock() {
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
@@ -246,8 +289,8 @@ static AST_Node *EnumBlock() {
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
 
     if (is_in_symbol_table) {
       ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
@@ -256,7 +299,7 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    AddToSymbolTable(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NOT_APPLICABLE));
+    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NOT_APPLICABLE));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
@@ -277,7 +320,7 @@ static AST_Node *EnumBlock() {
 static AST_Node *Enum(bool) {
   ParserAnnotation a = AnnotateType(Parser.current.type);
   a.declared_on_line = Parser.next.on_line;
-  AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
+  AddTo(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
 
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
@@ -293,8 +336,8 @@ static AST_Node *ArraySubscripting(bool) {
   AST_Node *return_value = NULL;
 
   if (Match(IDENTIFIER)) {
-    HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
 
     if (!is_in_symbol_table) {
       ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
@@ -319,7 +362,7 @@ static AST_Node *ArraySubscripting(bool) {
 }
 
 static AST_Node *Type(bool) {
-  Token remember_token = Parser.current;
+  Token remember_token = Parser.current; // TODO: I don't think I need this
   bool is_array = false;
   long array_size = 0;
 
@@ -338,8 +381,8 @@ static AST_Node *Type(bool) {
   }
 
   if (NextTokenIs(IDENTIFIER)) {
-    if (IsInSymbolTable(SymbolTable, Parser.next)) {
-      HT_Entry e = RetrieveFromSymbolTable(SymbolTable, Parser.next);
+    if (IsIn(SymbolTable, Parser.next)) {
+      HT_Entry e = RetrieveFrom(SymbolTable, Parser.next);
       ERROR_AND_EXIT_FMTMSG("Type(): Re-declaration of identifier '%.*s', previously declared on line %d\n",
                             Parser.next.length,
                             Parser.next.position_in_source,
@@ -350,7 +393,7 @@ static AST_Node *Type(bool) {
     a.declared_on_line = Parser.next.on_line;
     a.is_array = is_array;
     a.array_size = array_size;
-    AddToSymbolTable(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
+    AddTo(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
   }
 
   Consume(IDENTIFIER, "Type(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
@@ -361,8 +404,8 @@ static AST_Node *Type(bool) {
 }
 
 static AST_Node *Identifier(bool can_assign) {
-  HT_Entry symbol = RetrieveFromSymbolTable(SymbolTable, Parser.current);
-  bool is_in_symbol_table = IsInSymbolTable(SymbolTable, Parser.current);
+  HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
+  bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
   AST_Node *array_index = NULL;
   Token remember_token = Parser.current;
 
@@ -384,13 +427,13 @@ static AST_Node *Identifier(bool can_assign) {
                             remember_token.position_in_source);
     }
 
-    AddToSymbolTable(SymbolTable, Entry(remember_token, symbol.annotation, DECL_INITIALIZED));
+    AddTo(SymbolTable, Entry(remember_token, symbol.annotation, DECL_INITIALIZED));
     return NewNodeWithToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
   }
 
   if (NextTokenIs(SEMICOLON)) {
     if (symbol.declaration_type == DECL_NOT_APPLICABLE && can_assign) {
-      HT_Entry already_declared = RetrieveFromSymbolTable(SymbolTable, remember_token);
+      HT_Entry already_declared = RetrieveFrom(SymbolTable, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
@@ -400,7 +443,7 @@ static AST_Node *Identifier(bool can_assign) {
     return NewNodeWithToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
   }
 
-  HT_Entry e = RetrieveFromSymbolTable(SymbolTable, remember_token);
+  HT_Entry e = RetrieveFrom(SymbolTable, remember_token);
   return NewNodeWithToken(TERMINAL_DATA, NULL, array_index, NULL, e.token, e.annotation);
 }
 
