@@ -1,6 +1,7 @@
 #include <math.h>   // for pow, sqrt, floor
 #include <stdlib.h> // for malloc and friends
 #include <stdbool.h>
+#include <stdio.h>  // printf
 #include <string.h> // for strlen, strcmp
 
 #include "common.h"
@@ -20,11 +21,16 @@ HT_Entry Entry(Token t, ParserAnnotation a, DeclarationType d) {
   ? NewHashTable()
   : NULL;
 
+  HashTable *fn_params = (a.is_function)
+  ? NewHashTable()
+  : NULL;
+
   HT_Entry hte = {
     .token = t,
     .annotation = a,
     .declaration_type = d,
     .struct_fields = fields,
+    .fn_params = fn_params,
   };
 
   return hte;

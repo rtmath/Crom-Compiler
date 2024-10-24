@@ -6,8 +6,10 @@
 
 typedef enum {
   DECL_NOT_APPLICABLE,
+  DECL_UNINITIALIZED,
   DECL_AWAITING_INIT,
   DECL_INITIALIZED,
+  DECL_FN_PARAM,
 } DeclarationType;
 
 typedef struct HashTable_impl HashTable;
@@ -17,6 +19,7 @@ typedef struct {
   ParserAnnotation annotation;
   Token token;
   HashTable *struct_fields;
+  HashTable *fn_params;
 } HT_Entry;
 
 typedef struct {

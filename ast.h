@@ -21,6 +21,10 @@ typedef enum {
   CHAIN_NODE,
   IDENTIFIER_NODE,
   IF_NODE,
+  FUNCTION_NODE,
+  FUNCTION_RETURN_TYPE_NODE,
+  FUNCTION_PARAM_NODE,
+  FUNCTION_BODY_NODE,
   TERMINAL_DATA,
   NODE_TYPE_COUNT
 } NodeType;
@@ -45,6 +49,7 @@ typedef struct {
   int declared_on_line;
   bool is_array;
   int array_size;
+  bool is_function;
 } ParserAnnotation;
 
 void InlinePrintAnnotation(ParserAnnotation);

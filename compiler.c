@@ -140,6 +140,12 @@ static ParserAnnotation AnnotateType(TokenType t) {
   }
 }
 
+static ParserAnnotation FunctionAnnotation(TokenType return_type) {
+  ParserAnnotation a = AnnotateType(return_type);
+  a.is_function = true;
+  return a;
+}
+
 static void Advance() {
   Parser.current = Parser.next;
   Parser.next = ScanToken();
@@ -239,6 +245,139 @@ static AST_Node *Number(bool) {
 
 static AST_Node *Char(bool) {
   return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
+}
+
+static bool NextTokenIsAnyType() {
+  switch (Parser.next.type) {
+    case I8:
+    case I16:
+    case I32:
+    case I64:
+    case U8:
+    case U16:
+    case U32:
+    case U64:
+    case F32:
+    case F64:
+    case BOOL:
+    case STRUCT:
+    case CHAR:
+    case STRING:
+    {
+      return true;
+    }
+    default: return false;
+  }
+}
+
+static void ConsumeAnyType(const char *msg, ...) {
+  if (NextTokenIs(I8)     ||
+      NextTokenIs(I16)    ||
+      NextTokenIs(I32)    ||
+      NextTokenIs(I64)    ||
+      NextTokenIs(U8)     ||
+      NextTokenIs(U16)    ||
+      NextTokenIs(U32)    ||
+      NextTokenIs(U64)    ||
+      NextTokenIs(F32)    ||
+      NextTokenIs(F64)    ||
+      NextTokenIs(BOOL)   ||
+      NextTokenIs(STRUCT) ||
+      NextTokenIs(CHAR)   ||
+      NextTokenIs(STRING))
+  {
+    Advance();
+    return;
+  }
+
+  va_list args;
+  va_start(args, msg);
+
+  ERROR_AND_EXIT_VALIST(msg, args);
+
+  va_end(args);
+}
+
+static AST_Node *FunctionParams(HashTable *fn_params) {
+  AST_Node *params = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &params;
+
+  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
+    ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    Token type_token = Parser.current;
+
+    Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
+            TokenTypeTranslation(Parser.next.type));
+    Token identifier_token = Parser.current;
+
+    AddTo(fn_params, Entry(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+
+    (*current)->nodes[LEFT] = NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
+    (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+
+    Match(COMMA);
+  }
+
+  return params;
+}
+
+static AST_Node *FunctionReturnType() {
+  Consume(RPAREN, "FunctionReturnType(): ')' required after function declaration");
+  Consume(COLON_SEPARATOR, "FunctionReturnType(): '::' required after function declaration");
+  ConsumeAnyType("FunctionReturnType(): Expected a type after '::'");
+
+  Token fn_return_type = Parser.current;
+
+  return NewNodeWithToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
+}
+
+static AST_Node *FunctionBody(HashTable *fn_params) {
+  if (NextTokenIs(SEMICOLON)) { return NULL; }
+
+  Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *body = NewNodeWithArity(FUNCTION_BODY_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &body;
+
+  HashTable *remember_symbol_table = SymbolTable;
+  SymbolTable = fn_params;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+  }
+
+  SymbolTable = remember_symbol_table;
+
+  Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
+
+  return body;
+}
+
+static AST_Node *FunctionDeclaration(HT_Entry symbol) {
+  AST_Node *params = FunctionParams(symbol.fn_params);
+  AST_Node *return_type = FunctionReturnType();
+  AST_Node *body = FunctionBody(symbol.fn_params);
+
+  if ((symbol.declaration_type == DECL_AWAITING_INIT) && body == NULL) {
+    HT_Entry already_declared = RetrieveFrom(SymbolTable, symbol.token);
+    ERROR_AND_EXIT_FMTMSG("Double declaration of function '%.*s' (declared on line %d)\n",
+                          symbol.token.length,
+                          symbol.token.position_in_source,
+                          already_declared.annotation.declared_on_line);
+  }
+
+  ParserAnnotation a = AnnotateType(return_type->token.type);
+  a.declared_on_line = symbol.token.on_line;
+  a.is_function = true;
+
+  AddTo(SymbolTable, Entry(symbol.token, (symbol.declaration_type == DECL_AWAITING_INIT) ? symbol.annotation : a, (body == NULL) ? DECL_AWAITING_INIT : DECL_INITIALIZED));
+
+  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, symbol.token, FunctionAnnotation(return_type->token.type));
 }
 
 static AST_Node *Struct() {
@@ -408,6 +547,24 @@ static AST_Node *Identifier(bool can_assign) {
   bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
   AST_Node *array_index = NULL;
   Token remember_token = Parser.current;
+
+  if (Match(LPAREN)) {
+    if (NextTokenIsAnyType()) { // Declaration
+      if (is_in_symbol_table && symbol.declaration_type != DECL_AWAITING_INIT) {
+        ERROR_AND_EXIT_FMTMSG("Function '%.*s' has been redeclared, original declaration on line %d\n",
+                              remember_token.length,
+                              remember_token.position_in_source,
+                              symbol.annotation.declared_on_line);
+      }
+
+      if (!is_in_symbol_table) AddTo(SymbolTable, Entry(remember_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
+      symbol = RetrieveFrom(SymbolTable, remember_token);
+
+      return FunctionDeclaration(symbol);
+    } else { // Function call
+      // TODO: Implement
+    }
+  }
 
   if (!is_in_symbol_table) {
     ERROR_AND_EXIT_FMTMSG("Identifier(): Line %d: Undeclared identifier '%.*s'",

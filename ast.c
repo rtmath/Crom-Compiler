@@ -5,16 +5,11 @@
 #include "error.h"
 
 static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
-  (a.is_array)
-  ? printf("[Annotation(%s[%d]:%d:%s)}",
-           s,
-           a.array_size,
-           a.bit_width,
-           (a.is_signed) ? "SIGNED" : "UNSIGNED")
-  : printf("[Annotation(%s:%d:%s)]",
-           s,
-           a.bit_width,
-           (a.is_signed) ? "SIGNED" : "UNSIGNED");
+  (a.is_function)
+  ? printf("[Fn :: %s%d]", s, a.bit_width)
+  : (a.is_array)
+    ? printf("[%s[%d]]}", s, a.array_size)
+    : printf("[%s%d]", s, a.bit_width);
 }
 
 void InlinePrintAnnotation(ParserAnnotation a) {
@@ -22,7 +17,7 @@ void InlinePrintAnnotation(ParserAnnotation a) {
     case OST_UNKNOWN: {
     } break;
     case OST_INT: {
-      _InlinePrintAnnotation("INTEGER", a);
+      _InlinePrintAnnotation((a.is_signed) ? "I" : "U", a);
     } break;
     case OST_FLOAT: {
       _InlinePrintAnnotation("FLOAT", a);
@@ -51,9 +46,13 @@ void InlinePrintAnnotation(ParserAnnotation a) {
 static const char* const _NodeTypeTranslation[] =
 {
   [UNTYPED] = "UNTYPED",
-  [START_NODE] = "START_NODE",
+  [START_NODE] = "START",
   [CHAIN_NODE] = "CHAIN",
-  [IF_NODE] = "IF_NODE",
+  [IF_NODE] = "IF",
+  [FUNCTION_NODE] = "FUNCTION",
+  [FUNCTION_RETURN_TYPE_NODE] = "RETURN TYPE",
+  [FUNCTION_PARAM_NODE] = "FUNCTION PARAM",
+  [FUNCTION_BODY_NODE] = "FUNCTION BODY",
 };
 
 const char *NodeTypeTranslation(NodeType t) {
@@ -117,9 +116,10 @@ ParserAnnotation NoAnnotation() {
   return a;
 }
 
-static void PrintASTRecurse(AST_Node *node, int depth, char label) {
+static void PrintASTRecurse(AST_Node *node, int depth) {
   if (node == NULL) return;
-  if (node->type != TERMINAL_DATA &&
+  if (node->type != FUNCTION_RETURN_TYPE_NODE &&
+      node->type != TERMINAL_DATA &&
       node->type != IDENTIFIER_NODE &&
       node->nodes[LEFT]   == NULL &&
       node->nodes[MIDDLE] == NULL &&
@@ -132,23 +132,25 @@ static void PrintASTRecurse(AST_Node *node, int depth, char label) {
   }
   buf[i] = '\0';
 
-  if (node->token.type == UNINITIALIZED) {
-    printf("%s%c: <%s> ", buf, label, NodeTypeTranslation(node->type));
+  if (node->token.type == UNINITIALIZED ||
+      node->type == FUNCTION_RETURN_TYPE_NODE ||
+      node->type == FUNCTION_BODY_NODE) {
+    printf("%s%s ", buf, NodeTypeTranslation(node->type));
     InlinePrintAnnotation(node->annotation);
     printf("\n");
   } else {
-    printf("%s%c: %.*s ", buf, label,
+    printf("%s%.*s ", buf,
         node->token.length,
         node->token.position_in_source);
     InlinePrintAnnotation(node->annotation);
     printf("\n");
   }
 
-  PrintASTRecurse(node->nodes[LEFT], depth + 1, 'L');
-  PrintASTRecurse(node->nodes[MIDDLE], depth + 1, 'M');
-  PrintASTRecurse(node->nodes[RIGHT], depth + 1, 'R');
+  PrintASTRecurse(node->nodes[LEFT], depth + 1);
+  PrintASTRecurse(node->nodes[MIDDLE], depth + 1);
+  PrintASTRecurse(node->nodes[RIGHT], depth + 1);
 }
 
 void PrintAST(AST_Node *root) {
-  PrintASTRecurse(root, 0, 'S');
+  PrintASTRecurse(root, 0);
 }
