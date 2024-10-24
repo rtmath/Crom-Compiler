@@ -16,10 +16,15 @@ static Token HT_NOT_FOUND = {
 };
 
 HT_Entry Entry(Token t, ParserAnnotation a, DeclarationType d) {
+  HashTable *fields = (a.ostensible_type == OST_STRUCT)
+  ? NewHashTable()
+  : NULL;
+
   HT_Entry hte = {
     .token = t,
     .annotation = a,
-    .declaration_type = d
+    .declaration_type = d,
+    .struct_fields = fields,
   };
 
   return hte;

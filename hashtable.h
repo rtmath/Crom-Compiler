@@ -10,10 +10,13 @@ typedef enum {
   DECL_INITIALIZED,
 } DeclarationType;
 
+typedef struct HashTable_impl HashTable;
+
 typedef struct {
   DeclarationType declaration_type;
   ParserAnnotation annotation;
   Token token;
+  HashTable *struct_fields;
 } HT_Entry;
 
 typedef struct {
@@ -21,13 +24,12 @@ typedef struct {
   HT_Entry entry;
 } Bucket;
 
-typedef struct {
+struct HashTable_impl {
   int initial_capacity;
   int capacity;
   int num_buckets;
   Bucket **buckets;
-} HashTable;
-
+};
 
 HashTable *NewHashTable();
 HT_Entry Entry(Token t, ParserAnnotation a, DeclarationType d);
