@@ -39,14 +39,9 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+/* Rules table Forward Declarations */
 static AST_Node *Type(bool unused);
 static AST_Node *Identifier(bool can_assign);
-static AST_Node *Number(bool unused);
-static AST_Node *Char(bool unused);
-static AST_Node *Enum(bool unused);
-static AST_Node *Struct(bool unused);
-static AST_Node *StringLiteral(bool unused);
-static AST_Node *ArraySubscripting(bool unused);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
 static AST_Node *Parens(bool unused);
@@ -54,6 +49,13 @@ static AST_Node *Block(bool unused);
 static AST_Node *Expression(bool unused);
 static AST_Node *Statement(bool unused);
 static AST_Node *IfStmt(bool unused);
+static AST_Node *ArraySubscripting(bool unused);
+static AST_Node *Enum(bool unused);
+static AST_Node *Struct(bool unused);
+static AST_Node *Literal(bool unused);
+
+/* Other Forward Declarations */
+static AST_Node *FunctionDeclaration(HT_Entry symbol);
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -81,14 +83,14 @@ ParseRule Rules[] = {
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
   // Constants
-  [BINARY_CONSTANT] = {     Number, NULL, NO_PRECEDENCE },
-  [HEX_CONSTANT]    = {     Number, NULL, NO_PRECEDENCE },
-  [INT_CONSTANT]    = {     Number, NULL, NO_PRECEDENCE },
-  [FLOAT_CONSTANT]  = {     Number, NULL, NO_PRECEDENCE },
-  [ENUM_CONSTANT]   = { Identifier, NULL, NO_PRECEDENCE },
-  [CHAR_CONSTANT]   = {       Char, NULL, NO_PRECEDENCE },
+  [BINARY_CONSTANT] = { Literal, NULL, NO_PRECEDENCE },
+  [HEX_CONSTANT]    = { Literal, NULL, NO_PRECEDENCE },
+  [INT_CONSTANT]    = { Literal, NULL, NO_PRECEDENCE },
+  [FLOAT_CONSTANT]  = { Literal, NULL, NO_PRECEDENCE },
+  [ENUM_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
+  [CHAR_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
 
-  [STRING_LITERAL] = { StringLiteral, NULL, NO_PRECEDENCE },
+  [STRING_LITERAL] = { Literal, NULL, NO_PRECEDENCE },
 
   // Punctuators
   [LPAREN]         = { Parens,              NULL,      NO_PRECEDENCE },
@@ -102,50 +104,6 @@ ParseRule Rules[] = {
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
 };
 
-static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
-  ParserAnnotation a = NoAnnotation();
-
-  a.ostensible_type = type;
-  a.bit_width = bit_width;
-  a.is_signed = is_signed;
-
-  return a;
-}
-
-static ParserAnnotation AnnotateType(TokenType t) {
-  const bool SIGNED = true;
-  const bool UNSIGNED = false;
-
-  switch (t) {
-    case I8:  return Annotation(OST_INT,  8, SIGNED);
-    case I16: return Annotation(OST_INT, 16, SIGNED);
-    case I32: return Annotation(OST_INT, 32, SIGNED);
-    case I64: return Annotation(OST_INT, 64, SIGNED);
-    case U8:  return Annotation(OST_INT,  8, UNSIGNED);
-    case U16: return Annotation(OST_INT, 16, UNSIGNED);
-    case U32: return Annotation(OST_INT, 32, UNSIGNED);
-    case U64: return Annotation(OST_INT, 64, UNSIGNED);
-    case F32: return Annotation(OST_FLOAT, 32, SIGNED);
-    case F64: return Annotation(OST_FLOAT, 32, SIGNED);
-    case BOOL: return Annotation(OST_BOOL, 0, 0);
-    case CHAR: return Annotation(OST_CHAR, 0, 0);
-    case ENUM: return Annotation(OST_ENUM, 0, 0);
-    case VOID: return Annotation(OST_VOID, 0, 0);
-    case STRING: return Annotation(OST_STRING, 0, 0);
-    case STRUCT: return Annotation(OST_STRUCT, 0, 0);
-
-    default:
-      ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
-      return Annotation(OST_UNKNOWN, 0, 0);
-  }
-}
-
-static ParserAnnotation FunctionAnnotation(TokenType return_type) {
-  ParserAnnotation a = AnnotateType(return_type);
-  a.is_function = true;
-  return a;
-}
-
 static void Advance() {
   Parser.current = Parser.next;
   Parser.next = ScanToken();
@@ -158,19 +116,31 @@ static void Advance() {
       Parser.next.position_in_source);
 }
 
-static void InitParser() {
-  /* One call to Advance() will prime the parser, such that
-   * Parser.current will still be zeroed out, and
-   * Parser.next will hold the First Token(TM) from the lexer.
-   * The first call to Advance() from inside Parse() will then
-   * set Parser.current to the First Token, and Parser.next to
-   * look ahead one token, and parsing will proceed normally. */
-
-  Advance();
-}
-
 static bool NextTokenIs(TokenType type) {
   return (Parser.next.type == type);
+}
+
+static bool NextTokenIsAnyType() {
+  switch (Parser.next.type) {
+    case I8:
+    case I16:
+    case I32:
+    case I64:
+    case U8:
+    case U16:
+    case U32:
+    case U64:
+    case F32:
+    case F64:
+    case BOOL:
+    case STRUCT:
+    case CHAR:
+    case STRING:
+    {
+      return true;
+    }
+    default: return false;
+  }
 }
 
 static bool Match(TokenType type) {
@@ -193,6 +163,45 @@ static void Consume(TokenType type, const char *msg, ...) {
   ERROR_AND_EXIT_VALIST(msg, args);
 
   va_end(args);
+}
+
+static void ConsumeAnyType(const char *msg, ...) {
+  if (NextTokenIs(I8)     ||
+      NextTokenIs(I16)    ||
+      NextTokenIs(I32)    ||
+      NextTokenIs(I64)    ||
+      NextTokenIs(U8)     ||
+      NextTokenIs(U16)    ||
+      NextTokenIs(U32)    ||
+      NextTokenIs(U64)    ||
+      NextTokenIs(F32)    ||
+      NextTokenIs(F64)    ||
+      NextTokenIs(BOOL)   ||
+      NextTokenIs(STRUCT) ||
+      NextTokenIs(CHAR)   ||
+      NextTokenIs(STRING))
+  {
+    Advance();
+    return;
+  }
+
+  va_list args;
+  va_start(args, msg);
+
+  ERROR_AND_EXIT_VALIST(msg, args);
+
+  va_end(args);
+}
+
+static void InitParser() {
+  /* One call to Advance() will prime the parser, such that
+   * Parser.current will still be zeroed out, and
+   * Parser.next will hold the First Token(TM) from the lexer.
+   * The first call to Advance() from inside Parse() will then
+   * set Parser.current to the First Token, and Parser.next to
+   * look ahead one token, and parsing will proceed normally. */
+
+  Advance();
 }
 
 static AST_Node *Parse(int PrecedenceLevel) {
@@ -233,271 +242,6 @@ static AST_Node *Parse(int PrecedenceLevel) {
   }
 
   return (return_node == NULL) ? prefix_node : return_node;
-}
-
-static AST_Node *StringLiteral(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
-}
-
-static AST_Node *Number(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
-}
-
-static AST_Node *Char(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
-}
-
-static bool NextTokenIsAnyType() {
-  switch (Parser.next.type) {
-    case I8:
-    case I16:
-    case I32:
-    case I64:
-    case U8:
-    case U16:
-    case U32:
-    case U64:
-    case F32:
-    case F64:
-    case BOOL:
-    case STRUCT:
-    case CHAR:
-    case STRING:
-    {
-      return true;
-    }
-    default: return false;
-  }
-}
-
-static void ConsumeAnyType(const char *msg, ...) {
-  if (NextTokenIs(I8)     ||
-      NextTokenIs(I16)    ||
-      NextTokenIs(I32)    ||
-      NextTokenIs(I64)    ||
-      NextTokenIs(U8)     ||
-      NextTokenIs(U16)    ||
-      NextTokenIs(U32)    ||
-      NextTokenIs(U64)    ||
-      NextTokenIs(F32)    ||
-      NextTokenIs(F64)    ||
-      NextTokenIs(BOOL)   ||
-      NextTokenIs(STRUCT) ||
-      NextTokenIs(CHAR)   ||
-      NextTokenIs(STRING))
-  {
-    Advance();
-    return;
-  }
-
-  va_list args;
-  va_start(args, msg);
-
-  ERROR_AND_EXIT_VALIST(msg, args);
-
-  va_end(args);
-}
-
-static AST_Node *FunctionParams(HashTable *fn_params) {
-  AST_Node *params = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-  AST_Node **current = &params;
-
-  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
-    ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-    Token type_token = Parser.current;
-
-    Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
-            TokenTypeTranslation(Parser.next.type));
-    Token identifier_token = Parser.current;
-
-    AddTo(fn_params, Entry(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
-
-    (*current)->nodes[LEFT] = NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
-    (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-
-    current = &(*current)->nodes[RIGHT];
-
-    Match(COMMA);
-  }
-
-  return params;
-}
-
-static AST_Node *FunctionReturnType() {
-  Consume(RPAREN, "FunctionReturnType(): ')' required after function declaration");
-  Consume(COLON_SEPARATOR, "FunctionReturnType(): '::' required after function declaration");
-  ConsumeAnyType("FunctionReturnType(): Expected a type after '::'");
-
-  Token fn_return_type = Parser.current;
-
-  return NewNodeWithToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
-}
-
-static AST_Node *FunctionBody(HashTable *fn_params) {
-  if (NextTokenIs(SEMICOLON)) { return NULL; }
-
-  Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-
-  AST_Node *body = NewNodeWithArity(FUNCTION_BODY_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-  AST_Node **current = &body;
-
-  HashTable *remember_symbol_table = SymbolTable;
-  SymbolTable = fn_params;
-
-  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-
-    current = &(*current)->nodes[RIGHT];
-  }
-
-  SymbolTable = remember_symbol_table;
-
-  Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
-
-  return body;
-}
-
-static AST_Node *FunctionDeclaration(HT_Entry symbol) {
-  AST_Node *params = FunctionParams(symbol.fn_params);
-  AST_Node *return_type = FunctionReturnType();
-  AST_Node *body = FunctionBody(symbol.fn_params);
-
-  if ((symbol.declaration_type == DECL_AWAITING_INIT) && body == NULL) {
-    HT_Entry already_declared = RetrieveFrom(SymbolTable, symbol.token);
-    ERROR_AND_EXIT_FMTMSG("Double declaration of function '%.*s' (declared on line %d)\n",
-                          symbol.token.length,
-                          symbol.token.position_in_source,
-                          already_declared.annotation.declared_on_line);
-  }
-
-  ParserAnnotation a = AnnotateType(return_type->token.type);
-  a.declared_on_line = symbol.token.on_line;
-  a.is_function = true;
-
-  AddTo(SymbolTable, Entry(symbol.token, (symbol.declaration_type == DECL_AWAITING_INIT) ? symbol.annotation : a, (body == NULL) ? DECL_AWAITING_INIT : DECL_INITIALIZED));
-
-  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, symbol.token, FunctionAnnotation(return_type->token.type));
-}
-
-static AST_Node *Struct() {
-  Token remember_token = Parser.next;
-  Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
-          TokenTypeTranslation(Parser.current.type),
-          TokenTypeTranslation(Parser.next.type));
-
-  if (IsIn(SymbolTable, remember_token)) {
-    HT_Entry existing_struct = RetrieveFrom(SymbolTable, remember_token);
-    ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
-      remember_token.length,
-      remember_token.position_in_source,
-      existing_struct.annotation.declared_on_line);
-  }
-  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_AWAITING_INIT));
-  HT_Entry symbol = RetrieveFrom(SymbolTable, remember_token);
-
-  HashTable *symbol_table = SymbolTable;
-  SymbolTable = symbol.struct_fields;
-
-  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%.*s' instead",
-          TokenTypeTranslation(Parser.next.type));
-
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-  AST_Node **current = &n;
-
-  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-
-    current = &(*current)->nodes[RIGHT];
-  }
-
-  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%.*s' instead",
-          TokenTypeTranslation(Parser.next.type));
-
-  SymbolTable = symbol_table;
-
-  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_INITIALIZED));
-  return NewNodeWithToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
-}
-
-static AST_Node *EnumBlock() {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-  AST_Node **current = &n;
-
-  Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
-
-  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
-
-    if (is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
-                            Parser.next.length,
-                            Parser.next.position_in_source,
-                            symbol.annotation.declared_on_line);
-    }
-
-    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NOT_APPLICABLE));
-    Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
-            TokenTypeTranslation(Parser.current.type),
-            TokenTypeTranslation(Parser.next.type));
-
-    (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
-
-    current = &(*current)->nodes[RIGHT];
-
-    Match(COMMA);
-  }
-
-  Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
-
-  return n;
-}
-
-static AST_Node *Enum(bool) {
-  ParserAnnotation a = AnnotateType(Parser.current.type);
-  a.declared_on_line = Parser.next.on_line;
-  AddTo(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
-
-  Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
-          TokenTypeTranslation(Parser.next.type),
-          TokenTypeTranslation(Parser.next.type));
-
-  AST_Node *enum_name = Identifier(false);
-  enum_name->nodes[LEFT] = EnumBlock();
-
-  return enum_name;
-}
-
-static AST_Node *ArraySubscripting(bool) {
-  AST_Node *return_value = NULL;
-
-  if (Match(IDENTIFIER)) {
-    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
-
-    if (!is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
-                            Parser.current.length,
-                            Parser.current.position_in_source);
-    }
-
-    if (symbol.declaration_type != DECL_INITIALIZED) {
-      ERROR_AND_EXIT_FMTMSG("Can't access array with uninitialized identifier '%.*s'",
-                            Parser.current.length,
-                            Parser.current.position_in_source);
-    }
-
-    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NoAnnotation());
-  } else if (Match(INT_CONSTANT)) {
-    return_value = Number(UNUSED);
-  }
-
-  Consume(RBRACKET, "ArraySubscripting(): Where's the ']'?");
-
-  return return_value;
 }
 
 static AST_Node *Type(bool) {
@@ -694,6 +438,212 @@ static AST_Node *Parens(bool) {
   Consume(RPAREN, "Parens(): Missing ')' after expression");
 
   return parse_result;
+}
+
+static AST_Node *ArraySubscripting(bool) {
+  AST_Node *return_value = NULL;
+
+  if (Match(IDENTIFIER)) {
+    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
+
+    if (!is_in_symbol_table) {
+      ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
+                            Parser.current.length,
+                            Parser.current.position_in_source);
+    }
+
+    if (symbol.declaration_type != DECL_INITIALIZED) {
+      ERROR_AND_EXIT_FMTMSG("Can't access array with uninitialized identifier '%.*s'",
+                            Parser.current.length,
+                            Parser.current.position_in_source);
+    }
+
+    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NoAnnotation());
+  } else if (Match(INT_CONSTANT)) {
+    return_value = Literal(UNUSED);
+  }
+
+  Consume(RBRACKET, "ArraySubscripting(): Where's the ']'?");
+
+  return return_value;
+}
+
+static AST_Node *EnumBlock() {
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &n;
+
+  Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
+    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
+
+    if (is_in_symbol_table) {
+      ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
+                            Parser.next.length,
+                            Parser.next.position_in_source,
+                            symbol.annotation.declared_on_line);
+    }
+
+    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NOT_APPLICABLE));
+    Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
+            TokenTypeTranslation(Parser.current.type),
+            TokenTypeTranslation(Parser.next.type));
+
+    (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+
+    Match(COMMA);
+  }
+
+  Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
+
+  return n;
+}
+
+static AST_Node *Enum(bool) {
+  ParserAnnotation a = AnnotateType(Parser.current.type);
+  a.declared_on_line = Parser.next.on_line;
+  AddTo(SymbolTable, Entry(Parser.next, a, DECL_AWAITING_INIT));
+
+  Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
+          TokenTypeTranslation(Parser.next.type),
+          TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *enum_name = Identifier(false);
+  enum_name->nodes[LEFT] = EnumBlock();
+
+  return enum_name;
+}
+
+static AST_Node *Struct() {
+  Token remember_token = Parser.next;
+  Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
+          TokenTypeTranslation(Parser.current.type),
+          TokenTypeTranslation(Parser.next.type));
+
+  if (IsIn(SymbolTable, remember_token)) {
+    HT_Entry existing_struct = RetrieveFrom(SymbolTable, remember_token);
+    ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
+      remember_token.length,
+      remember_token.position_in_source,
+      existing_struct.annotation.declared_on_line);
+  }
+  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_AWAITING_INIT));
+  HT_Entry symbol = RetrieveFrom(SymbolTable, remember_token);
+
+  HashTable *symbol_table = SymbolTable;
+  SymbolTable = symbol.struct_fields;
+
+  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%.*s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &n;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+  }
+
+  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%.*s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  SymbolTable = symbol_table;
+
+  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_INITIALIZED));
+  return NewNodeWithToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
+}
+
+static AST_Node *FunctionParams(HashTable *fn_params) {
+  AST_Node *params = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &params;
+
+  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
+    ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    Token type_token = Parser.current;
+
+    Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
+            TokenTypeTranslation(Parser.next.type));
+    Token identifier_token = Parser.current;
+
+    AddTo(fn_params, Entry(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+
+    (*current)->nodes[LEFT] = NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
+    (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+
+    Match(COMMA);
+  }
+
+  return params;
+}
+
+static AST_Node *FunctionReturnType() {
+  Consume(RPAREN, "FunctionReturnType(): ')' required after function declaration");
+  Consume(COLON_SEPARATOR, "FunctionReturnType(): '::' required after function declaration");
+  ConsumeAnyType("FunctionReturnType(): Expected a type after '::'");
+
+  Token fn_return_type = Parser.current;
+
+  return NewNodeWithToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
+}
+
+static AST_Node *FunctionBody(HashTable *fn_params) {
+  if (NextTokenIs(SEMICOLON)) { return NULL; }
+
+  Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *body = NewNodeWithArity(FUNCTION_BODY_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node **current = &body;
+
+  HashTable *remember_symbol_table = SymbolTable;
+  SymbolTable = fn_params;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+
+    current = &(*current)->nodes[RIGHT];
+  }
+
+  SymbolTable = remember_symbol_table;
+
+  Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
+
+  return body;
+}
+
+static AST_Node *FunctionDeclaration(HT_Entry symbol) {
+  AST_Node *params = FunctionParams(symbol.fn_params);
+  AST_Node *return_type = FunctionReturnType();
+  AST_Node *body = FunctionBody(symbol.fn_params);
+
+  if ((symbol.declaration_type == DECL_AWAITING_INIT) && body == NULL) {
+    HT_Entry already_declared = RetrieveFrom(SymbolTable, symbol.token);
+    ERROR_AND_EXIT_FMTMSG("Double declaration of function '%.*s' (declared on line %d)\n",
+                          symbol.token.length,
+                          symbol.token.position_in_source,
+                          already_declared.annotation.declared_on_line);
+  }
+
+  ParserAnnotation a = AnnotateType(return_type->token.type);
+  a.declared_on_line = symbol.token.on_line;
+  a.is_function = true;
+
+  AddTo(SymbolTable, Entry(symbol.token, (symbol.declaration_type == DECL_AWAITING_INIT) ? symbol.annotation : a, (body == NULL) ? DECL_AWAITING_INIT : DECL_INITIALIZED));
+
+  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, symbol.token, FunctionAnnotation(return_type->token.type));
+}
+
+static AST_Node *Literal(bool) {
+  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *BuildAST() {

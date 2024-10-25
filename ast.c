@@ -43,6 +43,51 @@ void InlinePrintAnnotation(ParserAnnotation a) {
   }
 }
 
+static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
+  ParserAnnotation a = NoAnnotation();
+
+  a.ostensible_type = type;
+  a.bit_width = bit_width;
+  a.is_signed = is_signed;
+
+  return a;
+}
+
+ParserAnnotation AnnotateType(TokenType t) {
+  const bool SIGNED = true;
+  const bool UNSIGNED = false;
+
+  switch (t) {
+    case I8:  return Annotation(OST_INT,  8, SIGNED);
+    case I16: return Annotation(OST_INT, 16, SIGNED);
+    case I32: return Annotation(OST_INT, 32, SIGNED);
+    case I64: return Annotation(OST_INT, 64, SIGNED);
+    case U8:  return Annotation(OST_INT,  8, UNSIGNED);
+    case U16: return Annotation(OST_INT, 16, UNSIGNED);
+    case U32: return Annotation(OST_INT, 32, UNSIGNED);
+    case U64: return Annotation(OST_INT, 64, UNSIGNED);
+    case F32: return Annotation(OST_FLOAT, 32, SIGNED);
+    case F64: return Annotation(OST_FLOAT, 32, SIGNED);
+    case BOOL: return Annotation(OST_BOOL, 0, 0);
+    case CHAR: return Annotation(OST_CHAR, 0, 0);
+    case ENUM: return Annotation(OST_ENUM, 0, 0);
+    case VOID: return Annotation(OST_VOID, 0, 0);
+    case STRING: return Annotation(OST_STRING, 0, 0);
+    case STRUCT: return Annotation(OST_STRUCT, 0, 0);
+
+    default:
+      ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
+      return Annotation(OST_UNKNOWN, 0, 0);
+  }
+}
+
+ParserAnnotation FunctionAnnotation(TokenType return_type) {
+  ParserAnnotation a = AnnotateType(return_type);
+  a.is_function = true;
+  return a;
+}
+
+
 static const char* const _NodeTypeTranslation[] =
 {
   [UNTYPED] = "UNTYPED",
