@@ -14,14 +14,16 @@ static char *ExtractString(Token token) {
   return str;
 }
 
-void AddTo(HashTable *ht, HT_Entry e) {
+HT_Entry AddTo(HashTable *ht, HT_Entry e) {
   if (e.token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
 
   char *key = ExtractString(e.token);
 
-  SetEntry(ht, key, e);
+  HT_Entry stored = SetEntry(ht, key, e);
 
   free(key);
+
+  return stored;
 }
 
 HT_Entry RetrieveFrom(HashTable *ht, Token token) {

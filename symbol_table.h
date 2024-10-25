@@ -6,7 +6,7 @@
 #include "hashtable.h"
 #include "token.h"
 
-void AddTo(HashTable *ht, HT_Entry e);
+HT_Entry AddTo(HashTable *ht, HT_Entry e);
 HT_Entry RetrieveFrom(HashTable *ht, Token t);
 bool IsIn(HashTable *ht, Token t);
 Token ResolveIdentifierAsValue(HashTable *ht, Token t);
