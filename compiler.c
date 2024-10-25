@@ -497,7 +497,7 @@ static AST_Node *EnumBlock() {
 
     ParserAnnotation a = NoAnnotation();
     a.declared_on_line = Parser.next.on_line;
-    AddTo(SymbolTable, Entry(Parser.next, a, DECL_NONE));
+    AddTo(SymbolTable, Entry(Parser.next, a, DECL_DEFINED));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
