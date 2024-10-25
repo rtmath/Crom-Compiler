@@ -176,7 +176,7 @@ HT_Entry GetEntry(HashTable *ht, const char *key) {
   return Entry(HT_NOT_FOUND, NoAnnotation(), DECL_NONE);
 }
 
-void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
+HT_Entry SetEntry(HashTable *ht, const char *key, HT_Entry e) {
   float table_load = (float)(ht->num_buckets / ht->capacity);
   if (table_load > 0.7) ResizeHashTable(ht, ht->initial_capacity * 2);
 
@@ -189,7 +189,7 @@ void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
     if (strcmp(check_bucket->key, key) == 0) {
       FreeBucket(check_bucket);
       ht->buckets[index] = b;
-      return;
+      return b->entry;
     }
 
     // Collision occurred, try next bucket
@@ -200,4 +200,5 @@ void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
 
   ht->buckets[index] = b;
   ht->num_buckets++;
+  return b->entry;
 }
