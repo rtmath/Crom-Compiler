@@ -5,9 +5,11 @@
 #include <string.h> // for strlen, strcmp
 
 #include "common.h"
+#include "error.h"
 #include "hashtable.h"
 
 const int INITIAL_TABLE_CAPACITY = 53;
+static int debug_guid = 0;
 
 static Token HT_NOT_FOUND = {
   .type = ERROR,
@@ -200,5 +202,37 @@ HT_Entry SetEntry(HashTable *ht, const char *key, HT_Entry e) {
 
   ht->buckets[index] = b;
   ht->num_buckets++;
+  b->entry.debug_id = debug_guid++;
   return b->entry;
+}
+
+static const char* const _DeclarationTypeTranslation[] =
+{
+  [DECL_NONE] = "NONE",
+  [DECL_UNINITIALIZED] = "UNINITIALIZED",
+  [DECL_DECLARED] = "DECLARED",
+  [DECL_DEFINED] = "DEFINED",
+  [DECL_FN_PARAM] = "FUNCTION PARAM",
+};
+
+static const char *DeclarationTypeTranslation(DeclarationType dt) {
+  if (dt < 0 || dt >= DECL_TYPE_COUNT) {
+    ERROR_AND_EXIT_FMTMSG("PrintDeclarationType(): '%d' out of range", dt);
+  }
+  return _DeclarationTypeTranslation[dt];
+}
+
+static void InlinePrintDeclarationType(DeclarationType dt) {
+  printf("DECL %s", DeclarationTypeTranslation(dt));
+}
+
+void PrintHTEntry(HT_Entry e) {
+  PrintTokenVerbose(e.token);
+  printf("HTEntry ID: '%d'\n", e.debug_id);
+  InlinePrintDeclarationType(e.declaration_type);
+  printf(" ");
+  InlinePrintAnnotation(e.annotation);
+  printf("\n");
+  if (e.struct_fields != NULL) printf("has Struct Fields\n");
+  if (e.fn_params != NULL) printf("has Function Params\n");
 }
