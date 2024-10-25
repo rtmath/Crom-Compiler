@@ -177,6 +177,12 @@ static bool LexemeEquals(const char *str, int len) {
          (memcmp(Lexer.start, str, len) == 0);
 }
 
+static Token SkipToEOF() {
+  while (Peek() != '\0') Advance();
+
+  return MakeToken(TOKEN_EOF);
+}
+
 static TokenType IdentifierType() {
   if (LexemeEquals( "i8", 2)) return I8;
   if (LexemeEquals("i16", 3)) return I16;
@@ -256,7 +262,8 @@ Token ScanToken() {
     case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);
     case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
     case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
-    case '`': return MakeToken(TILDE);
+    //case '`': return MakeToken(TILDE);
+    case '`': return SkipToEOF();
     case '^': return MakeToken(Match('=') ? XOR_EQUALS : CIRCUMFLEX);
     case '&': return MakeToken(Match('=') ? AND_EQUALS : AMPERSAND);
     case '|': return MakeToken(Match('=') ? OR_EQUALS : PIPE);
