@@ -328,7 +328,7 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     AddTo(SymbolTable, Entry(remember_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeWithToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
+    return NewNodeFromToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
   }
 
   if (NextTokenIs(SEMICOLON)) {
@@ -340,11 +340,11 @@ static AST_Node *Identifier(bool can_assign) {
                             already_declared.annotation.declared_on_line);
     }
 
-    return NewNodeWithToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
+    return NewNodeFromToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
   }
 
   HT_Entry e = RetrieveFrom(SymbolTable, remember_token);
-  return NewNodeWithToken(LITERAL_NODE, NULL, array_index, NULL, e.token, e.annotation);
+  return NewNodeFromToken(LITERAL_NODE, NULL, array_index, NULL, e.token, e.annotation);
 }
 
 static AST_Node *Unary(bool) {
@@ -353,7 +353,7 @@ static AST_Node *Unary(bool) {
 
   switch(remember_token.type) {
     case MINUS:
-      return NewNodeWithToken(UNTYPED, parse_result, NULL, NULL, remember_token, NoAnnotation());
+      return NewNodeFromToken(UNTYPED, parse_result, NULL, NULL, remember_token, NoAnnotation());
     default:
       printf("Unary(): Unknown Unary operator '%s'\n",
           TokenTypeTranslation(remember_token.type));
@@ -372,7 +372,7 @@ static AST_Node *Binary(bool) {
     case MINUS:
     case ASTERISK:
     case DIVIDE:
-      return NewNodeWithToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
+      return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
       printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return NULL;
@@ -467,7 +467,7 @@ static AST_Node *ArraySubscripting(bool) {
                             Parser.current.position_in_source);
     }
 
-    return_value = NewNodeWithToken(LITERAL_NODE, NULL, NULL, NULL, symbol.token, NoAnnotation());
+    return_value = NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, symbol.token, NoAnnotation());
   } else if (Match(INT_CONSTANT)) {
     return_value = Literal(UNUSED);
   }
@@ -563,7 +563,7 @@ static AST_Node *Struct() {
   SymbolTable = symbol_table;
 
   AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
-  return NewNodeWithToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
+  return NewNodeFromToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
 }
 
 static AST_Node *FunctionParams(HashTable *fn_params) {
@@ -580,7 +580,7 @@ static AST_Node *FunctionParams(HashTable *fn_params) {
 
     AddTo(fn_params, Entry(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
 
-    (*current)->nodes[LEFT] = NewNodeWithToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
+    (*current)->nodes[LEFT] = NewNodeFromToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
     (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
@@ -598,7 +598,7 @@ static AST_Node *FunctionReturnType() {
 
   Token fn_return_type = Parser.current;
 
-  return NewNodeWithToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
+  return NewNodeFromToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
 }
 
 static AST_Node *FunctionBody(HashTable *fn_params) {
@@ -647,11 +647,11 @@ static AST_Node *FunctionDeclaration(HT_Entry symbol) {
                                                       ? DECL_DECLARED
                                                       : DECL_DEFINED));
 
-  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, stored_symbol.token, stored_symbol.annotation);
+  return NewNodeFromToken(FUNCTION_NODE, return_type, params, body, stored_symbol.token, stored_symbol.annotation);
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeWithToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NoAnnotation());
+  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *BuildAST() {

@@ -121,7 +121,7 @@ AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *rig
   return n;
 }
 
-AST_Node *NewNodeWithToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation a) {
+AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->token = token;
