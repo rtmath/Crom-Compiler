@@ -476,8 +476,8 @@ static AST_Node *EnumBlock() {
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
+    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.next);
+    bool is_in_symbol_table = IsIn(SymbolTable, Parser.next);
 
     if (is_in_symbol_table) {
       ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
@@ -486,7 +486,9 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_NONE));
+    ParserAnnotation a = NoAnnotation();
+    a.declared_on_line = Parser.next.on_line;
+    AddTo(SymbolTable, Entry(Parser.next, a, DECL_NONE));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
@@ -507,6 +509,7 @@ static AST_Node *EnumBlock() {
 static AST_Node *Enum(bool) {
   ParserAnnotation a = AnnotateType(Parser.current.type);
   a.declared_on_line = Parser.next.on_line;
+
   AddTo(SymbolTable, Entry(Parser.next, a, DECL_DECLARED));
 
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
