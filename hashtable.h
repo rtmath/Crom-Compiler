@@ -5,10 +5,10 @@
 #include "token.h"
 
 typedef enum {
-  DECL_NOT_APPLICABLE,
+  DECL_NONE,
   DECL_UNINITIALIZED,
-  DECL_AWAITING_INIT,
-  DECL_INITIALIZED,
+  DECL_DECLARED,
+  DECL_DEFINED,
   DECL_FN_PARAM,
 } DeclarationType;
 

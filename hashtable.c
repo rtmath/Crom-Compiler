@@ -173,7 +173,7 @@ HT_Entry GetEntry(HashTable *ht, const char *key) {
     i++;
   }
 
-  return Entry(HT_NOT_FOUND, NoAnnotation(), DECL_NOT_APPLICABLE);
+  return Entry(HT_NOT_FOUND, NoAnnotation(), DECL_NONE);
 }
 
 void SetEntry(HashTable *ht, const char *key, HT_Entry e) {
