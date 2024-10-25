@@ -164,7 +164,7 @@ ParserAnnotation NoAnnotation() {
 static void PrintASTRecurse(AST_Node *node, int depth) {
   if (node == NULL) return;
   if (node->type != FUNCTION_RETURN_TYPE_NODE &&
-      node->type != TERMINAL_DATA &&
+      node->type != LITERAL_NODE &&
       node->type != IDENTIFIER_NODE &&
       node->nodes[LEFT]   == NULL &&
       node->nodes[MIDDLE] == NULL &&

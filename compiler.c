@@ -345,7 +345,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   HT_Entry e = RetrieveFrom(SymbolTable, remember_token);
-  return NewNodeWithToken(TERMINAL_DATA, NULL, array_index, NULL, e.token, e.annotation);
+  return NewNodeWithToken(LITERAL_NODE, NULL, array_index, NULL, e.token, e.annotation);
 }
 
 static AST_Node *Unary(bool) {
@@ -459,7 +459,7 @@ static AST_Node *ArraySubscripting(bool) {
                             Parser.current.position_in_source);
     }
 
-    return_value = NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, symbol.token, NoAnnotation());
+    return_value = NewNodeWithToken(LITERAL_NODE, NULL, NULL, NULL, symbol.token, NoAnnotation());
   } else if (Match(INT_CONSTANT)) {
     return_value = Literal(UNUSED);
   }
@@ -643,7 +643,7 @@ static AST_Node *FunctionDeclaration(HT_Entry symbol) {
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeWithToken(TERMINAL_DATA, NULL, NULL, NULL, Parser.current, NoAnnotation());
+  return NewNodeWithToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NoAnnotation());
 }
 
 static AST_Node *BuildAST() {
