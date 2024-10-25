@@ -639,13 +639,15 @@ static AST_Node *FunctionDeclaration(HT_Entry symbol) {
                           already_declared.annotation.declared_on_line);
   }
 
-  // TODO: Create AnnotateFunctionType()
-  ParserAnnotation a = AnnotateType(return_type->token.type);
-  a.is_function = true;
+  HT_Entry stored_symbol = AddTo(SymbolTable, Entry(symbol.token,
+                                                    (symbol.declaration_type == DECL_DECLARED)
+                                                      ? symbol.annotation
+                                                      : FunctionAnnotation(return_type->token.type),
+                                                    (body == NULL)
+                                                      ? DECL_DECLARED
+                                                      : DECL_DEFINED));
 
-  AddTo(SymbolTable, Entry(symbol.token, (symbol.declaration_type == DECL_DECLARED) ? symbol.annotation : a, (body == NULL) ? DECL_DECLARED: DECL_DEFINED));
-
-  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, symbol.token, FunctionAnnotation(return_type->token.type));
+  return NewNodeWithToken(FUNCTION_NODE, return_type, params, body, stored_symbol.token, stored_symbol.annotation);
 }
 
 static AST_Node *Literal(bool) {
