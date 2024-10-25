@@ -9,7 +9,9 @@ static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
   ? printf("[Fn :: %s%d]", s, a.bit_width)
   : (a.is_array)
     ? printf("[%s[%d]]}", s, a.array_size)
-    : printf("[%s%d]", s, a.bit_width);
+    : (a.bit_width > 0)
+      ? printf("[%s%d]", s, a.bit_width)
+      : printf("[%s]", s);
 }
 
 void InlinePrintAnnotation(ParserAnnotation a) {
