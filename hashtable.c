@@ -189,7 +189,12 @@ HT_Entry SetEntry(HashTable *ht, const char *key, HT_Entry e) {
   int i = 1;
   while (check_bucket != NULL) {
     if (strcmp(check_bucket->key, key) == 0) {
+      // When SetEntry() overwrites an existing entry,
+      // preserve the line it was declared on
+      int preserve_dol = check_bucket->entry.annotation.declared_on_line;
       FreeBucket(check_bucket);
+
+      b->entry.annotation.declared_on_line = preserve_dol;
       ht->buckets[index] = b;
       return b->entry;
     }
@@ -200,9 +205,12 @@ HT_Entry SetEntry(HashTable *ht, const char *key, HT_Entry e) {
     i++;
   }
 
+  // Save the line an item was declared on the first time it is stored
+  b->entry.annotation.declared_on_line = b->entry.token.on_line;
+  b->entry.debug_id = debug_guid++;
+
   ht->buckets[index] = b;
   ht->num_buckets++;
-  b->entry.debug_id = debug_guid++;
   return b->entry;
 }
 

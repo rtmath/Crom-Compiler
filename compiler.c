@@ -273,7 +273,6 @@ static AST_Node *Type(bool) {
     }
 
     ParserAnnotation a = AnnotateType(remember_token.type);
-    a.declared_on_line = Parser.next.on_line;
     a.is_array = is_array;
     a.array_size = array_size;
     AddTo(SymbolTable, Entry(Parser.next, a, DECL_DECLARED));
@@ -495,9 +494,7 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    ParserAnnotation a = NoAnnotation();
-    a.declared_on_line = Parser.next.on_line;
-    AddTo(SymbolTable, Entry(Parser.next, a, DECL_DEFINED));
+    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_DEFINED));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
@@ -516,10 +513,7 @@ static AST_Node *EnumBlock() {
 }
 
 static AST_Node *Enum(bool) {
-  ParserAnnotation a = AnnotateType(Parser.current.type);
-  a.declared_on_line = Parser.next.on_line;
-
-  AddTo(SymbolTable, Entry(Parser.next, a, DECL_DECLARED));
+  AddTo(SymbolTable, Entry(Parser.next, AnnotateType(Parser.current.type), DECL_DECLARED));
 
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
@@ -645,8 +639,8 @@ static AST_Node *FunctionDeclaration(HT_Entry symbol) {
                           already_declared.annotation.declared_on_line);
   }
 
+  // TODO: Create AnnotateFunctionType()
   ParserAnnotation a = AnnotateType(return_type->token.type);
-  a.declared_on_line = symbol.token.on_line;
   a.is_function = true;
 
   AddTo(SymbolTable, Entry(symbol.token, (symbol.declaration_type == DECL_DECLARED) ? symbol.annotation : a, (body == NULL) ? DECL_DECLARED: DECL_DEFINED));
