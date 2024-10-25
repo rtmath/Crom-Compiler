@@ -404,8 +404,17 @@ static AST_Node *Statement(bool) {
   if (Match(IF)) return IfStmt(UNUSED);
 
   AST_Node *expr_result = Expression(UNUSED);
-  Consume(SEMICOLON, "Statement(): A ';' is expected after an expression statement, got '%s' instead",
-      TokenTypeTranslation(Parser.next.type));
+
+  // Allow optional semicolon after Enum, Struct and Function definitions
+  if (expr_result->annotation.ostensible_type == OST_ENUM   ||
+      expr_result->annotation.ostensible_type == OST_STRUCT ||
+      expr_result->annotation.is_function)
+  {
+    Match(SEMICOLON);
+  } else {
+    Consume(SEMICOLON, "Statement(): A ';' is expected after an expression statement, got '%s' instead",
+        TokenTypeTranslation(Parser.next.type));
+  }
 
   return expr_result;
 }
