@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "parser_annotation.h"
 #include "token.h"
 
 #define LEFT 0
@@ -29,32 +30,6 @@ typedef enum {
   NODE_TYPE_COUNT
 } NodeType;
 
-/* Parser Related */
-typedef enum {
-  OST_UNKNOWN,
-  OST_INT,
-  OST_FLOAT,
-  OST_BOOL,
-  OST_CHAR,
-  OST_STRING,
-  OST_VOID,
-  OST_ENUM,
-  OST_STRUCT,
-} OstensibleType;
-
-typedef struct {
-  OstensibleType ostensible_type;
-  int bit_width; // for I8, U16, etc
-  bool is_signed;
-  int declared_on_line;
-  bool is_array;
-  int array_size;
-  bool is_function;
-} ParserAnnotation;
-
-void InlinePrintAnnotation(ParserAnnotation);
-/* End Parser Related*/
-
 typedef struct AST_Node {
   Token token;
   Arity arity;
@@ -69,10 +44,6 @@ AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_
 AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation annotation);
 
 const char *NodeTypeTranslation(NodeType t);
-
-ParserAnnotation NoAnnotation();
-ParserAnnotation FunctionAnnotation(TokenType return_type);
-ParserAnnotation AnnotateType(TokenType t);
 
 void PrintAST(AST_Node *root);
 

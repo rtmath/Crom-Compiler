@@ -1,7 +1,7 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include "ast.h"
+#include "parser_annotation.h"
 #include "token.h"
 
 typedef enum {
