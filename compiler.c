@@ -524,43 +524,50 @@ static AST_Node *Enum(bool) {
 }
 
 static AST_Node *Struct() {
-  Token remember_token = Parser.next;
   Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
           TokenTypeTranslation(Parser.current.type),
           TokenTypeTranslation(Parser.next.type));
+  Token identifier_token = Parser.current;
 
-  if (IsIn(SYMBOL_TABLE, remember_token)) {
-    Symbol existing_struct = RetrieveFrom(SYMBOL_TABLE, remember_token);
+  if (IsIn(SYMBOL_TABLE, identifier_token)) {
+    Symbol existing_struct = RetrieveFrom(SYMBOL_TABLE, identifier_token);
     ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
-      remember_token.length,
-      remember_token.position_in_source,
+      identifier_token.length,
+      identifier_token.position_in_source,
       existing_struct.annotation.declared_on_line);
   }
-  AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DECLARED));
-  Symbol symbol = RetrieveFrom(SYMBOL_TABLE, remember_token);
+  Symbol identifier_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DECLARED));
 
-  SymbolTable *symbol_table = SYMBOL_TABLE;
-  SYMBOL_TABLE = symbol.struct_fields;
+  SymbolTable *remember_symbol_table = SYMBOL_TABLE;
+  SYMBOL_TABLE = identifier_symbol.struct_fields;
 
-  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%.*s' instead",
+  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
 
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
 
+  bool has_empty_body = true;
+
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    has_empty_body = false;
     (*current)->nodes[LEFT] = Statement(UNUSED);
     (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
 
-  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%.*s' instead",
+  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
+  SYMBOL_TABLE = remember_symbol_table;
 
-  SYMBOL_TABLE = symbol_table;
+  if (has_empty_body) {
+    ERROR_AND_EXIT_FMTMSG("Struct(): Struct '%.*s' has empty body",
+                          identifier_symbol.token.length,
+                          identifier_symbol.token.position_in_source);
+  }
 
-  Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
   return NewNodeFromSymbol(IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
 }
 
