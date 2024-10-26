@@ -162,6 +162,7 @@ static bool NextTokenIsTerseAssignment() {
     case TIMES_EQUALS:
     case DIVIDE_EQUALS:
     case MODULO_EQUALS:
+    case LOGICAL_NOT_EQUALS:
     case BITWISE_XOR_EQUALS:
     case BITWISE_AND_EQUALS:
     case BITWISE_OR_EQUALS:
@@ -231,6 +232,7 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
       NextTokenIs(TIMES_EQUALS)               ||
       NextTokenIs(DIVIDE_EQUALS)              ||
       NextTokenIs(MODULO_EQUALS)              ||
+      NextTokenIs(LOGICAL_NOT_EQUALS)         ||
       NextTokenIs(BITWISE_XOR_EQUALS)         ||
       NextTokenIs(BITWISE_AND_EQUALS)         ||
       NextTokenIs(BITWISE_OR_EQUALS)          ||
@@ -468,6 +470,7 @@ static AST_Node *TerseAssignment(bool) {
     case TIMES_EQUALS:
     case DIVIDE_EQUALS:
     case MODULO_EQUALS:
+    case LOGICAL_NOT_EQUALS:
     case BITWISE_XOR_EQUALS:
     case BITWISE_AND_EQUALS:
     case BITWISE_OR_EQUALS:
