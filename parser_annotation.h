@@ -29,6 +29,7 @@ typedef struct {
 
 ParserAnnotation NoAnnotation();
 ParserAnnotation FunctionAnnotation(TokenType return_type);
+ParserAnnotation ArrayAnnotation(TokenType array_type, int array_size);
 ParserAnnotation AnnotateType(TokenType t);
 
 void InlinePrintAnnotation(ParserAnnotation);

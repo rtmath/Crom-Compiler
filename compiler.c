@@ -272,9 +272,7 @@ static AST_Node *Type(bool) {
                             s.annotation.declared_on_line);
     }
 
-    ParserAnnotation a = AnnotateType(remember_token.type);
-    a.is_array = is_array;
-    a.array_size = array_size;
+    ParserAnnotation a = (is_array) ? ArrayAnnotation(remember_token.type, array_size) : AnnotateType(remember_token.type);
     AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, a, DECL_DECLARED));
   }
 

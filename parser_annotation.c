@@ -85,5 +85,14 @@ ParserAnnotation AnnotateType(TokenType t) {
 ParserAnnotation FunctionAnnotation(TokenType return_type) {
   ParserAnnotation a = AnnotateType(return_type);
   a.is_function = true;
+
+  return a;
+}
+
+ParserAnnotation ArrayAnnotation(TokenType array_type, int array_size) {
+  ParserAnnotation a = AnnotateType(array_type);
+  a.is_array = true;
+  a.array_size = array_size;
+
   return a;
 }
