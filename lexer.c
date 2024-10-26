@@ -215,6 +215,9 @@ static TokenType IdentifierType() {
   if (LexemeEquals("continue", 8)) return CONTINUE;
   if (LexemeEquals("return", 6)) return RETURN;
 
+  if (LexemeEquals("true", 4))  return BOOL_LITERAL;
+  if (LexemeEquals("false", 5)) return BOOL_LITERAL;
+
   return IDENTIFIER;
 }
 

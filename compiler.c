@@ -90,6 +90,7 @@ ParseRule Rules[] = {
   [ENUM_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
   [CHAR_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
 
+  [BOOL_LITERAL]   = { Literal, NULL, NO_PRECEDENCE },
   [STRING_LITERAL] = { Literal, NULL, NO_PRECEDENCE },
 
   // Punctuators
