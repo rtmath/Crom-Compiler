@@ -479,7 +479,7 @@ static AST_Node *EnumBlock() {
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
 
-  Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
+  Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     Symbol symbol = RetrieveFrom(SYMBOL_TABLE, Parser.next);
@@ -492,10 +492,10 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, NoAnnotation(), DECL_DEFINED));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
+    AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, NoAnnotation(), DECL_DEFINED));
 
     (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
     (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
@@ -505,17 +505,16 @@ static AST_Node *EnumBlock() {
     Match(COMMA);
   }
 
-  Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %.*s", TokenTypeTranslation(Parser.current.type));
+  Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %s", TokenTypeTranslation(Parser.current.type));
 
   return n;
 }
 
 static AST_Node *Enum(bool) {
-  AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, AnnotateType(Parser.current.type), DECL_DECLARED));
-
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
           TokenTypeTranslation(Parser.next.type));
+  AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, AnnotateType(Parser.current.type), DECL_DECLARED));
 
   AST_Node *enum_name = Identifier(false);
   enum_name->nodes[LEFT] = EnumBlock();
