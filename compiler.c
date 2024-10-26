@@ -153,12 +153,12 @@ static bool NextTokenIsTerseAssignment() {
     case TIMES_EQUALS:
     case DIVIDE_EQUALS:
     case MODULO_EQUALS:
-    case XOR_EQUALS:
-    case AND_EQUALS:
-    case OR_EQUALS:
+    case BITWISE_XOR_EQUALS:
+    case BITWISE_AND_EQUALS:
+    case BITWISE_OR_EQUALS:
     case BITWISE_NOT_EQUALS:
-    case LEFT_SHIFT_EQUALS:
-    case RIGHT_SHIFT_EQUALS:
+    case BITWISE_LEFT_SHIFT_EQUALS:
+    case BITWISE_RIGHT_SHIFT_EQUALS:
     {
       return true;
     }
@@ -217,17 +217,17 @@ static void ConsumeAnyType(const char *msg, ...) {
 }
 
 static void ConsumeAnyTerseAssignment(const char *msg, ...) {
-  if (NextTokenIs(PLUS_EQUALS)        ||
-      NextTokenIs(MINUS_EQUALS)       ||
-      NextTokenIs(TIMES_EQUALS)       ||
-      NextTokenIs(DIVIDE_EQUALS)      ||
-      NextTokenIs(MODULO_EQUALS)      ||
-      NextTokenIs(XOR_EQUALS)         ||
-      NextTokenIs(AND_EQUALS)         ||
-      NextTokenIs(OR_EQUALS)          ||
-      NextTokenIs(BITWISE_NOT_EQUALS) ||
-      NextTokenIs(LEFT_SHIFT_EQUALS)  ||
-      NextTokenIs(RIGHT_SHIFT_EQUALS))
+  if (NextTokenIs(PLUS_EQUALS)                ||
+      NextTokenIs(MINUS_EQUALS)               ||
+      NextTokenIs(TIMES_EQUALS)               ||
+      NextTokenIs(DIVIDE_EQUALS)              ||
+      NextTokenIs(MODULO_EQUALS)              ||
+      NextTokenIs(BITWISE_XOR_EQUALS)         ||
+      NextTokenIs(BITWISE_AND_EQUALS)         ||
+      NextTokenIs(BITWISE_OR_EQUALS)          ||
+      NextTokenIs(BITWISE_NOT_EQUALS)         ||
+      NextTokenIs(BITWISE_LEFT_SHIFT_EQUALS)  ||
+      NextTokenIs(BITWISE_RIGHT_SHIFT_EQUALS))
   {
      Advance();
      return;
@@ -429,6 +429,12 @@ static AST_Node *Binary(bool) {
     case ASTERISK:
     case DIVIDE:
     case MODULO:
+    case BITWISE_XOR:
+    case BITWISE_NOT:
+    case BITWISE_AND:
+    case BITWISE_OR:
+    case BITWISE_LEFT_SHIFT:
+    case BITWISE_RIGHT_SHIFT:
       return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
       ERROR_AND_EXIT_FMTMSG("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
@@ -448,12 +454,12 @@ static AST_Node *TerseAssignment(bool) {
     case TIMES_EQUALS:
     case DIVIDE_EQUALS:
     case MODULO_EQUALS:
-    case XOR_EQUALS:
-    case AND_EQUALS:
-    case OR_EQUALS:
+    case BITWISE_XOR_EQUALS:
+    case BITWISE_AND_EQUALS:
+    case BITWISE_OR_EQUALS:
     case BITWISE_NOT_EQUALS:
-    case LEFT_SHIFT_EQUALS:
-    case RIGHT_SHIFT_EQUALS:
+    case BITWISE_LEFT_SHIFT_EQUALS:
+    case BITWISE_RIGHT_SHIFT_EQUALS:
       return NewNodeFromToken(ASSIGNMENT_NODE, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
       ERROR_AND_EXIT_FMTMSG("TerseAssignment(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));

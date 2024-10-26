@@ -265,19 +265,19 @@ Token ScanToken() {
     case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);
     case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
     case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
-    case '~': return MakeToken(Match('=') ? BITWISE_NOT_EQUALS : TILDE);
+    case '~': return MakeToken(Match('=') ? BITWISE_NOT_EQUALS : BITWISE_NOT);
     case '`': return SkipToEOF();
-    case '^': return MakeToken(Match('=') ? XOR_EQUALS : CIRCUMFLEX);
-    case '&': return MakeToken(Match('=') ? AND_EQUALS : AMPERSAND);
-    case '|': return MakeToken(Match('=') ? OR_EQUALS : PIPE);
-    case '!': return MakeToken(Match('=') ? LOGICAL_NOT_EQUALS : EXCLAM);
+    case '^': return MakeToken(Match('=') ? BITWISE_XOR_EQUALS : BITWISE_XOR);
+    case '&': return MakeToken(Match('=') ? BITWISE_AND_EQUALS : BITWISE_AND);
+    case '|': return MakeToken(Match('=') ? BITWISE_OR_EQUALS : BITWISE_OR);
+    case '!': return MakeToken(Match('=') ? LOGICAL_NOT_EQUALS : LOGICAL_NOT);
     case '?': return MakeToken(QUESTION_MARK);
     case '<': {
-      if (Match('<')) return MakeToken(Match('=') ? LEFT_SHIFT_EQUALS : LEFT_SHIFT);
+      if (Match('<')) return MakeToken(Match('=') ? BITWISE_LEFT_SHIFT_EQUALS : BITWISE_LEFT_SHIFT);
       return MakeToken(LESS_THAN);
     }
     case '>': {
-      if (Match('>')) return MakeToken(Match('=') ? RIGHT_SHIFT_EQUALS : RIGHT_SHIFT);
+      if (Match('>')) return MakeToken(Match('=') ? BITWISE_RIGHT_SHIFT_EQUALS : BITWISE_RIGHT_SHIFT);
       return MakeToken(GREATER_THAN);
     }
     case '=': return MakeToken(EQUALS);
