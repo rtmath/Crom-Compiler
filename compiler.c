@@ -576,9 +576,14 @@ static AST_Node *FunctionParams(SymbolTable *fn_params) {
             TokenTypeTranslation(Parser.next.type));
     Token identifier_token = Parser.current;
 
-    AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+    if (IsIn(fn_params, identifier_token)) {
+      ERROR_AND_EXIT_FMTMSG("FunctionParams(): duplicate parameter name '%.*s'",
+                            identifier_token.length,
+                            identifier_token.position_in_source);
+    }
+    Symbol stored_symbol = AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
 
-    (*current)->nodes[LEFT] = NewNodeFromToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
+    (*current)->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, stored_symbol);
     (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
