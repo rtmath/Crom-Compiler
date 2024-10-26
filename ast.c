@@ -50,6 +50,21 @@ AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_
   return n;
 }
 
+AST_Node *NewNodeFromSymbol(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Symbol symbol) {
+  AST_Node *n = calloc(1, sizeof(AST_Node));
+
+  n->token = symbol.token;
+  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
+  n->type = type;
+  n->annotation = symbol.annotation;
+
+  n->nodes[LEFT] = left;
+  n->nodes[MIDDLE] = middle;
+  n->nodes[RIGHT] = right;
+
+  return n;
+}
+
 AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
 

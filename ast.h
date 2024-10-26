@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "parser_annotation.h"
+#include "symbol_table.h"
 #include "token.h"
 
 #define LEFT 0
@@ -41,6 +42,7 @@ typedef struct AST_Node {
 
 AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation annotation);
 AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation annotation);
+AST_Node *NewNodeFromSymbol(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Symbol symbol);
 AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation annotation);
 
 const char *NodeTypeTranslation(NodeType t);
