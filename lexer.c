@@ -268,8 +268,16 @@ Token ScanToken() {
     case '~': return MakeToken(Match('=') ? BITWISE_NOT_EQUALS : BITWISE_NOT);
     case '`': return SkipToEOF();
     case '^': return MakeToken(Match('=') ? BITWISE_XOR_EQUALS : BITWISE_XOR);
-    case '&': return MakeToken(Match('=') ? BITWISE_AND_EQUALS : BITWISE_AND);
-    case '|': return MakeToken(Match('=') ? BITWISE_OR_EQUALS : BITWISE_OR);
+    case '&': return MakeToken(Match('=')
+                               ? BITWISE_AND_EQUALS
+                               : Match('&')
+                                 ? LOGICAL_AND
+                                 : BITWISE_AND);
+    case '|': return MakeToken(Match('=')
+                               ? BITWISE_OR_EQUALS
+                               : Match('|')
+                                 ? LOGICAL_OR
+                                 : BITWISE_OR);
     case '!': return MakeToken(Match('=') ? LOGICAL_NOT_EQUALS : LOGICAL_NOT);
     case '?': return MakeToken(QUESTION_MARK);
     case '<': {

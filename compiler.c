@@ -25,6 +25,8 @@ typedef enum {
   PREC_EOF = -1,
   NO_PRECEDENCE,
   ASSIGNMENT,
+  LOGICAL,
+  BITWISE,
   TERM,
   FACTOR,
   UNARY,
@@ -97,11 +99,18 @@ ParseRule Rules[] = {
   // Punctuators
   [LPAREN]         = { Parens,              NULL,      NO_PRECEDENCE },
   [LBRACKET]       = {   NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
-  [PLUS]           = {   NULL,            Binary,               TERM },
-  [MINUS]          = {  Unary,            Binary,               TERM },
-  [ASTERISK]       = {   NULL,            Binary,             FACTOR },
-  [DIVIDE]         = {   NULL,            Binary,             FACTOR },
-  [MODULO]         = {   NULL,            Binary,             FACTOR },
+
+  [LOGICAL_NOT]    = { Unary,   NULL, LOGICAL },
+  [LOGICAL_AND]    = {  NULL, Binary, LOGICAL },
+  [LOGICAL_OR]     = {  NULL, Binary, LOGICAL },
+  [LESS_THAN]      = {  NULL, Binary, LOGICAL },
+  [GREATER_THAN]   = {  NULL, Binary, LOGICAL },
+
+  [PLUS]           = {   NULL, Binary,   TERM },
+  [MINUS]          = {  Unary, Binary,   TERM },
+  [ASTERISK]       = {   NULL, Binary, FACTOR },
+  [DIVIDE]         = {   NULL, Binary, FACTOR },
+  [MODULO]         = {   NULL, Binary, FACTOR },
 
   // Misc
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
@@ -408,6 +417,7 @@ static AST_Node *Unary(bool) {
   AST_Node *parse_result = Parse(UNARY);
 
   switch(remember_token.type) {
+    case LOGICAL_NOT:
     case MINUS:
       return NewNodeFromToken(UNTYPED, parse_result, NULL, NULL, remember_token, NoAnnotation());
     default:
@@ -429,6 +439,10 @@ static AST_Node *Binary(bool) {
     case ASTERISK:
     case DIVIDE:
     case MODULO:
+    case LOGICAL_AND:
+    case LOGICAL_OR:
+    case LESS_THAN:
+    case GREATER_THAN:
     case BITWISE_XOR:
     case BITWISE_NOT:
     case BITWISE_AND:
