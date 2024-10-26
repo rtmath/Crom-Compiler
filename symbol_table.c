@@ -284,7 +284,7 @@ Token ResolveIdentifierAsValue(SymbolTable *st, Token token) {
 
   // TODO: Don't treat all identifiers as Ints, use their actual types
   // TODO: Also maybe there is a better way to resolve identifiers
-  s.token.type = INT_CONSTANT;
+  s.token.type = INT_LITERAL;
   return s.token;
 }
 

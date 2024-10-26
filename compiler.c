@@ -82,14 +82,14 @@ ParseRule Rules[] = {
 
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
-  // Constants
-  [BINARY_CONSTANT] = { Literal, NULL, NO_PRECEDENCE },
-  [HEX_CONSTANT]    = { Literal, NULL, NO_PRECEDENCE },
-  [INT_CONSTANT]    = { Literal, NULL, NO_PRECEDENCE },
-  [FLOAT_CONSTANT]  = { Literal, NULL, NO_PRECEDENCE },
-  [ENUM_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
-  [CHAR_CONSTANT]   = { Literal, NULL, NO_PRECEDENCE },
+  // Literals
+  [BINARY_LITERAL] = { Literal, NULL, NO_PRECEDENCE },
+  [HEX_LITERAL]    = { Literal, NULL, NO_PRECEDENCE },
+  [INT_LITERAL]    = { Literal, NULL, NO_PRECEDENCE },
+  [FLOAT_LITERAL]  = { Literal, NULL, NO_PRECEDENCE },
 
+  [ENUM_LITERAL]   = { Literal, NULL, NO_PRECEDENCE },
+  [CHAR_LITERAL]   = { Literal, NULL, NO_PRECEDENCE },
   [BOOL_LITERAL]   = { Literal, NULL, NO_PRECEDENCE },
   [STRING_LITERAL] = { Literal, NULL, NO_PRECEDENCE },
 
@@ -251,7 +251,7 @@ static AST_Node *Type(bool) {
   long array_size = 0;
 
   if (Match(LBRACKET)) {
-    if (Match(INT_CONSTANT)) {
+    if (Match(INT_LITERAL)) {
       array_size = strtol(Parser.current.position_in_source, NULL, 10);
       if (array_size == LONG_MIN) ERROR_AND_EXIT("Type(): strtol underflowed");
       if (array_size == LONG_MAX) ERROR_AND_EXIT("Type(): strtol overflowed");
@@ -467,7 +467,7 @@ static AST_Node *ArraySubscripting(bool) {
     }
 
     return_value = NewNodeFromSymbol(LITERAL_NODE, NULL, NULL, NULL, symbol);
-  } else if (Match(INT_CONSTANT)) {
+  } else if (Match(INT_LITERAL)) {
     return_value = Literal(UNUSED);
   }
 

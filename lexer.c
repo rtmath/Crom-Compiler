@@ -114,10 +114,10 @@ static Token Hex() {
   while (IsHex(Peek())) Advance();
 
   if (LexemeLength() > (2 + 16)) { // "0x" + up to 16 Hex Digits (0-F)
-    return MakeErrorToken("Hex Constant cannot be more than 64 bits wide");
+    return MakeErrorToken("Hex Literal cannot be more than 64 bits wide");
   }
 
-  return MakeToken(HEX_CONSTANT);
+  return MakeToken(HEX_LITERAL);
 }
 
 static Token Binary() {
@@ -125,14 +125,14 @@ static Token Binary() {
 
   while (Peek() == '0' || Peek() == '1') Advance();
 
-  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Constant");
+  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Literal");
   Advance(); // consume the Peek()'d "'"
 
   if (LexemeLength() > (3 + 64)) { // "b'" + up to 64 0s or 1s + "'"
-    return MakeErrorToken("Binary Constant cannot be more than 64 bits wide");
+    return MakeErrorToken("Binary Literal cannot be more than 64 bits wide");
   }
 
-  return MakeToken(BINARY_CONSTANT);
+  return MakeToken(BINARY_LITERAL);
 }
 
 static Token Number() {
@@ -147,14 +147,14 @@ static Token Number() {
     while (IsNumber(Peek())) Advance();
   }
 
-  return MakeToken((is_float) ? FLOAT_CONSTANT : INT_CONSTANT);
+  return MakeToken((is_float) ? FLOAT_LITERAL: INT_LITERAL);
 }
 
 static Token Char() {
   Advance(); // consume char value
   Advance(); // consume '
 
-  return MakeToken(CHAR_CONSTANT);
+  return MakeToken(CHAR_LITERAL);
 }
 
 static Token String() {
@@ -271,7 +271,7 @@ Token ScanToken() {
     case '&': return MakeToken(Match('=') ? AND_EQUALS : AMPERSAND);
     case '|': return MakeToken(Match('=') ? OR_EQUALS : PIPE);
     case '!': return MakeToken(Match('=') ? NOT_EQUALS : EXCLAM);
-    case '?': return MakeToken(QUESTIONMARK);
+    case '?': return MakeToken(QUESTION_MARK);
     case '<': {
       if (Match('<')) return MakeToken(Match('=') ? LEFT_SHIFT_EQUALS : LEFT_SHIFT);
       return MakeToken(LESS_THAN);
