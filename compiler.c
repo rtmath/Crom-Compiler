@@ -100,6 +100,7 @@ ParseRule Rules[] = {
   [MINUS]          = {  Unary,            Binary,               TERM },
   [ASTERISK]       = {   NULL,            Binary,             FACTOR },
   [DIVIDE]         = {   NULL,            Binary,             FACTOR },
+  [MODULO]         = {   NULL,            Binary,             FACTOR },
 
   // Misc
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
@@ -371,9 +372,10 @@ static AST_Node *Binary(bool) {
     case MINUS:
     case ASTERISK:
     case DIVIDE:
+    case MODULO:
       return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
-      printf("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
+      ERROR_AND_EXIT_FMTMSG("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return NULL;
   }
 }
