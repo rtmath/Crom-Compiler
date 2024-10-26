@@ -14,6 +14,7 @@ static const char* const _NodeTypeTranslation[] =
   [FUNCTION_RETURN_TYPE_NODE] = "RETURN TYPE",
   [FUNCTION_PARAM_NODE] = "FUNCTION PARAM",
   [FUNCTION_BODY_NODE] = "FUNCTION BODY",
+  [ASSIGNMENT_NODE] = "ASSIGNMENT",
 };
 
 const char *NodeTypeTranslation(NodeType t) {
@@ -103,7 +104,7 @@ static void PrintASTRecurse(AST_Node *node, int depth) {
 
   char buf[100] = {0};
   int i = 0;
-  for (; i < depth * 4 && i + node->token.length < 100; i++) {
+  for (; i < depth * 2 && i + node->token.length < 100; i++) {
     buf[i] = ' ';
   }
   buf[i] = '\0';
