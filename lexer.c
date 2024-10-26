@@ -265,12 +265,12 @@ Token ScanToken() {
     case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);
     case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
     case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
-    //case '`': return MakeToken(TILDE);
+    case '~': return MakeToken(Match('=') ? BITWISE_NOT_EQUALS : TILDE);
     case '`': return SkipToEOF();
     case '^': return MakeToken(Match('=') ? XOR_EQUALS : CIRCUMFLEX);
     case '&': return MakeToken(Match('=') ? AND_EQUALS : AMPERSAND);
     case '|': return MakeToken(Match('=') ? OR_EQUALS : PIPE);
-    case '!': return MakeToken(Match('=') ? NOT_EQUALS : EXCLAM);
+    case '!': return MakeToken(Match('=') ? LOGICAL_NOT_EQUALS : EXCLAM);
     case '?': return MakeToken(QUESTION_MARK);
     case '<': {
       if (Match('<')) return MakeToken(Match('=') ? LEFT_SHIFT_EQUALS : LEFT_SHIFT);

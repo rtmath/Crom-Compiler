@@ -44,6 +44,7 @@ static AST_Node *Type(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
+static AST_Node *TerseAssignment(bool unused);
 static AST_Node *Parens(bool unused);
 static AST_Node *Block(bool unused);
 static AST_Node *Expression(bool unused);
@@ -145,6 +146,26 @@ static bool NextTokenIsAnyType() {
   }
 }
 
+static bool NextTokenIsTerseAssignment() {
+  switch (Parser.next.type) {
+    case PLUS_EQUALS:
+    case MINUS_EQUALS:
+    case TIMES_EQUALS:
+    case DIVIDE_EQUALS:
+    case MODULO_EQUALS:
+    case XOR_EQUALS:
+    case AND_EQUALS:
+    case OR_EQUALS:
+    case BITWISE_NOT_EQUALS:
+    case LEFT_SHIFT_EQUALS:
+    case RIGHT_SHIFT_EQUALS:
+    {
+      return true;
+    }
+    default: return false;
+  }
+}
+
 static bool Match(TokenType type) {
   if (!NextTokenIs(type)) return false;
 
@@ -185,6 +206,31 @@ static void ConsumeAnyType(const char *msg, ...) {
   {
     Advance();
     return;
+  }
+
+  va_list args;
+  va_start(args, msg);
+
+  ERROR_AND_EXIT_VALIST(msg, args);
+
+  va_end(args);
+}
+
+static void ConsumeAnyTerseAssignment(const char *msg, ...) {
+  if (NextTokenIs(PLUS_EQUALS)        ||
+      NextTokenIs(MINUS_EQUALS)       ||
+      NextTokenIs(TIMES_EQUALS)       ||
+      NextTokenIs(DIVIDE_EQUALS)      ||
+      NextTokenIs(MODULO_EQUALS)      ||
+      NextTokenIs(XOR_EQUALS)         ||
+      NextTokenIs(AND_EQUALS)         ||
+      NextTokenIs(OR_EQUALS)          ||
+      NextTokenIs(BITWISE_NOT_EQUALS) ||
+      NextTokenIs(LEFT_SHIFT_EQUALS)  ||
+      NextTokenIs(RIGHT_SHIFT_EQUALS))
+  {
+     Advance();
+     return;
   }
 
   va_list args;
@@ -343,6 +389,16 @@ static AST_Node *Identifier(bool can_assign) {
     return NewNodeFromToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
   }
 
+  if (NextTokenIsTerseAssignment()) {
+    ConsumeAnyTerseAssignment("Identifier() Terse Assignment: How did this error message appear?");
+    if (symbol.declaration_type != DECL_DEFINED) {
+      ERROR_AND_EXIT_FMTMSG("Cannot perform a terse assignment on undefined variable '%.*s'",
+                            remember_token.length,
+                            remember_token.position_in_source);
+    }
+    return NewNodeFromToken(ASSIGNMENT_NODE, TerseAssignment(UNUSED), NULL, NULL, remember_token, NoAnnotation());
+  }
+
   Symbol s = RetrieveFrom(SYMBOL_TABLE, remember_token);
   return NewNodeFromSymbol(LITERAL_NODE, NULL, array_index, NULL, s);
 }
@@ -376,6 +432,31 @@ static AST_Node *Binary(bool) {
       return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, remember_token, NoAnnotation());
     default:
       ERROR_AND_EXIT_FMTMSG("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
+      return NULL;
+  }
+}
+
+static AST_Node *TerseAssignment(bool) {
+  Token remember_token = Parser.current;
+
+  Precedence precedence = Rules[Parser.current.type].precedence;
+  AST_Node *parse_result = Parse(precedence + 1);
+
+  switch(remember_token.type) {
+    case PLUS_EQUALS:
+    case MINUS_EQUALS:
+    case TIMES_EQUALS:
+    case DIVIDE_EQUALS:
+    case MODULO_EQUALS:
+    case XOR_EQUALS:
+    case AND_EQUALS:
+    case OR_EQUALS:
+    case BITWISE_NOT_EQUALS:
+    case LEFT_SHIFT_EQUALS:
+    case RIGHT_SHIFT_EQUALS:
+      return NewNodeFromToken(ASSIGNMENT_NODE, NULL, NULL, parse_result, remember_token, NoAnnotation());
+    default:
+      ERROR_AND_EXIT_FMTMSG("TerseAssignment(): Unknown operator '%s'\n", TokenTypeTranslation(remember_token.type));
       return NULL;
   }
 }
