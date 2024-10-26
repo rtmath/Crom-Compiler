@@ -11,7 +11,7 @@
 #include "lexer.h"
 #include "symbol_table.h"
 
-HashTable *SymbolTable;
+SymbolTable *SYMBOL_TABLE;
 
 #define UNUSED false
 #define CAN_ASSIGN true
@@ -55,7 +55,7 @@ static AST_Node *Struct(bool unused);
 static AST_Node *Literal(bool unused);
 
 /* Other Forward Declarations */
-static AST_Node *FunctionDeclaration(HT_Entry symbol);
+static AST_Node *FunctionDeclaration(Symbol symbol);
 
 ParseRule Rules[] = {
   // Type Keywords
@@ -264,18 +264,18 @@ static AST_Node *Type(bool) {
   }
 
   if (NextTokenIs(IDENTIFIER)) {
-    if (IsIn(SymbolTable, Parser.next)) {
-      HT_Entry e = RetrieveFrom(SymbolTable, Parser.next);
+    if (IsIn(SYMBOL_TABLE, Parser.next)) {
+      Symbol s = RetrieveFrom(SYMBOL_TABLE, Parser.next);
       ERROR_AND_EXIT_FMTMSG("Type(): Re-declaration of identifier '%.*s', previously declared on line %d\n",
                             Parser.next.length,
                             Parser.next.position_in_source,
-                            e.annotation.declared_on_line);
+                            s.annotation.declared_on_line);
     }
 
     ParserAnnotation a = AnnotateType(remember_token.type);
     a.is_array = is_array;
     a.array_size = array_size;
-    AddTo(SymbolTable, Entry(Parser.next, a, DECL_DECLARED));
+    AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, a, DECL_DECLARED));
   }
 
   Consume(IDENTIFIER, "Type(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
@@ -286,8 +286,8 @@ static AST_Node *Type(bool) {
 }
 
 static AST_Node *Identifier(bool can_assign) {
-  HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
-  bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
+  Symbol symbol = RetrieveFrom(SYMBOL_TABLE, Parser.current);
+  bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.current);
   AST_Node *array_index = NULL;
   Token remember_token = Parser.current;
 
@@ -300,8 +300,8 @@ static AST_Node *Identifier(bool can_assign) {
                               symbol.annotation.declared_on_line);
       }
 
-      if (!is_in_symbol_table) AddTo(SymbolTable, Entry(remember_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
-      symbol = RetrieveFrom(SymbolTable, remember_token);
+      if (!is_in_symbol_table) AddTo(SYMBOL_TABLE, NewSymbol(remember_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
+      symbol = RetrieveFrom(SYMBOL_TABLE, remember_token);
 
       return FunctionDeclaration(symbol);
     } else { // Function call
@@ -327,13 +327,13 @@ static AST_Node *Identifier(bool can_assign) {
                             remember_token.position_in_source);
     }
 
-    AddTo(SymbolTable, Entry(remember_token, symbol.annotation, DECL_DEFINED));
+    AddTo(SYMBOL_TABLE, NewSymbol(remember_token, symbol.annotation, DECL_DEFINED));
     return NewNodeFromToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
   }
 
   if (NextTokenIs(SEMICOLON)) {
     if (symbol.declaration_type == DECL_NONE && can_assign) {
-      HT_Entry already_declared = RetrieveFrom(SymbolTable, remember_token);
+      Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, remember_token);
       ERROR_AND_EXIT_FMTMSG("Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                             remember_token.length,
                             remember_token.position_in_source,
@@ -343,8 +343,8 @@ static AST_Node *Identifier(bool can_assign) {
     return NewNodeFromToken(IDENTIFIER_NODE, NULL, array_index, NULL, remember_token, symbol.annotation);
   }
 
-  HT_Entry e = RetrieveFrom(SymbolTable, remember_token);
-  return NewNodeFromToken(LITERAL_NODE, NULL, array_index, NULL, e.token, e.annotation);
+  Symbol s = RetrieveFrom(SYMBOL_TABLE, remember_token);
+  return NewNodeFromToken(LITERAL_NODE, NULL, array_index, NULL, s.token, s.annotation);
 }
 
 static AST_Node *Unary(bool) {
@@ -452,8 +452,8 @@ static AST_Node *ArraySubscripting(bool) {
   AST_Node *return_value = NULL;
 
   if (Match(IDENTIFIER)) {
-    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.current);
-    bool is_in_symbol_table = IsIn(SymbolTable, Parser.current);
+    Symbol symbol = RetrieveFrom(SYMBOL_TABLE, Parser.current);
+    bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.current);
 
     if (!is_in_symbol_table) {
       ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
@@ -484,8 +484,8 @@ static AST_Node *EnumBlock() {
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %.*s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    HT_Entry symbol = RetrieveFrom(SymbolTable, Parser.next);
-    bool is_in_symbol_table = IsIn(SymbolTable, Parser.next);
+    Symbol symbol = RetrieveFrom(SYMBOL_TABLE, Parser.next);
+    bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.next);
 
     if (is_in_symbol_table) {
       ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
@@ -494,7 +494,7 @@ static AST_Node *EnumBlock() {
                             symbol.annotation.declared_on_line);
     }
 
-    AddTo(SymbolTable, Entry(Parser.next, NoAnnotation(), DECL_DEFINED));
+    AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, NoAnnotation(), DECL_DEFINED));
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
@@ -513,7 +513,7 @@ static AST_Node *EnumBlock() {
 }
 
 static AST_Node *Enum(bool) {
-  AddTo(SymbolTable, Entry(Parser.next, AnnotateType(Parser.current.type), DECL_DECLARED));
+  AddTo(SYMBOL_TABLE, NewSymbol(Parser.next, AnnotateType(Parser.current.type), DECL_DECLARED));
 
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
@@ -531,18 +531,18 @@ static AST_Node *Struct() {
           TokenTypeTranslation(Parser.current.type),
           TokenTypeTranslation(Parser.next.type));
 
-  if (IsIn(SymbolTable, remember_token)) {
-    HT_Entry existing_struct = RetrieveFrom(SymbolTable, remember_token);
+  if (IsIn(SYMBOL_TABLE, remember_token)) {
+    Symbol existing_struct = RetrieveFrom(SYMBOL_TABLE, remember_token);
     ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
       remember_token.length,
       remember_token.position_in_source,
       existing_struct.annotation.declared_on_line);
   }
-  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_DECLARED));
-  HT_Entry symbol = RetrieveFrom(SymbolTable, remember_token);
+  AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DECLARED));
+  Symbol symbol = RetrieveFrom(SYMBOL_TABLE, remember_token);
 
-  HashTable *symbol_table = SymbolTable;
-  SymbolTable = symbol.struct_fields;
+  SymbolTable *symbol_table = SYMBOL_TABLE;
+  SYMBOL_TABLE = symbol.struct_fields;
 
   Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%.*s' instead",
           TokenTypeTranslation(Parser.next.type));
@@ -560,13 +560,13 @@ static AST_Node *Struct() {
   Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%.*s' instead",
           TokenTypeTranslation(Parser.next.type));
 
-  SymbolTable = symbol_table;
+  SYMBOL_TABLE = symbol_table;
 
-  AddTo(SymbolTable, Entry(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
+  AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
   return NewNodeFromToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
 }
 
-static AST_Node *FunctionParams(HashTable *fn_params) {
+static AST_Node *FunctionParams(SymbolTable *fn_params) {
   AST_Node *params = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &params;
 
@@ -578,7 +578,7 @@ static AST_Node *FunctionParams(HashTable *fn_params) {
             TokenTypeTranslation(Parser.next.type));
     Token identifier_token = Parser.current;
 
-    AddTo(fn_params, Entry(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+    AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
 
     (*current)->nodes[LEFT] = NewNodeFromToken(IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(type_token.type));
     (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
@@ -601,7 +601,7 @@ static AST_Node *FunctionReturnType() {
   return NewNodeFromToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
 }
 
-static AST_Node *FunctionBody(HashTable *fn_params) {
+static AST_Node *FunctionBody(SymbolTable *fn_params) {
   if (NextTokenIs(SEMICOLON)) { return NULL; }
 
   Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
@@ -609,8 +609,8 @@ static AST_Node *FunctionBody(HashTable *fn_params) {
   AST_Node *body = NewNodeWithArity(FUNCTION_BODY_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &body;
 
-  HashTable *remember_symbol_table = SymbolTable;
-  SymbolTable = fn_params;
+  SymbolTable *remember_symbol_table = SYMBOL_TABLE;
+  SYMBOL_TABLE = fn_params;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->nodes[LEFT] = Statement(UNUSED);
@@ -619,33 +619,33 @@ static AST_Node *FunctionBody(HashTable *fn_params) {
     current = &(*current)->nodes[RIGHT];
   }
 
-  SymbolTable = remember_symbol_table;
+  SYMBOL_TABLE = remember_symbol_table;
 
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
 
   return body;
 }
 
-static AST_Node *FunctionDeclaration(HT_Entry symbol) {
+static AST_Node *FunctionDeclaration(Symbol symbol) {
   AST_Node *params = FunctionParams(symbol.fn_params);
   AST_Node *return_type = FunctionReturnType();
   AST_Node *body = FunctionBody(symbol.fn_params);
 
   if ((symbol.declaration_type == DECL_DECLARED) && body == NULL) {
-    HT_Entry already_declared = RetrieveFrom(SymbolTable, symbol.token);
+    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, symbol.token);
     ERROR_AND_EXIT_FMTMSG("Double declaration of function '%.*s' (declared on line %d)\n",
                           symbol.token.length,
                           symbol.token.position_in_source,
                           already_declared.annotation.declared_on_line);
   }
 
-  HT_Entry stored_symbol = AddTo(SymbolTable, Entry(symbol.token,
-                                                    (symbol.declaration_type == DECL_DECLARED)
-                                                      ? symbol.annotation
-                                                      : FunctionAnnotation(return_type->token.type),
-                                                    (body == NULL)
-                                                      ? DECL_DECLARED
-                                                      : DECL_DEFINED));
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(symbol.token,
+                                                      (symbol.declaration_type == DECL_DECLARED)
+                                                        ? symbol.annotation
+                                                        : FunctionAnnotation(return_type->token.type),
+                                                      (body == NULL)
+                                                        ? DECL_DECLARED
+                                                        : DECL_DEFINED));
 
   return NewNodeFromToken(FUNCTION_NODE, return_type, params, body, stored_symbol.token, stored_symbol.annotation);
 }
@@ -679,7 +679,7 @@ static AST_Node *BuildAST() {
 void Compile(const char *source) {
   InitLexer(source);
   InitParser();
-  SymbolTable = NewHashTable();
+  SYMBOL_TABLE = NewSymbolTable();
 
   AST_Node *ast = BuildAST();
 
