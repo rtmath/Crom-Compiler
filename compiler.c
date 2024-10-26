@@ -327,8 +327,8 @@ static AST_Node *Identifier(bool can_assign) {
                             remember_token.position_in_source);
     }
 
-    AddTo(SYMBOL_TABLE, NewSymbol(remember_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeFromToken(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, remember_token, symbol.annotation);
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(remember_token, symbol.annotation, DECL_DEFINED));
+    return NewNodeFromSymbol(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, stored_symbol);
   }
 
   if (NextTokenIs(SEMICOLON)) {
@@ -344,7 +344,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   Symbol s = RetrieveFrom(SYMBOL_TABLE, remember_token);
-  return NewNodeFromToken(LITERAL_NODE, NULL, array_index, NULL, s.token, s.annotation);
+  return NewNodeFromSymbol(LITERAL_NODE, NULL, array_index, NULL, s);
 }
 
 static AST_Node *Unary(bool) {
@@ -467,7 +467,7 @@ static AST_Node *ArraySubscripting(bool) {
                             Parser.current.position_in_source);
     }
 
-    return_value = NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, symbol.token, NoAnnotation());
+    return_value = NewNodeFromSymbol(LITERAL_NODE, NULL, NULL, NULL, symbol);
   } else if (Match(INT_CONSTANT)) {
     return_value = Literal(UNUSED);
   }
@@ -562,8 +562,8 @@ static AST_Node *Struct() {
 
   SYMBOL_TABLE = symbol_table;
 
-  AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
-  return NewNodeFromToken(IDENTIFIER_NODE, n, NULL, NULL, remember_token, AnnotateType(STRUCT));
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(remember_token, AnnotateType(STRUCT), DECL_DEFINED));
+  return NewNodeFromSymbol(IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params) {
@@ -647,7 +647,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
                                                         ? DECL_DECLARED
                                                         : DECL_DEFINED));
 
-  return NewNodeFromToken(FUNCTION_NODE, return_type, params, body, stored_symbol.token, stored_symbol.annotation);
+  return NewNodeFromSymbol(FUNCTION_NODE, return_type, params, body, stored_symbol);
 }
 
 static AST_Node *Literal(bool) {
