@@ -618,9 +618,9 @@ static AST_Node *ForStmt(bool) {
   AST_Node *body = Block(UNUSED);
   AST_Node **find_last_body_statement = &body;
 
-  while ((*find_last_body_statement)->nodes[LEFT] != NULL) find_last_body_statement = &(*find_last_body_statement)->nodes[LEFT];
+  while ((*find_last_body_statement)->nodes[RIGHT] != NULL) find_last_body_statement = &(*find_last_body_statement)->nodes[RIGHT];
 
-  (*find_last_body_statement)->nodes[LEFT] = after_loop;
+  (*find_last_body_statement)->nodes[RIGHT] = after_loop;
 
   AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
   return NewNode(STATEMENT_NODE, initialization, NULL, while_node, NoAnnotation());
