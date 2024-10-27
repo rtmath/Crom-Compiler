@@ -55,6 +55,7 @@ static AST_Node *Expression(bool unused);
 static AST_Node *Statement(bool unused);
 static AST_Node *IfStmt(bool unused);
 static AST_Node *WhileStmt(bool unused);
+static AST_Node *ForStmt(bool unused);
 static AST_Node *Break(bool unused);
 static AST_Node *Continue(bool unused);
 static AST_Node *Return(bool unused);
@@ -544,6 +545,7 @@ static AST_Node *Expression(bool) {
 static AST_Node *Statement(bool) {
   if (Match(IF)) return IfStmt(UNUSED);
   if (Match(WHILE)) return WhileStmt(UNUSED);
+  if (Match(FOR)) return ForStmt(UNUSED);
 
   AST_Node *expr_result = Expression(UNUSED);
 
@@ -600,6 +602,26 @@ static AST_Node *WhileStmt(bool) {
   AST_Node *block = Block(UNUSED);
 
   return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
+}
+
+static AST_Node *ForStmt(bool) {
+  Consume(LPAREN, "Expected '(' after For, got '%s instead", TokenTypeTranslation(Parser.next.type));
+
+  AST_Node *initialization = Statement(UNUSED);
+  AST_Node *condition = Statement(UNUSED);
+  AST_Node *after_loop = Expression(UNUSED);
+
+  Consume(RPAREN, "Expected ')' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(LCURLY, "Expected '{' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  AST_Node *body = Block(UNUSED);
+  AST_Node **find_last_body_statement = &body;
+
+  while ((*find_last_body_statement)->nodes[LEFT] != NULL) find_last_body_statement = &(*find_last_body_statement)->nodes[LEFT];
+
+  (*find_last_body_statement)->nodes[LEFT] = after_loop;
+
+  AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
+  return NewNode(STATEMENT_NODE, initialization, NULL, while_node, NoAnnotation());
 }
 
 static AST_Node *Break(bool) {

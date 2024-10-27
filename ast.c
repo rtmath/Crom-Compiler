@@ -9,6 +9,7 @@ static const char* const _NodeTypeTranslation[] =
   [UNTYPED] = "UNTYPED",
   [START_NODE] = "START",
   [CHAIN_NODE] = "---",
+  [STATEMENT_NODE] = "STATEMENT",
   [IF_NODE] = "IF",
   [WHILE_NODE] = "WHILE",
   [BREAK_NODE] = "BREAK",
