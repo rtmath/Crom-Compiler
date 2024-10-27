@@ -23,14 +23,15 @@ struct {
 
 typedef enum {
   PREC_EOF = -1,
-  NO_PRECEDENCE,
-  ASSIGNMENT,
-  LOGICAL,
-  BITWISE,
-  TERM,
-  FACTOR,
-  UNARY,
-  ARRAY_SUBSCRIPTING,
+  NO_PRECEDENCE = 0,
+  ASSIGNMENT = 1,
+  LOGICAL = 2,
+  BITWISE = 3,
+  TERM = 4,
+  FACTOR = 5,
+  UNARY = 6,
+  PREFIX_INCREMENT = 7, PREFIX_DECREMENT = 7,
+  ARRAY_SUBSCRIPTING = 8,
 } Precedence;
 
 typedef AST_Node* (*ParseFn)(bool);
@@ -111,6 +112,9 @@ ParseRule Rules[] = {
   [ASTERISK]       = {   NULL, Binary, FACTOR },
   [DIVIDE]         = {   NULL, Binary, FACTOR },
   [MODULO]         = {   NULL, Binary, FACTOR },
+
+  [PLUS_PLUS]      = {  Unary, NULL, PREFIX_INCREMENT },
+  [MINUS_MINUS]    = {  Unary, NULL, PREFIX_DECREMENT },
 
   // Misc
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
@@ -377,6 +381,26 @@ static AST_Node *Identifier(bool can_assign) {
     array_index = ArraySubscripting(UNUSED);
   }
 
+  if (Match(PLUS_PLUS)) {
+    if (symbol.declaration_type != DECL_DEFINED) {
+      ERROR_AND_EXIT_FMTMSG("Cannot increment undefined variable '%.*s",
+                            remember_token.length,
+                            remember_token.position_in_source);
+    }
+
+    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, remember_token, NoAnnotation());
+  }
+
+  if (Match(MINUS_MINUS)) {
+    if (symbol.declaration_type != DECL_DEFINED) {
+      ERROR_AND_EXIT_FMTMSG("Cannot decrement undefined variable '%.*s",
+                            remember_token.length,
+                            remember_token.position_in_source);
+    }
+
+    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, remember_token, NoAnnotation());
+  }
+
   if (Match(EQUALS)) {
     if (!can_assign) {
       ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot assign to identifier '%.*s'",
@@ -417,8 +441,13 @@ static AST_Node *Identifier(bool can_assign) {
 static AST_Node *Unary(bool) {
   Token remember_token = Parser.current;
   AST_Node *parse_result = Parse(UNARY);
+  PrintToken(remember_token);
 
   switch(remember_token.type) {
+    case PLUS_PLUS:
+      return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, remember_token, NoAnnotation());
+    case MINUS_MINUS:
+      return NewNodeFromToken(POSTFIX_INCREMENT_NODE, parse_result, NULL, NULL, remember_token, NoAnnotation());
     case LOGICAL_NOT:
     case MINUS:
       return NewNodeFromToken(UNTYPED, parse_result, NULL, NULL, remember_token, NoAnnotation());
