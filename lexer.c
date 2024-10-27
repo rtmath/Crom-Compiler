@@ -8,12 +8,14 @@ struct {
   const char *start;
   const char *end;
   int current_line;
+  const char *src_filename;
 } Lexer;
 
-void InitLexer(const char *source) {
-  Lexer.start = source;
-  Lexer.end = source;
+void InitLexer(const char *filename, const char *contents) {
+  Lexer.start = contents;
+  Lexer.end = contents;
   Lexer.current_line = 1;
+  Lexer.src_filename = filename;
 }
 
 static int LexemeLength() {
@@ -94,6 +96,7 @@ static Token MakeErrorToken(const char *msg) {
   t.position_in_source = msg;
   t.length = (int)strlen(msg);
   t.on_line = Lexer.current_line;
+  t.from_filename = Lexer.src_filename;
 
   return t;
 }
@@ -104,6 +107,7 @@ static Token MakeToken(TokenType type) {
   t.position_in_source = Lexer.start;
   t.length = Lexer.end - Lexer.start;
   t.on_line = Lexer.current_line;
+  t.from_filename = Lexer.src_filename;
 
   return t;
 }

@@ -8,6 +8,7 @@ typedef struct {
   const char *position_in_source;
   int length;
   int on_line;
+  const char *from_filename;
 } Token;
 
 void InlinePrintToken(Token t);

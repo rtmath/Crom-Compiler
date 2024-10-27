@@ -3,7 +3,7 @@
 
 #include "token.h"
 
-void InitLexer(const char* filename);
+void InitLexer(const char *filename, const char *contents);
 Token ScanToken();
 
 #endif

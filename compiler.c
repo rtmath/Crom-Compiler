@@ -4,8 +4,8 @@
 #include "lexer.h"
 #include "parser.h"
 
-void Compile(const char *source) {
-  InitLexer(source);
+void Compile(const char *filename, const char *source) {
+  InitLexer(filename, source);
   InitParser();
   AST_Node *ast = ParserBuildAST();
 

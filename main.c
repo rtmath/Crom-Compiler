@@ -8,7 +8,7 @@ int main(void) {
   char *contents = NULL;
   ReadFile(filename, &contents);
 
-  Compile(contents);
+  Compile(filename, contents);
 
   return 0;
 }
