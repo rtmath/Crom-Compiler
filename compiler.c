@@ -54,6 +54,10 @@ static AST_Node *Block(bool unused);
 static AST_Node *Expression(bool unused);
 static AST_Node *Statement(bool unused);
 static AST_Node *IfStmt(bool unused);
+static AST_Node *WhileStmt(bool unused);
+static AST_Node *Break(bool unused);
+static AST_Node *Continue(bool unused);
+static AST_Node *Return(bool unused);
 static AST_Node *ArraySubscripting(bool unused);
 static AST_Node *Enum(bool unused);
 static AST_Node *Struct(bool unused);
@@ -84,6 +88,10 @@ ParseRule Rules[] = {
   [VOID]           = {   Type,   NULL, NO_PRECEDENCE },
   [ENUM]           = {   Enum,   NULL, NO_PRECEDENCE },
   [STRUCT]         = { Struct,   NULL, NO_PRECEDENCE },
+
+  [BREAK]          = { Break,    NULL, NO_PRECEDENCE },
+  [CONTINUE]       = { Continue, NULL, NO_PRECEDENCE },
+  [RETURN]         = { Return,   NULL, NO_PRECEDENCE },
 
   [IDENTIFIER]     = { Identifier, NULL, NO_PRECEDENCE },
 
@@ -535,6 +543,7 @@ static AST_Node *Expression(bool) {
 
 static AST_Node *Statement(bool) {
   if (Match(IF)) return IfStmt(UNUSED);
+  if (Match(WHILE)) return WhileStmt(UNUSED);
 
   AST_Node *expr_result = Expression(UNUSED);
 
@@ -576,13 +585,47 @@ static AST_Node *IfStmt(bool) {
 }
 
 static AST_Node *TernaryIfStmt(AST_Node *condition) {
-  Consume(QUESTION_MARK, "");
+  Consume(QUESTION_MARK, "Expected '?' after Ternary Condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_true = Expression(UNUSED);
 
-  Consume(COLON, "");
+  Consume(COLON, "Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_false = Expression(UNUSED);
 
   return NewNode(IF_NODE, condition, if_true, if_false, NoAnnotation());
+}
+
+static AST_Node *WhileStmt(bool) {
+  AST_Node *condition = Expression(UNUSED);
+  Consume(LCURLY, "Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  AST_Node *block = Block(UNUSED);
+
+  return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
+}
+
+static AST_Node *Break(bool) {
+  if (!NextTokenIs(SEMICOLON)) {
+    ERROR_AND_EXIT_FMTMSG("Expected ';' after Break, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  }
+
+  return NewNode(BREAK_NODE, NULL, NULL, NULL, NoAnnotation());
+}
+
+static AST_Node *Continue(bool) {
+  if (!NextTokenIs(SEMICOLON)) {
+    ERROR_AND_EXIT_FMTMSG("Expected ';' after Continue, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  }
+
+  return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoAnnotation());
+}
+
+static AST_Node *Return(bool) {
+  AST_Node *expr = NULL;
+
+  if (!NextTokenIs(SEMICOLON)) {
+    expr = Expression(UNUSED);
+  }
+
+  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? AnnotateType(VOID) : expr->annotation);
 }
 
 static AST_Node *Parens(bool) {
