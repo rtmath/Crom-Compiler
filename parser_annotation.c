@@ -17,13 +17,22 @@ ParserAnnotation NoAnnotation() {
 }
 
 static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
-  (a.is_function)
-  ? printf("[Fn :: %s%d]", s, a.bit_width)
-  : (a.is_array)
-    ? printf("[%s[%d]]}", s, a.array_size)
-    : (a.bit_width > 0)
-      ? printf("[%s%d]", s, a.bit_width)
-      : printf("[%s]", s);
+  if (a.is_function) {
+    printf("Fn :: %s%d", s, a.bit_width);
+    return;
+  }
+
+  if (a.is_array) {
+    (a.bit_width > 0)
+    ? printf("%s%d[%d]", s, a.bit_width, a.array_size)
+    : printf("%s[%d]", s, a.array_size);
+
+    return;
+  }
+
+  (a.bit_width > 0)
+  ? printf("%s%d", s, a.bit_width)
+  : printf("%s", s);
 }
 
 void InlinePrintAnnotation(ParserAnnotation a) {
