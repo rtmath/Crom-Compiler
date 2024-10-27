@@ -366,7 +366,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(LPAREN)) {
     if (NextTokenIsAnyType()) { // Declaration
       if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
-        ERROR_AND_EXIT_FMTMSG("Function '%.*s' has been redeclared, original declaration on line %d\n",
+        ERROR_AND_EXIT_FMTMSG("Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
                               identifier_token.length,
                               identifier_token.position_in_source,
                               symbol.annotation.declared_on_line);
@@ -394,7 +394,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(PLUS_PLUS)) {
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Cannot increment undefined variable '%.*s",
+      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot increment undefined variable '%.*s",
                             identifier_token.length,
                             identifier_token.position_in_source);
     }
@@ -404,7 +404,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(MINUS_MINUS)) {
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Cannot decrement undefined variable '%.*s",
+      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot decrement undefined variable '%.*s",
                             identifier_token.length,
                             identifier_token.position_in_source);
     }
@@ -438,7 +438,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (NextTokenIsTerseAssignment()) {
     ConsumeAnyTerseAssignment("Identifier() Terse Assignment: How did this error message appear?");
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Cannot perform a terse assignment on undefined variable '%.*s'",
+      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
                             identifier_token.length,
                             identifier_token.position_in_source);
     }
@@ -589,10 +589,10 @@ static AST_Node *IfStmt(bool) {
 }
 
 static AST_Node *TernaryIfStmt(AST_Node *condition) {
-  Consume(QUESTION_MARK, "Expected '?' after Ternary Condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(QUESTION_MARK, "TernaryIfStmt(): Expected '?' after Ternary Condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_true = Expression(UNUSED);
 
-  Consume(COLON, "Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(COLON, "TernaryIfStmt(): Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_false = Expression(UNUSED);
 
   return NewNode(IF_NODE, condition, if_true, if_false, NoAnnotation());
@@ -600,21 +600,21 @@ static AST_Node *TernaryIfStmt(AST_Node *condition) {
 
 static AST_Node *WhileStmt(bool) {
   AST_Node *condition = Expression(UNUSED);
-  Consume(LCURLY, "Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(LCURLY, "WhileStmt(): Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *block = Block(UNUSED);
 
   return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
 }
 
 static AST_Node *ForStmt(bool) {
-  Consume(LPAREN, "Expected '(' after For, got '%s instead", TokenTypeTranslation(Parser.next.type));
+  Consume(LPAREN, "ForStmt(): Expected '(' after For, got '%s instead", TokenTypeTranslation(Parser.next.type));
 
   AST_Node *initialization = Statement(UNUSED);
   AST_Node *condition = Statement(UNUSED);
   AST_Node *after_loop = Expression(UNUSED);
 
-  Consume(RPAREN, "Expected ')' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  Consume(LCURLY, "Expected '{' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(RPAREN, "ForStmt(): Expected ')' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+  Consume(LCURLY, "ForStmt(): Expected '{' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *body = Block(UNUSED);
   AST_Node **find_last_body_statement = &body;
 
@@ -628,7 +628,7 @@ static AST_Node *ForStmt(bool) {
 
 static AST_Node *Break(bool) {
   if (!NextTokenIs(SEMICOLON)) {
-    ERROR_AND_EXIT_FMTMSG("Expected ';' after Break, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    ERROR_AND_EXIT_FMTMSG("Break(): Expected ';' after Break, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   }
 
   return NewNode(BREAK_NODE, NULL, NULL, NULL, NoAnnotation());
@@ -636,7 +636,7 @@ static AST_Node *Break(bool) {
 
 static AST_Node *Continue(bool) {
   if (!NextTokenIs(SEMICOLON)) {
-    ERROR_AND_EXIT_FMTMSG("Expected ';' after Continue, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    ERROR_AND_EXIT_FMTMSG("Continue(): Expected ';' after Continue, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   }
 
   return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoAnnotation());
@@ -671,13 +671,13 @@ static AST_Node *ArraySubscripting(bool) {
     bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.current);
 
     if (!is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("Can't access array with undeclared identifier '%.*s'",
+      ERROR_AND_EXIT_FMTMSG("ArraySubscripting(): Can't access array with undeclared identifier '%.*s'",
                             Parser.current.length,
                             Parser.current.position_in_source);
     }
 
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Can't access array with uninitialized identifier '%.*s'",
+      ERROR_AND_EXIT_FMTMSG("ArraySubscripting(): Can't access array with uninitialized identifier '%.*s'",
                             Parser.current.length,
                             Parser.current.position_in_source);
     }
@@ -747,7 +747,7 @@ static AST_Node *Struct() {
 
   if (IsIn(SYMBOL_TABLE, identifier_token)) {
     Symbol existing_struct = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-    ERROR_AND_EXIT_FMTMSG("Struct '%.*s' is already in symbol table, declared on line %d\n",
+    ERROR_AND_EXIT_FMTMSG("Struct(): Struct '%.*s' is already in symbol table, declared on line %d\n",
       identifier_token.length,
       identifier_token.position_in_source,
       existing_struct.annotation.declared_on_line);
@@ -859,7 +859,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
 
   if ((symbol.declaration_type == DECL_DECLARED) && body == NULL) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, symbol.token);
-    ERROR_AND_EXIT_FMTMSG("Double declaration of function '%.*s' (declared on line %d)\n",
+    ERROR_AND_EXIT_FMTMSG("FunctionDeclaration(): Double declaration of function '%.*s' (declared on line %d)\n",
                           symbol.token.length,
                           symbol.token.position_in_source,
                           already_declared.annotation.declared_on_line);
@@ -888,7 +888,7 @@ AST_Node *ParserBuildAST() {
   while (!Match(TOKEN_EOF)) {
     AST_Node *parse_result = Statement(UNUSED);
     if (parse_result == NULL) {
-      ERROR_AND_EXIT("BuildAST(): AST could not be created");
+      ERROR_AND_EXIT("ParserBuildAST(): AST could not be created");
     }
 
     AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
