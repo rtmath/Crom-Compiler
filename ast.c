@@ -7,23 +7,31 @@
 static const char* const _NodeTypeTranslation[] =
 {
   [UNTYPED] = "UNTYPED",
-  [START_NODE] = "START",
-  [CHAIN_NODE] = "---",
-  [STATEMENT_NODE] = "STATEMENT",
-  [IF_NODE] = "IF",
-  [WHILE_NODE] = "WHILE",
-  [BREAK_NODE] = "BREAK",
-  [CONTINUE_NODE] = "CONTINUE",
-  [RETURN_NODE] = "RETURN",
-  [FUNCTION_NODE] = "FUNCTION",
-  [FUNCTION_RETURN_TYPE_NODE] = "RETURN TYPE",
-  [FUNCTION_PARAM_NODE] = "FUNCTION PARAM",
-  [FUNCTION_BODY_NODE] = "FUNCTION BODY",
-  [ASSIGNMENT_NODE] = "ASSIGNMENT",
-  [PREFIX_INCREMENT_NODE] = "++INCREMENT",
-  [PREFIX_DECREMENT_NODE] = "--DECREMENT",
-  [POSTFIX_INCREMENT_NODE] = "INCREMENT++",
-  [POSTFIX_DECREMENT_NODE] = "DECREMENT--",
+  [START_NODE] = "Start",
+  [CHAIN_NODE] = "",
+  [STATEMENT_NODE] = "Statement",
+  [IDENTIFIER_NODE] = "Identifier",
+
+  [IF_NODE] = "If",
+  [WHILE_NODE] = "While",
+
+  [BREAK_NODE] = "Break",
+  [CONTINUE_NODE] = "Continue",
+  [RETURN_NODE] = "Return",
+
+  [FUNCTION_NODE] = "Function",
+  [FUNCTION_RETURN_TYPE_NODE] = "Return Type",
+  [FUNCTION_PARAM_NODE] = "Function Param",
+  [FUNCTION_BODY_NODE] = "Function Body",
+
+  [LITERAL_NODE] = "Literal",
+
+  [ASSIGNMENT_NODE] = "Assignment",
+
+  [PREFIX_INCREMENT_NODE] = "++Increment",
+  [PREFIX_DECREMENT_NODE] = "--Decrement",
+  [POSTFIX_INCREMENT_NODE] = "Increment++",
+  [POSTFIX_DECREMENT_NODE] = "Decrement--",
 };
 
 const char *NodeTypeTranslation(NodeType t) {
@@ -89,69 +97,45 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
   return n;
 }
 
-ParserAnnotation NoAnnotation() {
-  ParserAnnotation a = {
-    .ostensible_type = OST_UNKNOWN,
-    .bit_width = 0,
-    .is_signed = 0,
-    .declared_on_line = -1,
-    .is_array = 0,
-    .array_size = 0,
-  };
+static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
+  #define NUM_INDENT_SPACES 2
 
-  return a;
-}
-
-static void PrintASTRecurse(AST_Node *node, int depth) {
   if (node == NULL) return;
-  if (node->type != FUNCTION_RETURN_TYPE_NODE &&
-      node->type != LITERAL_NODE &&
-      node->type != IDENTIFIER_NODE &&
-      node->type != PREFIX_INCREMENT_NODE &&
-      node->type != PREFIX_DECREMENT_NODE &&
-      node->type != POSTFIX_INCREMENT_NODE &&
-      node->type != POSTFIX_DECREMENT_NODE &&
-      node->nodes[LEFT]   == NULL &&
+  if (node->type == CHAIN_NODE &&
+      node->nodes[LEFT] == NULL &&
       node->nodes[MIDDLE] == NULL &&
-      node->nodes[RIGHT]  == NULL) return;
+      node->nodes[RIGHT] == NULL) return;
 
   char buf[100] = {0};
   int i = 0;
-  for (; i < depth * 2 && i + node->token.length < 100; i++) {
-    buf[i] = ' ';
+  for (; i < (depth * NUM_INDENT_SPACES) - unindent && i + node->token.length < 100; i++) {
+    buf[i] = (i == 0) ? '|' : ' ';
   }
   buf[i] = '\0';
 
-  if (node->token.type == UNINITIALIZED ||
-      node->type == FUNCTION_RETURN_TYPE_NODE ||
-      node->type == FUNCTION_BODY_NODE) {
-    printf("%s%s ", buf, NodeTypeTranslation(node->type));
-    InlinePrintAnnotation(node->annotation);
-    printf("\n");
-  } else if (node->type == PREFIX_INCREMENT_NODE ||
-             node->type == PREFIX_DECREMENT_NODE ||
-             node->type == POSTFIX_INCREMENT_NODE ||
-             node->type == POSTFIX_DECREMENT_NODE)
-  {
-    printf("%s%.*s [%s]", buf,
-        node->token.length,
-        node->token.position_in_source,
-        NodeTypeTranslation(node->type));
-    InlinePrintAnnotation(node->annotation);
-    printf("\n");
-  } else {
-    printf("%s%.*s ", buf,
-        node->token.length,
-        node->token.position_in_source);
-    InlinePrintAnnotation(node->annotation);
-    printf("\n");
+  printf("%s", buf);
+  if (node->token.type != UNINITIALIZED) {
+    printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  PrintASTRecurse(node->nodes[LEFT], depth + 1);
-  PrintASTRecurse(node->nodes[MIDDLE], depth + 1);
-  PrintASTRecurse(node->nodes[RIGHT], depth + 1);
+  InlinePrintAnnotation(node->annotation);
+
+  if (node->type != UNTYPED &&
+      node->type != LITERAL_NODE &&
+      node->type != IDENTIFIER_NODE) {
+    printf("%s", NodeTypeTranslation(node->type));
+  }
+
+  printf("\n");
+
+  if (node->type == CHAIN_NODE) unindent += NUM_INDENT_SPACES;
+  PrintASTRecurse(node->nodes[LEFT], depth + 1, unindent);
+  PrintASTRecurse(node->nodes[MIDDLE], depth + 1, unindent);
+  PrintASTRecurse(node->nodes[RIGHT], depth + 1, unindent);
+
+  #undef NUM_INDENT_SPACES
 }
 
 void PrintAST(AST_Node *root) {
-  PrintASTRecurse(root, 0);
+  PrintASTRecurse(root, 0, 0);
 }

@@ -9,6 +9,6 @@ void Compile(const char *source) {
   InitParser();
   AST_Node *ast = ParserBuildAST();
 
-  printf("\n[AST]\n");
+  printf("\n[AST]\n\n");
   PrintAST(ast);
 }

@@ -3,6 +3,19 @@
 #include "error.h"
 #include "parser_annotation.h"
 
+ParserAnnotation NoAnnotation() {
+  ParserAnnotation a = {
+    .ostensible_type = OST_UNKNOWN,
+    .bit_width = 0,
+    .is_signed = 0,
+    .declared_on_line = -1,
+    .is_array = 0,
+    .array_size = 0,
+  };
+
+  return a;
+}
+
 static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
   (a.is_function)
   ? printf("[Fn :: %s%d]", s, a.bit_width)
@@ -21,7 +34,7 @@ void InlinePrintAnnotation(ParserAnnotation a) {
       _InlinePrintAnnotation((a.is_signed) ? "I" : "U", a);
     } break;
     case OST_FLOAT: {
-      _InlinePrintAnnotation("FLOAT", a);
+      _InlinePrintAnnotation("F", a);
     } break;
     case OST_BOOL: {
       _InlinePrintAnnotation("BOOL", a);
