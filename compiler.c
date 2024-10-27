@@ -111,6 +111,7 @@ ParseRule Rules[] = {
   [LPAREN]         = { Parens,              NULL,      NO_PRECEDENCE },
   [LBRACKET]       = {   NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
 
+  [EQUALITY]       = {  NULL, Binary, LOGICAL },
   [LOGICAL_NOT]    = { Unary,   NULL, LOGICAL },
   [LOGICAL_AND]    = {  NULL, Binary, LOGICAL },
   [LOGICAL_OR]     = {  NULL, Binary, LOGICAL },
@@ -479,6 +480,7 @@ static AST_Node *Binary(bool) {
     case ASTERISK:
     case DIVIDE:
     case MODULO:
+    case EQUALITY:
     case LOGICAL_AND:
     case LOGICAL_OR:
     case LESS_THAN:

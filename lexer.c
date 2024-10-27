@@ -288,7 +288,7 @@ Token ScanToken() {
       if (Match('>')) return MakeToken(Match('=') ? BITWISE_RIGHT_SHIFT_EQUALS : BITWISE_RIGHT_SHIFT);
       return MakeToken(GREATER_THAN);
     }
-    case '=': return MakeToken(EQUALS);
+    case '=': return MakeToken(Match('=') ? EQUALITY : EQUALS);
     case '\'': return Char();
     case '"': return String();
     default:
