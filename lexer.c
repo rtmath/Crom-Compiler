@@ -250,7 +250,7 @@ Token ScanToken() {
     case ']': return MakeToken(RBRACKET);
     case '.': return MakeToken(COMMA);
     case ',': return MakeToken(COMMA);
-    case ':': return (Match(':') ? MakeToken(COLON_SEPARATOR) : MakeErrorToken("Invalid token ':'"));
+    case ':': return MakeToken(Match(':') ? COLON_SEPARATOR : COLON);
     case ';': return MakeToken(SEMICOLON);
     case '+': {
       if (Match('=')) return MakeToken(PLUS_EQUALS);

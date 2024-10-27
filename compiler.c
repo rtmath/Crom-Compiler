@@ -25,13 +25,14 @@ typedef enum {
   PREC_EOF = -1,
   NO_PRECEDENCE = 0,
   ASSIGNMENT = 1,
-  LOGICAL = 2,
-  BITWISE = 3,
-  TERM = 4,
-  FACTOR = 5,
-  UNARY = 6,
-  PREFIX_INCREMENT = 7, PREFIX_DECREMENT = 7,
-  ARRAY_SUBSCRIPTING = 8,
+  TERNARY_CONDITIONAL = 2,
+  LOGICAL = 3,
+  BITWISE = 4,
+  TERM = 5,
+  FACTOR = 6,
+  UNARY = 7,
+  PREFIX_INCREMENT = 8, PREFIX_DECREMENT = 8,
+  ARRAY_SUBSCRIPTING = 9,
 } Precedence;
 
 typedef AST_Node* (*ParseFn)(bool);
@@ -441,7 +442,6 @@ static AST_Node *Identifier(bool can_assign) {
 static AST_Node *Unary(bool) {
   Token remember_token = Parser.current;
   AST_Node *parse_result = Parse(UNARY);
-  PrintToken(remember_token);
 
   switch(remember_token.type) {
     case PLUS_PLUS:
@@ -575,9 +575,23 @@ static AST_Node *IfStmt(bool) {
   return NewNode(IF_NODE, condition, body_if_true, body_if_false, NoAnnotation());
 }
 
+static AST_Node *TernaryIfStmt(AST_Node *condition) {
+  Consume(QUESTION_MARK, "");
+  AST_Node *if_true = Expression(UNUSED);
+
+  Consume(COLON, "");
+  AST_Node *if_false = Expression(UNUSED);
+
+  return NewNode(IF_NODE, condition, if_true, if_false, NoAnnotation());
+}
+
 static AST_Node *Parens(bool) {
   AST_Node *parse_result = Expression(UNUSED);
   Consume(RPAREN, "Parens(): Missing ')' after expression");
+
+  if (NextTokenIs(QUESTION_MARK)) {
+    return TernaryIfStmt(parse_result);
+  }
 
   return parse_result;
 }
