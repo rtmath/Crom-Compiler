@@ -5,6 +5,7 @@
 
 #include "ast.h"
 #include "error.h"
+#include "io.h"
 #include "lexer.h"
 #include "symbol_table.h"
 
@@ -134,7 +135,8 @@ static void Advance() {
 
   if (Parser.next.type != ERROR) return;
 
-  ERROR_AND_EXIT_FMTMSG("Advance(): Error token encountered after token '%s': %.*s",
+  ERROR_AT_TOKEN(Parser.current,
+      "Advance(): Error token encountered after token '%s': %.*s",
       TokenTypeTranslation(Parser.current.type),
       Parser.next.length,
       Parser.next.position_in_source);
@@ -205,7 +207,7 @@ static void Consume(TokenType type, const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AND_EXIT_VALIST(msg, args);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -233,7 +235,7 @@ static void ConsumeAnyType(const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AND_EXIT_VALIST(msg, args);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -259,7 +261,7 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AND_EXIT_VALIST(msg, args);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -339,10 +341,12 @@ static AST_Node *Type(bool) {
   if (NextTokenIs(IDENTIFIER)) {
     if (IsIn(SYMBOL_TABLE, Parser.next)) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE, Parser.next);
-      ERROR_AND_EXIT_FMTMSG("Type(): Re-declaration of identifier '%.*s', previously declared on line %d\n",
-                            Parser.next.length,
-                            Parser.next.position_in_source,
-                            s.annotation.declared_on_line);
+      REDECLARATION_AT_TOKEN(Parser.next,
+                             s.token,
+                             "Type(): Redeclaration of identifier '%.*s', previously declared on line %d\n",
+                             Parser.next.length,
+                             Parser.next.position_in_source,
+                             s.annotation.declared_on_line);
     }
 
     ParserAnnotation a = (is_array) ? ArrayAnnotation(type_token.type, array_size) : AnnotateType(type_token.type);
@@ -366,10 +370,12 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(LPAREN)) {
     if (NextTokenIsAnyType()) { // Declaration
       if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
-        ERROR_AND_EXIT_FMTMSG("Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
-                              identifier_token.length,
-                              identifier_token.position_in_source,
-                              symbol.annotation.declared_on_line);
+        REDECLARATION_AT_TOKEN(Parser.next,
+                               symbol.token,
+                               "Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
+                               identifier_token.length,
+                               identifier_token.position_in_source,
+                               symbol.annotation.declared_on_line);
       }
 
       if (!is_in_symbol_table) AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
@@ -382,10 +388,11 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (!is_in_symbol_table) {
-    ERROR_AND_EXIT_FMTMSG("Identifier(): Line %d: Undeclared identifier '%.*s'",
-                          identifier_token.on_line,
-                          identifier_token.length,
-                          identifier_token.position_in_source);
+    ERROR_AT_TOKEN(identifier_token,
+                   "Identifier(): Line %d: Undeclared identifier '%.*s'",
+                   identifier_token.on_line,
+                   identifier_token.length,
+                   identifier_token.position_in_source);
   }
 
   if (Match(LBRACKET)) {
@@ -394,9 +401,10 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(PLUS_PLUS)) {
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot increment undefined variable '%.*s",
-                            identifier_token.length,
-                            identifier_token.position_in_source);
+      ERROR_AT_TOKEN(identifier_token,
+                     "Identifier(): Cannot increment undefined variable '%.*s",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
     }
 
     return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, NoAnnotation());
@@ -404,9 +412,10 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(MINUS_MINUS)) {
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot decrement undefined variable '%.*s",
-                            identifier_token.length,
-                            identifier_token.position_in_source);
+      ERROR_AT_TOKEN(identifier_token,
+                     "Identifier(): Cannot decrement undefined variable '%.*s",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
     }
 
     return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, NoAnnotation());
@@ -414,9 +423,10 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (Match(EQUALS)) {
     if (!can_assign) {
-      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot assign to identifier '%.*s'",
-                            identifier_token.length,
-                            identifier_token.position_in_source);
+      ERROR_AT_TOKEN(identifier_token,
+                     "Identifier(): Cannot assign to identifier '%.*s'",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
     }
 
     Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
@@ -426,10 +436,12 @@ static AST_Node *Identifier(bool can_assign) {
   if (NextTokenIs(SEMICOLON)) {
     if (symbol.declaration_type == DECL_NONE && can_assign) {
       Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-      ERROR_AND_EXIT_FMTMSG("Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
-                            identifier_token.length,
-                            identifier_token.position_in_source,
-                            already_declared.annotation.declared_on_line);
+      REDECLARATION_AT_TOKEN(identifier_token,
+                             already_declared.token,
+                             "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                             identifier_token.length,
+                             identifier_token.position_in_source,
+                             already_declared.annotation.declared_on_line);
     }
 
     return NewNodeFromToken(IDENTIFIER_NODE, NULL, array_index, NULL, identifier_token, symbol.annotation);
@@ -438,9 +450,10 @@ static AST_Node *Identifier(bool can_assign) {
   if (NextTokenIsTerseAssignment()) {
     ConsumeAnyTerseAssignment("Identifier() Terse Assignment: How did this error message appear?");
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
-                            identifier_token.length,
-                            identifier_token.position_in_source);
+      ERROR_AT_TOKEN(identifier_token,
+                     "Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
     }
     return NewNodeFromToken(ASSIGNMENT_NODE, TerseAssignment(UNUSED), NULL, NULL, identifier_token, NoAnnotation());
   }
@@ -462,8 +475,9 @@ static AST_Node *Unary(bool) {
     case MINUS:
       return NewNodeFromToken(UNTYPED, parse_result, NULL, NULL, operator_token, NoAnnotation());
     default:
-      ERROR_AND_EXIT_FMTMSG("Unary(): Unknown Unary operator '%s'\n",
-                            TokenTypeTranslation(operator_token.type));
+      ERROR_AT_TOKEN(operator_token,
+                     "Unary(): Unknown Unary operator '%s'\n",
+                     TokenTypeTranslation(operator_token.type));
       return NULL;
   }
 }
@@ -493,7 +507,9 @@ static AST_Node *Binary(bool) {
     case BITWISE_RIGHT_SHIFT:
       return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, operator_token, NoAnnotation());
     default:
-      ERROR_AND_EXIT_FMTMSG("Binary(): Unknown operator '%s'\n", TokenTypeTranslation(operator_token.type));
+      ERROR_AT_TOKEN(operator_token,
+                     "Binary(): Unknown operator '%s'\n",
+                     TokenTypeTranslation(operator_token.type));
       return NULL;
   }
 }
@@ -519,7 +535,9 @@ static AST_Node *TerseAssignment(bool) {
     case BITWISE_RIGHT_SHIFT_EQUALS:
       return NewNodeFromToken(ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
     default:
-      ERROR_AND_EXIT_FMTMSG("TerseAssignment(): Unknown operator '%s'\n", TokenTypeTranslation(operator_token.type));
+      ERROR_AT_TOKEN(operator_token,
+                     "TerseAssignment(): Unknown operator '%s'\n",
+                     TokenTypeTranslation(operator_token.type));
       return NULL;
   }
 }
@@ -628,7 +646,9 @@ static AST_Node *ForStmt(bool) {
 
 static AST_Node *Break(bool) {
   if (!NextTokenIs(SEMICOLON)) {
-    ERROR_AND_EXIT_FMTMSG("Break(): Expected ';' after Break, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    ERROR_AT_TOKEN(Parser.next,
+                   "Break(): Expected ';' after Break, got '%s' instead",
+                   TokenTypeTranslation(Parser.next.type));
   }
 
   return NewNode(BREAK_NODE, NULL, NULL, NULL, NoAnnotation());
@@ -636,7 +656,9 @@ static AST_Node *Break(bool) {
 
 static AST_Node *Continue(bool) {
   if (!NextTokenIs(SEMICOLON)) {
-    ERROR_AND_EXIT_FMTMSG("Continue(): Expected ';' after Continue, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+    ERROR_AT_TOKEN(Parser.next,
+                   "Continue(): Expected ';' after Continue, got '%s' instead",
+                   TokenTypeTranslation(Parser.next.type));
   }
 
   return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoAnnotation());
@@ -671,15 +693,17 @@ static AST_Node *ArraySubscripting(bool) {
     bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.current);
 
     if (!is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("ArraySubscripting(): Can't access array with undeclared identifier '%.*s'",
-                            Parser.current.length,
-                            Parser.current.position_in_source);
+      ERROR_AT_TOKEN(Parser.current,
+                     "ArraySubscripting(): Can't access array with undeclared identifier '%.*s'",
+                     Parser.current.length,
+                     Parser.current.position_in_source);
     }
 
     if (symbol.declaration_type != DECL_DEFINED) {
-      ERROR_AND_EXIT_FMTMSG("ArraySubscripting(): Can't access array with uninitialized identifier '%.*s'",
-                            Parser.current.length,
-                            Parser.current.position_in_source);
+      ERROR_AT_TOKEN(Parser.current,
+                     "ArraySubscripting(): Can't access array with uninitialized identifier '%.*s'",
+                     Parser.current.length,
+                     Parser.current.position_in_source);
     }
 
     return_value = NewNodeFromSymbol(LITERAL_NODE, NULL, NULL, NULL, symbol);
@@ -703,10 +727,11 @@ static AST_Node *EnumBlock() {
     bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.next);
 
     if (is_in_symbol_table) {
-      ERROR_AND_EXIT_FMTMSG("EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
-                            Parser.next.length,
-                            Parser.next.position_in_source,
-                            symbol.annotation.declared_on_line);
+      ERROR_AT_TOKEN(Parser.next,
+                     "EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
+                     Parser.next.length,
+                     Parser.next.position_in_source,
+                     symbol.annotation.declared_on_line);
     }
 
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
@@ -747,10 +772,11 @@ static AST_Node *Struct() {
 
   if (IsIn(SYMBOL_TABLE, identifier_token)) {
     Symbol existing_struct = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-    ERROR_AND_EXIT_FMTMSG("Struct(): Struct '%.*s' is already in symbol table, declared on line %d\n",
-      identifier_token.length,
-      identifier_token.position_in_source,
-      existing_struct.annotation.declared_on_line);
+    ERROR_AT_TOKEN(identifier_token,
+                   "Struct(): Struct '%.*s' is already in symbol table, declared on line %d\n",
+                   identifier_token.length,
+                   identifier_token.position_in_source,
+                   existing_struct.annotation.declared_on_line);
   }
   Symbol identifier_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DECLARED));
 
@@ -778,9 +804,10 @@ static AST_Node *Struct() {
   SYMBOL_TABLE = remember_symbol_table;
 
   if (has_empty_body) {
-    ERROR_AND_EXIT_FMTMSG("Struct(): Struct '%.*s' has empty body",
-                          identifier_symbol.token.length,
-                          identifier_symbol.token.position_in_source);
+    ERROR_AT_TOKEN(identifier_symbol.token,
+                   "Struct(): Struct '%.*s' has empty body",
+                   identifier_symbol.token.length,
+                   identifier_symbol.token.position_in_source);
   }
 
   Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
@@ -800,9 +827,10 @@ static AST_Node *FunctionParams(SymbolTable *fn_params) {
     Token identifier_token = Parser.current;
 
     if (IsIn(fn_params, identifier_token)) {
-      ERROR_AND_EXIT_FMTMSG("FunctionParams(): duplicate parameter name '%.*s'",
-                            identifier_token.length,
-                            identifier_token.position_in_source);
+      ERROR_AT_TOKEN(identifier_token,
+                     "FunctionParams(): duplicate parameter name '%.*s'",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
     }
     Symbol stored_symbol = AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
 
@@ -859,10 +887,11 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
 
   if ((symbol.declaration_type == DECL_DECLARED) && body == NULL) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, symbol.token);
-    ERROR_AND_EXIT_FMTMSG("FunctionDeclaration(): Double declaration of function '%.*s' (declared on line %d)\n",
-                          symbol.token.length,
-                          symbol.token.position_in_source,
-                          already_declared.annotation.declared_on_line);
+    ERROR_AT_TOKEN(symbol.token,
+                   "FunctionDeclaration(): Double declaration of function '%.*s' (declared on line %d)\n",
+                   symbol.token.length,
+                   symbol.token.position_in_source,
+                   already_declared.annotation.declared_on_line);
   }
 
   Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(symbol.token,
