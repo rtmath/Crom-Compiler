@@ -7,7 +7,10 @@
 struct {
   const char *start;
   const char *end;
+
+  // For helpful error messages
   int current_line;
+  int current_x_offset;
   const char *src_filename;
 } Lexer;
 
@@ -15,6 +18,7 @@ void InitLexer(const char *filename, const char *contents) {
   Lexer.start = contents;
   Lexer.end = contents;
   Lexer.current_line = 1;
+  Lexer.current_x_offset = -1;
   Lexer.src_filename = filename;
 }
 
@@ -50,6 +54,7 @@ static char PeekNext() {
 }
 
 static char Advance() {
+  Lexer.current_x_offset++;
   Lexer.end++;
   return Lexer.end[-1];
 }
@@ -74,6 +79,7 @@ static void SkipWhitespace() {
 
       case '\n': {
         Lexer.current_line++;
+        Lexer.current_x_offset = -1;
         Advance();
       } break;
 
@@ -108,6 +114,7 @@ static Token MakeToken(TokenType type) {
   t.length = Lexer.end - Lexer.start;
   t.on_line = Lexer.current_line;
   t.from_filename = Lexer.src_filename;
+  t.line_x_offset = Lexer.current_x_offset - t.length;
 
   return t;
 }

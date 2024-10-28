@@ -16,8 +16,8 @@ void PrintToken(Token t) {
 
 void PrintTokenVerbose(Token t) {
   printf("'%.*s' [%s:%d]\n",
-      t.length,
-      t.position_in_source,
-      TokenTypeTranslation(t.type),
-      t.on_line);
+         t.length,
+         t.position_in_source,
+         TokenTypeTranslation(t.type),
+         t.on_line);
 }

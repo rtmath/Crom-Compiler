@@ -7,8 +7,11 @@ typedef struct {
   TokenType type;
   const char *position_in_source;
   int length;
-  int on_line;
+
+  // For helpful error messages
   const char *from_filename;
+  int on_line;
+  int line_x_offset;
 } Token;
 
 void InlinePrintToken(Token t);
