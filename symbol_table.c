@@ -150,7 +150,7 @@ static Symbol GetSymbol(SymbolTable *st, const char *key) {
   Token SYMBOL_NOT_FOUND = {
     .type = ERROR,
     .position_in_source = "No symbol found in Symbol Table",
-    .length = 24,
+    .length = 31,
     .on_line = -1
   };
 
