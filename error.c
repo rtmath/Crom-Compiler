@@ -57,3 +57,7 @@ void ErrorAndExit_VAList(const char *src_filename, int line_number,
 
   exit(100);
 }
+
+void Exit() {
+  exit(100);
+}

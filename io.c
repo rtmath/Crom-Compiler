@@ -9,7 +9,7 @@
 
 int ReadFile(const char *filename, char **dest) {
   FILE *fd = fopen(filename, "r");
-  if (fd == NULL) ERROR_AND_EXIT_FMTMSG("Could not open file %s: %s", filename, strerror(errno));
+  if (fd == NULL) ERROR_AND_EXIT_FMTMSG("ReadFile(): Could not open file %s: %s", filename, strerror(errno));
 
   fseek(fd, 0L, SEEK_END);
   size_t filesize = ftell(fd);
@@ -27,4 +27,24 @@ int ReadFile(const char *filename, char **dest) {
 
   *dest = contents;
   return bytes_read;
+}
+
+void PrintSourceLine(const char *filename, int line_number) {
+  char buf[200];
+
+  FILE *fd = fopen(filename, "r");
+  if (fd == NULL) ERROR_AND_EXIT_FMTMSG("PrintSourceLine(): Could not open file %s: %s", filename, strerror(errno));
+
+  for (int i = 0; i < line_number; i++) {
+    fgets(buf, 200, fd);
+  }
+
+  printf("%s:\n", filename);
+  printf("%5d | %s\n", line_number, buf);
+
+  fclose(fd);
+}
+
+void PrintSourceLineOfToken(Token t) {
+  PrintSourceLine(t.from_filename, t.on_line);
 }
