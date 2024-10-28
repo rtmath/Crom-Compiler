@@ -40,11 +40,21 @@ void PrintSourceLine(const char *filename, int line_number) {
   }
 
   printf("%s:\n", filename);
-  printf("%5d | %s\n", line_number, buf);
+  printf("%5d | %s", line_number, buf);
 
   fclose(fd);
 }
 
 void PrintSourceLineOfToken(Token t) {
   PrintSourceLine(t.from_filename, t.on_line);
+
+  char buf[200] = {0};
+  int i = 0;
+  for (; i < t.line_x_offset && i < 199; i++) {
+    buf[i] = ' ';
+  }
+  buf[i] = '^';
+
+  const char *spacer = "        "; // enough space to match the "%5d | " in PrintSourceLine()
+  printf("%s%s\n", spacer, buf);
 }
