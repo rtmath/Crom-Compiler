@@ -370,7 +370,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(LPAREN)) {
     if (NextTokenIsAnyType()) { // Declaration
       if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
-        REDECLARATION_AT_TOKEN(Parser.next,
+        REDECLARATION_AT_TOKEN(identifier_token,
                                symbol.token,
                                "Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
                                identifier_token.length,
