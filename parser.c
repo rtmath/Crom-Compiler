@@ -473,7 +473,7 @@ static AST_Node *Unary(bool) {
       return NewNodeFromToken(POSTFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     case LOGICAL_NOT:
     case MINUS:
-      return NewNodeFromToken(UNTYPED, parse_result, NULL, NULL, operator_token, NoAnnotation());
+      return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Unary(): Unknown Unary operator '%s'\n",
@@ -505,7 +505,7 @@ static AST_Node *Binary(bool) {
     case BITWISE_OR:
     case BITWISE_LEFT_SHIFT:
     case BITWISE_RIGHT_SHIFT:
-      return NewNodeFromToken(UNTYPED, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(BINARY_OP_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Binary(): Unknown operator '%s'\n",
@@ -906,7 +906,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NoAnnotation());
+  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
 }
 
 AST_Node *ParserBuildAST() {
