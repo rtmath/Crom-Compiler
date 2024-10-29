@@ -3,6 +3,8 @@
 
 #include <stdarg.h> // for variadic args, va_list et al.
 
+#include "io.h"
+
 #define ERROR_AND_CONTINUE(msg) ErrorAndContinue(__FILE__, __LINE__, msg)
 #define ERROR_AND_EXIT(msg) ErrorAndExit(__FILE__, __LINE__, msg)
 #define ERROR_AND_CONTINUE_FMTMSG(fmt, ...) ErrorAndContinue_Variadic(__FILE__, __LINE__, fmt, __VA_ARGS__)
