@@ -18,7 +18,7 @@ void InitLexer(const char *filename, const char *contents) {
   Lexer.start = contents;
   Lexer.end = contents;
   Lexer.current_line = 1;
-  Lexer.current_x_offset = -1;
+  Lexer.current_x_offset = 0;
   Lexer.src_filename = filename;
 }
 
@@ -79,7 +79,7 @@ static void SkipWhitespace() {
 
       case '\n': {
         Lexer.current_line++;
-        Lexer.current_x_offset = -1;
+        Lexer.current_x_offset = 0;
         Advance();
       } break;
 
