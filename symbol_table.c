@@ -293,7 +293,7 @@ void PrintSymbol(Symbol s) {
   printf("Symbol ID: '%d'\n", s.debug_id);
   InlinePrintDeclarationType(s.declaration_type);
   printf(" ");
-  InlinePrintAnnotation(s.annotation);
+  InlinePrintOstAnnotation(s.annotation);
   printf("\n");
   if (s.struct_fields != NULL) printf("has Struct Fields\n");
   if (s.fn_params != NULL) printf("has Function Params\n");
