@@ -8,7 +8,7 @@ static const char* const _NodeTypeTranslation[] =
 {
   [UNTYPED] = "UNTYPED",
   [START_NODE] = "Start",
-  [CHAIN_NODE] = "",
+  [CHAIN_NODE] = "Chain",
   [STATEMENT_NODE] = "Statement",
   [IDENTIFIER_NODE] = "Identifier",
 
@@ -27,6 +27,8 @@ static const char* const _NodeTypeTranslation[] =
   [LITERAL_NODE] = "Literal",
 
   [ASSIGNMENT_NODE] = "Assignment",
+  [UNARY_OP_NODE] = "Unary",
+  [BINARY_OP_NODE] = "Binary",
 
   [PREFIX_INCREMENT_NODE] = "++Increment",
   [PREFIX_DECREMENT_NODE] = "--Decrement",
@@ -118,7 +120,10 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  InlinePrintAnnotation(node->annotation);
+  if (node->annotation.ostensible_type != OST_UNKNOWN) {
+    InlinePrintOstAnnotation(node->annotation);
+    printf(" ");
+  }
 
   if (node->type != UNTYPED &&
       node->type != LITERAL_NODE &&
@@ -138,4 +143,38 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
 
 void PrintAST(AST_Node *root) {
   PrintASTRecurse(root, 0, 0);
+}
+
+static void InlinePrintNodeSummary(AST_Node *node) {
+  printf("%s Node -> %s Token",
+         NodeTypeTranslation(node->type),
+         TokenTypeTranslation(node->token.type));
+}
+
+void PrintNode(AST_Node *node) {
+  printf("%11s Node ", NodeTypeTranslation(node->type));
+  printf("'%.*s'", node->token.length, node->token.position_in_source);
+  printf(" [OST ");
+  InlinePrintOstAnnotation(node->annotation);
+  printf(" : ACT ");
+  InlinePrintActAnnotation(node->annotation);
+  printf("]");
+  printf("\n");
+
+  if (node->nodes[LEFT] != NULL) {
+    printf("\n  LEFT: ");
+    InlinePrintNodeSummary(node->nodes[LEFT]);
+    printf("\n");
+  }
+  if (node->nodes[MIDDLE] != NULL) {
+    printf("MIDDLE: ");
+    InlinePrintNodeSummary(node->nodes[MIDDLE]);
+    printf("\n");
+  }
+  if (node->nodes[RIGHT] != NULL) {
+    printf(" RIGHT: ");
+    InlinePrintNodeSummary(node->nodes[RIGHT]);
+    printf("\n");
+  }
+  printf("----------------------------------------------------------\n");
 }

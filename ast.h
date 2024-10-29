@@ -12,9 +12,10 @@
 #define MIDDLE 2
 
 typedef enum {
-  UNARY_ARITY,
-  BINARY_ARITY,
-  TERNARY_ARITY,
+  NO_ARITY = 0,
+  UNARY_ARITY = 1,
+  BINARY_ARITY = 2,
+  TERNARY_ARITY = 3,
 } Arity;
 
 typedef enum {
@@ -39,6 +40,8 @@ typedef enum {
   LITERAL_NODE,
 
   ASSIGNMENT_NODE,
+  UNARY_OP_NODE,
+  BINARY_OP_NODE,
 
   PREFIX_INCREMENT_NODE,
   PREFIX_DECREMENT_NODE,
@@ -65,5 +68,6 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
 const char *NodeTypeTranslation(NodeType t);
 
 void PrintAST(AST_Node *root);
+void PrintNode(AST_Node *node);
 
 #endif
