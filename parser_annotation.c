@@ -35,9 +35,10 @@ static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
   : printf("%s", s);
 }
 
-void InlinePrintAnnotation(ParserAnnotation a) {
+void InlinePrintOstAnnotation(ParserAnnotation a) {
   switch (a.ostensible_type) {
     case OST_UNKNOWN: {
+      _InlinePrintAnnotation("UNKNOWN", a);
     } break;
     case OST_INT: {
       _InlinePrintAnnotation((a.is_signed) ? "I" : "U", a);
@@ -61,6 +62,38 @@ void InlinePrintAnnotation(ParserAnnotation a) {
       _InlinePrintAnnotation("ENUM", a);
     } break;
     case OST_STRUCT: {
+      _InlinePrintAnnotation("STRUCT", a);
+    } break;
+  }
+}
+
+void InlinePrintActAnnotation(ParserAnnotation a) {
+  switch (a.actual_type) {
+    case ACT_NOT_APPLICABLE: {
+      _InlinePrintAnnotation("N/A", a);
+    } break;
+    case ACT_INT: {
+      _InlinePrintAnnotation((a.is_signed) ? "I" : "U", a);
+    } break;
+    case ACT_FLOAT: {
+      _InlinePrintAnnotation("F", a);
+    } break;
+    case ACT_BOOL: {
+      _InlinePrintAnnotation("BOOL", a);
+    } break;
+    case ACT_CHAR: {
+      _InlinePrintAnnotation("CHAR", a);
+    } break;
+    case ACT_STRING: {
+      _InlinePrintAnnotation("STRING", a);
+    } break;
+    case ACT_VOID: {
+      _InlinePrintAnnotation("VOID", a);
+    } break;
+    case ACT_ENUM: {
+      _InlinePrintAnnotation("ENUM", a);
+    } break;
+    case ACT_STRUCT: {
       _InlinePrintAnnotation("STRUCT", a);
     } break;
   }
@@ -98,10 +131,41 @@ ParserAnnotation AnnotateType(TokenType t) {
     case STRING: return Annotation(OST_STRING, 0, 0);
     case STRUCT: return Annotation(OST_STRUCT, 0, 0);
 
+    case INT_LITERAL:
+    case HEX_LITERAL:
+    case BINARY_LITERAL:
+    case ENUM_LITERAL: {
+      return Annotation(OST_INT, 64, SIGNED);
+    }
+
+    case FLOAT_LITERAL: return Annotation(OST_FLOAT, 32, SIGNED);
+    case BOOL_LITERAL: return Annotation(OST_BOOL, 0, 0);
+    case STRING_LITERAL: return Annotation(OST_STRING, 0, 0);
+
     default:
       ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
       return Annotation(OST_UNKNOWN, 0, 0);
   }
+}
+
+static const char * const _OstensibleTypeTranslation[] = {
+  [OST_UNKNOWN] = "UNKNOWN",
+  [OST_INT] = "INT",
+  [OST_FLOAT] = "FLOAT",
+  [OST_BOOL] = "BOOL",
+  [OST_CHAR] = "CHAR",
+  [OST_STRING] = "STRING",
+  [OST_VOID] = "VOID",
+  [OST_ENUM] = "ENUM",
+  [OST_STRUCT] = "STRUCT",
+};
+
+const char *OstensibleTypeTranslation(OstensibleType type) {
+  return _OstensibleTypeTranslation[type];
+}
+
+const char *ActualTypeTranslation(ActualType type) {
+  return _OstensibleTypeTranslation[type];
 }
 
 ParserAnnotation FunctionAnnotation(TokenType return_type) {

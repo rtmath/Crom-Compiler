@@ -17,8 +17,21 @@ typedef enum {
   OST_STRUCT,
 } OstensibleType;
 
+typedef enum {
+  ACT_NOT_APPLICABLE,
+  ACT_INT,
+  ACT_FLOAT,
+  ACT_BOOL,
+  ACT_CHAR,
+  ACT_STRING,
+  ACT_VOID,
+  ACT_ENUM,
+  ACT_STRUCT,
+} ActualType;
+
 typedef struct {
   OstensibleType ostensible_type;
+  ActualType actual_type;
   int bit_width; // for I8, U16, etc
   bool is_signed;
   int declared_on_line;
@@ -27,11 +40,15 @@ typedef struct {
   bool is_function;
 } ParserAnnotation;
 
+const char *OstensibleTypeTranslation(OstensibleType type);
+const char *ActualTypeTranslation(ActualType type);
+
 ParserAnnotation NoAnnotation();
 ParserAnnotation FunctionAnnotation(TokenType return_type);
 ParserAnnotation ArrayAnnotation(TokenType array_type, int array_size);
 ParserAnnotation AnnotateType(TokenType t);
 
-void InlinePrintAnnotation(ParserAnnotation);
+void InlinePrintOstAnnotation(ParserAnnotation);
+void InlinePrintActAnnotation(ParserAnnotation);
 
 #endif
