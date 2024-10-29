@@ -279,15 +279,6 @@ bool IsIn(SymbolTable *st, Token token) {
   return (symbol.token.type != ERROR);
 }
 
-Token ResolveIdentifierAsValue(SymbolTable *st, Token token) {
-  Symbol s = RetrieveFrom(st, token);
-
-  // TODO: Don't treat all identifiers as Ints, use their actual types
-  // TODO: Also maybe there is a better way to resolve identifiers
-  s.token.type = INT_LITERAL;
-  return s.token;
-}
-
 void PrintSymbol(Symbol s) {
   PrintTokenVerbose(s.token);
   printf("Symbol ID: '%d'\n", s.debug_id);

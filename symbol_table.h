@@ -42,7 +42,6 @@ Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d);
 Symbol AddTo(SymbolTable *st, Symbol s);
 Symbol RetrieveFrom(SymbolTable *st, Token t);
 bool IsIn(SymbolTable *st, Token t);
-Token ResolveIdentifierAsValue(SymbolTable *st, Token t);
 
 void PrintSymbol(Symbol s);
 
