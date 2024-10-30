@@ -149,6 +149,11 @@ static void InlinePrintNodeSummary(AST_Node *node) {
   printf("%s Node -> %s Token",
          NodeTypeTranslation(node->type),
          TokenTypeTranslation(node->token.type));
+  printf(" [OST ");
+  InlinePrintOstAnnotation(node->annotation);
+  printf(" : ACT ");
+  InlinePrintActAnnotation(node->annotation);
+  printf("]");
 }
 
 void PrintNode(AST_Node *node) {
