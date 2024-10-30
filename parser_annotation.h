@@ -32,12 +32,17 @@ typedef enum {
 typedef struct {
   OstensibleType ostensible_type;
   ActualType actual_type;
-  int bit_width; // for I8, U16, etc
+
   bool is_signed;
-  int declared_on_line;
+  int bit_width; // for I8, U16, etc
+
   bool is_array;
   int array_size;
+
   bool is_function;
+
+  // for helpful error messages
+  int declared_on_line;
 } ParserAnnotation;
 
 const char *OstensibleTypeTranslation(OstensibleType type);
@@ -47,8 +52,10 @@ ParserAnnotation NoAnnotation();
 ParserAnnotation FunctionAnnotation(TokenType return_type);
 ParserAnnotation ArrayAnnotation(TokenType array_type, int array_size);
 ParserAnnotation AnnotateType(TokenType t);
+ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed);
 
-void InlinePrintOstAnnotation(ParserAnnotation);
-void InlinePrintActAnnotation(ParserAnnotation);
+void InlinePrintOstAnnotation(ParserAnnotation a);
+void InlinePrintActAnnotation(ParserAnnotation a);
+const char *AnnotationTranslation(ParserAnnotation a);
 
 #endif

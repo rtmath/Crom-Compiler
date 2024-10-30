@@ -99,7 +99,7 @@ void InlinePrintActAnnotation(ParserAnnotation a) {
   }
 }
 
-static ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
+ParserAnnotation Annotation(OstensibleType type, int bit_width, bool is_signed) {
   ParserAnnotation a = NoAnnotation();
 
   a.ostensible_type = type;
@@ -166,6 +166,34 @@ const char *OstensibleTypeTranslation(OstensibleType type) {
 
 const char *ActualTypeTranslation(ActualType type) {
   return _OstensibleTypeTranslation[type];
+}
+
+const char *AnnotationTranslation(ParserAnnotation a) {
+  if (a.actual_type == ACT_INT) {
+    if (a.is_signed) {
+      switch (a.bit_width) {
+        case 8:  return "I8";
+        case 16: return "I16";
+        case 32: return "I32";
+        case 64: return "I64";
+        default: return "Unknown bit width";
+      }
+    } else {
+      switch (a.bit_width) {
+        case 8:  return "U8";
+        case 16: return "U16";
+        case 32: return "U32";
+        case 64: return "U64";
+        default: return "Unknown bit width";
+      }
+    }
+  }
+
+  if (a.actual_type == ACT_NOT_APPLICABLE) {
+    return "NOT APPLICABLE";
+  }
+
+  return "AnnotationTranslation(): Not implemented yet";
 }
 
 ParserAnnotation FunctionAnnotation(TokenType return_type) {
