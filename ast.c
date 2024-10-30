@@ -10,6 +10,7 @@ static const char* const _NodeTypeTranslation[] =
   [START_NODE] = "Start",
   [CHAIN_NODE] = "Chain",
   [STATEMENT_NODE] = "Statement",
+  [DECLARATION_NODE] = "Declaration",
   [IDENTIFIER_NODE] = "Identifier",
 
   [IF_NODE] = "If",
@@ -125,9 +126,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf(" ");
   }
 
-  if (node->type != UNTYPED &&
-      node->type != LITERAL_NODE &&
-      node->type != IDENTIFIER_NODE) {
+  if (node->type != UNTYPED) {
     printf("%s", NodeTypeTranslation(node->type));
   }
 
