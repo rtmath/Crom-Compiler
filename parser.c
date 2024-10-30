@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <limits.h> // for LONG_MIN and LONG_MAX (strtol error checking)
 #include <stdarg.h> // for va_list
 #include <stdbool.h>
@@ -7,9 +9,8 @@
 #include "error.h"
 #include "io.h"
 #include "lexer.h"
-#include "symbol_table.h"
 
-SymbolTable *SYMBOL_TABLE;
+static SymbolTable *SYMBOL_TABLE;
 
 #define UNUSED false
 #define CAN_ASSIGN true
@@ -266,7 +267,7 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
   va_end(args);
 }
 
-void InitParser() {
+void InitParser(SymbolTable **st) {
   /* One call to Advance() will prime the parser, such that
    * Parser.current will still be zeroed out, and
    * Parser.next will hold the First Token(TM) from the lexer.
@@ -274,7 +275,8 @@ void InitParser() {
    * set Parser.current to the First Token, and Parser.next to
    * look ahead one token, and parsing will proceed normally. */
 
-  SYMBOL_TABLE = NewSymbolTable();
+  *st = NewSymbolTable();
+  SYMBOL_TABLE = *st;
 
   Advance();
 }
@@ -395,6 +397,16 @@ static AST_Node *Identifier(bool can_assign) {
                    identifier_token.position_in_source);
   }
 
+  if (symbol.declaration_type == DECL_NONE && can_assign) {
+    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, identifier_token);
+    REDECLARATION_AT_TOKEN(identifier_token,
+                           already_declared.token,
+                           "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                           identifier_token.length,
+                           identifier_token.position_in_source,
+                           already_declared.annotation.declared_on_line);
+  }
+
   if (Match(LBRACKET)) {
     array_index = ArraySubscripting(UNUSED);
   }
@@ -430,21 +442,7 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeFromSymbol(IDENTIFIER_NODE, Expression(UNUSED), array_index, NULL, stored_symbol);
-  }
-
-  if (NextTokenIs(SEMICOLON)) {
-    if (symbol.declaration_type == DECL_NONE && can_assign) {
-      Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-      REDECLARATION_AT_TOKEN(identifier_token,
-                             already_declared.token,
-                             "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
-                             identifier_token.length,
-                             identifier_token.position_in_source,
-                             already_declared.annotation.declared_on_line);
-    }
-
-    return NewNodeFromToken(IDENTIFIER_NODE, NULL, array_index, NULL, identifier_token, symbol.annotation);
+    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(UNUSED), array_index, NULL, stored_symbol);
   }
 
   if (NextTokenIsTerseAssignment()) {
@@ -459,7 +457,10 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   Symbol s = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-  return NewNodeFromSymbol(LITERAL_NODE, NULL, array_index, NULL, s);
+  return NewNodeFromSymbol(
+    (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE : IDENTIFIER_NODE,
+    NULL, array_index, NULL, s
+  );
 }
 
 static AST_Node *Unary(bool) {
