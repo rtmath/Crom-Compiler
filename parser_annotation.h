@@ -6,18 +6,6 @@
 #include "token_type.h"
 
 typedef enum {
-  OST_UNKNOWN,
-  OST_INT,
-  OST_FLOAT,
-  OST_BOOL,
-  OST_CHAR,
-  OST_STRING,
-  OST_VOID,
-  OST_ENUM,
-  OST_STRUCT,
-} OstensibleType;
-
-typedef enum {
   ACT_NOT_APPLICABLE,
   ACT_INT,
   ACT_FLOAT,
@@ -28,6 +16,21 @@ typedef enum {
   ACT_ENUM,
   ACT_STRUCT,
 } ActualType;
+
+// The assignments here are a mere safety measure
+// to help me cast OstensibleType <-> ActualType
+// relatively safely
+typedef enum {
+  OST_UNKNOWN = ACT_NOT_APPLICABLE,
+  OST_INT     = ACT_INT,
+  OST_FLOAT   = ACT_FLOAT,
+  OST_BOOL    = ACT_BOOL,
+  OST_CHAR    = ACT_CHAR,
+  OST_STRING  = ACT_STRING,
+  OST_VOID    = ACT_VOID,
+  OST_ENUM    = ACT_ENUM,
+  OST_STRUCT  = ACT_STRUCT,
+} OstensibleType;
 
 typedef struct {
   OstensibleType ostensible_type;
