@@ -90,7 +90,10 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     // so the TokenTo*() functions won't work properly.
     //
     // Ergo, range validation is not performed on identifiers
-    // if their type is not obviously convertible
+    // if their type is not obviously convertible.
+    //
+    // TODO: Store symbol value in table and use it here for range
+    // validation
     return false;
   }
 
@@ -210,6 +213,10 @@ bool ValidateFloatLiteral(AST_Node *node) {
 }
 /* === END RANGE VALIDATION === */
 
+static void Declaration(AST_Node *identifier) {
+  identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
+}
+
 static void Assignment(AST_Node *identifier) {
   AST_Node *value = identifier->nodes[LEFT];
   bool types_match = ((ActualType)NodeOstensibleType(identifier) ==
@@ -243,7 +250,7 @@ static void Identifier(AST_Node *identifier) {
 }
 
 static void Literal(AST_Node *node) {
-  switch (node->annotation.ostensible_type) {
+  switch (NodeOstensibleType(node)) {
     case OST_INT: {
       if (!ValidateIntLiteral(node)) {
         ERROR_AND_EXIT_FMTMSG(
@@ -268,8 +275,7 @@ static void Literal(AST_Node *node) {
     } break;
   }
 
-  node->annotation.actual_type =
-    (ActualType)node->annotation.ostensible_type;
+  node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 }
 
 static void UnaryOp(AST_Node *node) {
@@ -306,8 +312,7 @@ static void BinaryOp(AST_Node *node) {
                         node->nodes[RIGHT]);
 
   node->annotation = node->nodes[LEFT]->annotation;
-  node->annotation.actual_type =
-    (ActualType)node->annotation.ostensible_type;
+  node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 }
 
 void CheckTypesRecurse(AST_Node *node) {
@@ -329,7 +334,7 @@ void CheckTypesRecurse(AST_Node *node) {
       Identifier(node);
     } break;
     case DECLARATION_NODE: {
-      // Do nothing
+      Declaration(node);
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(node);
@@ -338,7 +343,10 @@ void CheckTypesRecurse(AST_Node *node) {
     } break;
   }
 
-  if (node->type != CHAIN_NODE) PrintNode(node);
+  if (node->type != CHAIN_NODE &&
+      node->type != START_NODE) {
+    PrintNode(node);
+  }
 }
 
 void CheckTypes(AST_Node *node, SymbolTable *symbol_table) {
