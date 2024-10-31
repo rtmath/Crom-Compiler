@@ -27,6 +27,11 @@ static ActualType NodeActualType(AST_Node *node) {
   return node->annotation.actual_type;
 }
 
+static bool HasNumberOstType(AST_Node *node) {
+  return NodeOstensibleType(node) == OST_INT ||
+         NodeOstensibleType(node) == OST_FLOAT;
+}
+
 void VerifyTypeIs(ActualType type, AST_Node *node) {
   if (NodeActualType(node) == type) return;
 
@@ -76,13 +81,9 @@ double TokenToDouble(Token t) {
 }
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
-  printf("Type is convertible from '%s' to '%s'\n",
-         OstensibleTypeTranslation(from->annotation.ostensible_type),
-         OstensibleTypeTranslation(target_type->annotation.ostensible_type));
-
-  if (NodeOstensibleType(from) != NodeOstensibleType(target_type) &&
-      (NodeOstensibleType(from) != OST_INT && NodeOstensibleType(from) != OST_FLOAT) &&
-      (NodeOstensibleType(target_type) != OST_INT && NodeOstensibleType(target_type) != OST_FLOAT)) return false;
+  bool types_dont_match = NodeOstensibleType(from) != NodeOstensibleType(target_type);
+  bool both_types_arent_numbers = !(HasNumberOstType(from) && HasNumberOstType(target_type));
+  if (types_dont_match && both_types_arent_numbers) return false;
 
   if (IsSigned(from) == IsSigned(target_type) &&
       BitWidth(from) <= BitWidth(target_type) &&
@@ -179,6 +180,10 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
     if (d >= DBL_MIN && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
   }
 
+  if (NodeOstensibleType(node) == OST_BOOL) {
+    return Annotation(OST_BOOL, 0, 0);
+  }
+
   ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Unknown Ostensible type");
   return Annotation(OST_UNKNOWN, 0, 0);
 }
@@ -191,7 +196,8 @@ static void Declaration(AST_Node *identifier) {
 static void Assignment(AST_Node *identifier) {
   AST_Node *value = identifier->nodes[LEFT];
 
-  bool types_are_compatible = TypeIsConvertible(value, identifier);
+  bool types_are_same = NodeOstensibleType(identifier) == NodeOstensibleType(value);
+  bool types_are_compatible = types_are_same || TypeIsConvertible(value, identifier);
 
   if (types_are_compatible) {
     identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
@@ -201,11 +207,10 @@ static void Assignment(AST_Node *identifier) {
     return;
   }
 
-  // Hack to improve the ERROR_AT_TOKEN error message
+  // Actualize the ostensible type for the error message
   identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
-
   ERROR_AT_TOKEN(identifier->token,
-    "Identifier(): Identifier '%.*s' has type %s and child node has type %s",
+    "Assignment(): Identifier '%.*s' has type %s and child node has type %s",
     identifier->token.length,
     identifier->token.position_in_source,
     AnnotationTranslation(identifier->annotation),
@@ -221,7 +226,9 @@ static void Literal(AST_Node *node) {
   switch (NodeOstensibleType(node)) {
     case OST_INT:
     case OST_FLOAT:
+    case OST_BOOL:
     {
+      // Actualize type from its smallest containing ostensible type
       ParserAnnotation type_anno = ShrinkToSmallestContainingType(node);
       node->annotation.is_signed = type_anno.is_signed;
       node->annotation.bit_width = type_anno.bit_width;
