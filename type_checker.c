@@ -49,7 +49,7 @@ long long TokenToLL(Token t) {
   errno = 0;
   long long value = strtoll(t.position_in_source, NULL, 10);
   if (errno != 0) {
-    ERROR_AND_EXIT("TokenToLL() error");
+    ERROR_AND_EXIT("TokenToLL() underflow or overflow");
   }
 
   return value;
@@ -59,7 +59,7 @@ unsigned long long TokenToULL(Token t) {
   errno = 0;
   unsigned long long value = strtoull(t.position_in_source, NULL, 10);
   if (errno != 0) {
-    ERROR_AND_EXIT("TokenToULL() error");
+    ERROR_AND_EXIT("TokenToULL() underflow or overflow");
   }
 
   return value;
@@ -67,16 +67,22 @@ unsigned long long TokenToULL(Token t) {
 
 double TokenToDouble(Token t) {
   errno = 0;
-  long long value = strtod(t.position_in_source, NULL);
+  double value = strtod(t.position_in_source, NULL);
   if (errno != 0) {
-    ERROR_AND_EXIT("TokenToDouble() error");
+    ERROR_AND_EXIT("TokenToDouble() underflow or overflow");
   }
 
   return value;
 }
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
-  if (NodeOstensibleType(from) != NodeOstensibleType(target_type)) return false;
+  printf("Type is convertible from '%s' to '%s'\n",
+         OstensibleTypeTranslation(from->annotation.ostensible_type),
+         OstensibleTypeTranslation(target_type->annotation.ostensible_type));
+
+  if (NodeOstensibleType(from) != NodeOstensibleType(target_type) &&
+      (NodeOstensibleType(from) != OST_INT && NodeOstensibleType(from) != OST_FLOAT) &&
+      (NodeOstensibleType(target_type) != OST_INT && NodeOstensibleType(target_type) != OST_FLOAT)) return false;
 
   if (IsSigned(from) == IsSigned(target_type) &&
       BitWidth(from) <= BitWidth(target_type) &&
@@ -95,6 +101,20 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     // TODO: Store symbol value in table and use it here for range
     // validation
     return false;
+  }
+
+  if (NodeOstensibleType(target_type) == OST_FLOAT) {
+    if (BitWidth(target_type) == 32) {
+      double d = TokenToDouble(from->token);
+      return d >= FLT_MIN && d <= FLT_MAX;
+    }
+
+    if (BitWidth(target_type) == 64) {
+      double d = TokenToDouble(from->token);
+      return d >= DBL_MIN && d <= DBL_MAX;
+    }
+
+    ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bitwidth '%d'", BitWidth(target_type));
   }
 
   if (IsSigned(from) && !IsSigned(target_type)) {
@@ -128,8 +148,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 
   return false;
 }
-/* === END HELPERS === */
-/* === RANGE VALIDATION === */
+
 ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   const bool SIGNED = true;
   const bool UNSIGNED = false;
@@ -163,55 +182,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Unknown Ostensible type");
   return Annotation(OST_UNKNOWN, 0, 0);
 }
-
-bool ValidateIntLiteral(AST_Node *node) {
-  if (IsSigned(node)) {
-    long long value = TokenToLL(node->token);
-
-    switch (BitWidth(node)) {
-      case  8: return (value >= INT8_MIN  && value <= INT8_MAX);
-      case 16: return (value >= INT16_MIN && value <= INT16_MAX);
-      case 32: return (value >= INT32_MIN && value <= INT32_MAX);
-      case 64: return (value >= INT64_MIN && value <= INT64_MAX);
-      default:
-        ERROR_AND_EXIT_FMTMSG(
-            "ValidateIntLiteral(): Invalid bit_width %d\n",
-            BitWidth(node));
-    }
-  } else {
-    unsigned long long value = TokenToULL(node->token);
-
-    switch (BitWidth(node)) {
-      case  8: return (value <= UINT8_MAX);
-      case 16: return (value <= UINT16_MAX);
-      case 32: return (value <= UINT32_MAX);
-      case 64: return (value <= UINT64_MAX);
-      default:
-        ERROR_AND_EXIT_FMTMSG(
-          "ValidateIntLiteral(): Invalid bit_width %d\n",
-          BitWidth(node));
-    }
-  }
-
-  return false;
-}
-
-bool ValidateFloatLiteral(AST_Node *node) {
-  double d = TokenToDouble(node->token);
-
-  switch (BitWidth(node)) {
-    case 32: return (d >= FLT_MIN && d <= FLT_MAX);
-    case 64: return (d >= DBL_MIN && d <= DBL_MAX);
-    default: {
-      ERROR_AND_EXIT_FMTMSG(
-        "ValidateFloatLiteral(): Invalid bit_width %d\n",
-         BitWidth(node));
-    } break;
-  }
-
-  return false;
-}
-/* === END RANGE VALIDATION === */
+/* === END HELPERS === */
 
 static void Declaration(AST_Node *identifier) {
   identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
@@ -219,18 +190,15 @@ static void Declaration(AST_Node *identifier) {
 
 static void Assignment(AST_Node *identifier) {
   AST_Node *value = identifier->nodes[LEFT];
-  bool types_match = ((ActualType)NodeOstensibleType(identifier) ==
-                      NodeActualType(value));
 
-  if (types_match) {
-    if (NodeOstensibleType(identifier) == OST_INT) {
-      if (TypeIsConvertible(value, identifier)) {
-        identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
-        value->annotation.bit_width = BitWidth(identifier);
-        value->annotation.is_signed = IsSigned(identifier);
-        return;
-      }
-    }
+  bool types_are_compatible = TypeIsConvertible(value, identifier);
+
+  if (types_are_compatible) {
+    identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
+    value->annotation.actual_type = identifier->annotation.actual_type;
+    value->annotation.bit_width = BitWidth(identifier);
+    value->annotation.is_signed = IsSigned(identifier);
+    return;
   }
 
   // Hack to improve the ERROR_AT_TOKEN error message
@@ -251,16 +219,9 @@ static void Identifier(AST_Node *identifier) {
 
 static void Literal(AST_Node *node) {
   switch (NodeOstensibleType(node)) {
-    case OST_INT: {
-      if (!ValidateIntLiteral(node)) {
-        ERROR_AND_EXIT_FMTMSG(
-          "Invalid literal '%.*s' for type %s",
-          node->token.length,
-          node->token.position_in_source,
-          OstensibleTypeTranslation(node->annotation.ostensible_type));
-        return;
-      }
-
+    case OST_INT:
+    case OST_FLOAT:
+    {
       ParserAnnotation type_anno = ShrinkToSmallestContainingType(node);
       node->annotation.is_signed = type_anno.is_signed;
       node->annotation.bit_width = type_anno.bit_width;
