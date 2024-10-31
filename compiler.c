@@ -15,6 +15,5 @@ void Compile(const char *filename, const char *source) {
 
   CheckTypes(ast, SYMBOL_TABLE);
 
-  printf("\n[AST]\n\n");
   PrintAST(ast);
 }
