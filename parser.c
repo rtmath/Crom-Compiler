@@ -707,9 +707,9 @@ static AST_Node *ArraySubscripting(bool) {
                      Parser.current.position_in_source);
     }
 
-    return_value = NewNodeFromSymbol(LITERAL_NODE, NULL, NULL, NULL, symbol);
+    return_value = NewNodeFromSymbol(ARRAY_SUBSCRIPT_NODE, NULL, NULL, NULL, symbol);
   } else if (Match(INT_LITERAL)) {
-    return_value = Literal(UNUSED);
+    return_value = NewNodeFromToken(ARRAY_SUBSCRIPT_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
   }
 
   Consume(RBRACKET, "ArraySubscripting(): Where's the ']'?");
