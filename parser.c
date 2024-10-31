@@ -456,10 +456,13 @@ static AST_Node *Identifier(bool can_assign) {
     return NewNodeFromToken(ASSIGNMENT_NODE, TerseAssignment(UNUSED), NULL, NULL, identifier_token, NoAnnotation());
   }
 
+  // Retrieve symbol from the table to use its declaration type and
+  // annotation, but use the identifier_token to preserve the line number
+  // for future error messages
   Symbol s = RetrieveFrom(SYMBOL_TABLE, identifier_token);
-  return NewNodeFromSymbol(
+  return NewNodeFromToken(
     (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE : IDENTIFIER_NODE,
-    NULL, array_index, NULL, s
+    NULL, array_index, NULL, identifier_token, s.annotation
   );
 }
 
