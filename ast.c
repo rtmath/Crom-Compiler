@@ -122,8 +122,8 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  if (node->annotation.ostensible_type != OST_UNKNOWN) {
-    InlinePrintOstAnnotation(node->annotation);
+  if (node->annotation.actual_type != ACT_NOT_APPLICABLE) {
+    InlinePrintActAnnotation(node->annotation);
     printf(" ");
   }
 
