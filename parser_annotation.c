@@ -123,7 +123,7 @@ ParserAnnotation AnnotateType(TokenType t) {
     case U32: return Annotation(OST_INT, 32, UNSIGNED);
     case U64: return Annotation(OST_INT, 64, UNSIGNED);
     case F32: return Annotation(OST_FLOAT, 32, SIGNED);
-    case F64: return Annotation(OST_FLOAT, 32, SIGNED);
+    case F64: return Annotation(OST_FLOAT, 64, SIGNED);
     case BOOL: return Annotation(OST_BOOL, 0, 0);
     case CHAR: return Annotation(OST_CHAR, 0, 0);
     case ENUM: return Annotation(OST_ENUM, 0, 0);
@@ -138,7 +138,7 @@ ParserAnnotation AnnotateType(TokenType t) {
       return Annotation(OST_INT, 64, SIGNED);
     }
 
-    case FLOAT_LITERAL: return Annotation(OST_FLOAT, 32, SIGNED);
+    case FLOAT_LITERAL: return Annotation(OST_FLOAT, 64, SIGNED);
     case BOOL_LITERAL: return Annotation(OST_BOOL, 0, 0);
     case STRING_LITERAL: return Annotation(OST_STRING, 0, 0);
 
@@ -150,14 +150,14 @@ ParserAnnotation AnnotateType(TokenType t) {
 
 static const char * const _OstensibleTypeTranslation[] = {
   [OST_UNKNOWN] = "UNKNOWN",
-  [OST_INT] = "INT",
-  [OST_FLOAT] = "FLOAT",
-  [OST_BOOL] = "BOOL",
-  [OST_CHAR] = "CHAR",
-  [OST_STRING] = "STRING",
-  [OST_VOID] = "VOID",
-  [OST_ENUM] = "ENUM",
-  [OST_STRUCT] = "STRUCT",
+  [OST_INT]     = "INT",
+  [OST_FLOAT]   = "FLOAT",
+  [OST_BOOL]    = "BOOL",
+  [OST_CHAR]    = "CHAR",
+  [OST_STRING]  = "STRING",
+  [OST_VOID]    = "VOID",
+  [OST_ENUM]    = "ENUM",
+  [OST_STRUCT]  = "STRUCT",
 };
 
 const char *OstensibleTypeTranslation(OstensibleType type) {
@@ -187,6 +187,12 @@ const char *AnnotationTranslation(ParserAnnotation a) {
         default: return "Unknown bit width";
       }
     }
+  }
+
+  if (a.actual_type == ACT_FLOAT) {
+    if (a.bit_width == 32) return "F32";
+    if (a.bit_width == 64) return "F64";
+    return "Unknown bit width";
   }
 
   if (a.actual_type == ACT_NOT_APPLICABLE) {
