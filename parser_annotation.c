@@ -169,37 +169,39 @@ const char *ActualTypeTranslation(ActualType type) {
 }
 
 const char *AnnotationTranslation(ParserAnnotation a) {
-  if (a.actual_type == ACT_INT) {
-    if (a.is_signed) {
-      switch (a.bit_width) {
-        case 8:  return "I8";
-        case 16: return "I16";
-        case 32: return "I32";
-        case 64: return "I64";
-        default: return "Unknown bit width";
+  switch(a.actual_type) {
+    case ACT_INT: {
+      if (a.is_signed) {
+        switch (a.bit_width) {
+          case 8:  return "I8";
+          case 16: return "I16";
+          case 32: return "I32";
+          case 64: return "I64";
+          default: return "Unknown bit width";
+        }
+      } else {
+        switch (a.bit_width) {
+          case 8:  return "U8";
+          case 16: return "U16";
+          case 32: return "U32";
+          case 64: return "U64";
+          default: return "Unknown bit width";
+        }
       }
-    } else {
-      switch (a.bit_width) {
-        case 8:  return "U8";
-        case 16: return "U16";
-        case 32: return "U32";
-        case 64: return "U64";
-        default: return "Unknown bit width";
-      }
-    }
-  }
+    } break;
 
-  if (a.actual_type == ACT_FLOAT) {
-    if (a.bit_width == 32) return "F32";
-    if (a.bit_width == 64) return "F64";
-    return "Unknown bit width";
-  }
+    case ACT_FLOAT: {
+      if (a.bit_width == 32) return "F32";
+      if (a.bit_width == 64) return "F64";
+      return "Unknown bit width";
+    } break;
 
-  if (a.actual_type == ACT_NOT_APPLICABLE) {
-    return "NOT APPLICABLE";
-  }
+    case ACT_BOOL: return "BOOL";
 
-  return "AnnotationTranslation(): Not implemented yet";
+    case ACT_NOT_APPLICABLE: return "NOT APPLICABLE";
+
+    default: return "AnnotationTranslation(): Not implemented yet";
+  }
 }
 
 ParserAnnotation FunctionAnnotation(TokenType return_type) {
