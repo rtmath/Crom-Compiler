@@ -79,7 +79,7 @@ static void SkipWhitespace() {
 
       case '\n': {
         Lexer.current_line++;
-        Lexer.current_x_offset = 0;
+        Lexer.current_x_offset = -1; // The subsequent call to Advance() will set this appropriately to 0
         Advance();
       } break;
 
