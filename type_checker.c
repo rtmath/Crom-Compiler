@@ -216,7 +216,8 @@ static void Assignment(AST_Node *identifier) {
     ActualizeType(identifier, value->annotation);
   }
 
-  bool types_are_same = NodeOstensibleType(identifier) == NodeOstensibleType(value);
+  bool types_are_same = NodeOstensibleType(identifier) == NodeOstensibleType(value) &&
+                        BitWidth(identifier) == BitWidth(value);
   bool types_are_compatible = types_are_same || TypeIsConvertible(value, identifier);
 
   if (types_are_compatible) {
@@ -271,6 +272,13 @@ static void Literal(AST_Node *node) {
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 }
 
+static void IncrementOrDecrement(AST_Node *node) {
+  (node->type == PREFIX_INCREMENT_NODE ||
+   node->type == PREFIX_DECREMENT_NODE)
+  ? ActualizeType(node, node->nodes[LEFT]->annotation)
+  : ActualizeType(node, node->annotation);
+}
+
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = node->nodes[LEFT];
   if (node->token.type == LOGICAL_NOT) {
@@ -291,6 +299,7 @@ static void UnaryOp(AST_Node *node) {
     if (NodeActualType(check_node) == ACT_FLOAT) {
       node->annotation = node->nodes[LEFT]->annotation;
       node->annotation.actual_type = ACT_FLOAT;
+      node->annotation.is_signed = true;
       return;
     }
 
@@ -340,6 +349,12 @@ void CheckTypesRecurse(AST_Node *node) {
     case TERSE_ASSIGNMENT_NODE:
     case ASSIGNMENT_NODE: {
       Assignment(node);
+    } break;
+    case PREFIX_INCREMENT_NODE:
+    case PREFIX_DECREMENT_NODE:
+    case POSTFIX_INCREMENT_NODE:
+    case POSTFIX_DECREMENT_NODE: {
+      IncrementOrDecrement(node);
     } break;
     default: {
     } break;
