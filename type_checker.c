@@ -308,6 +308,8 @@ static void BinaryOp(AST_Node *node) {
 
   node->annotation = node->nodes[LEFT]->annotation;
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
+
+  ActualizeType(node->nodes[RIGHT], node->annotation);
 }
 
 void CheckTypesRecurse(AST_Node *node) {
@@ -325,7 +327,8 @@ void CheckTypesRecurse(AST_Node *node) {
     case BINARY_OP_NODE: {
       BinaryOp(node);
     } break;
-    case IDENTIFIER_NODE: {
+    case IDENTIFIER_NODE:
+    case ENUM_IDENTIFIER_NODE: {
       Identifier(node);
     } break;
     case DECLARATION_NODE: {
