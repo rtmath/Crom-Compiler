@@ -129,9 +129,9 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 
     if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
-      case  8: return from_value < UINT8_MAX;
-      case 16: return from_value < UINT16_MAX;
-      case 32: return from_value < UINT32_MAX;
+      case  8: return from_value <= UINT8_MAX;
+      case 16: return from_value <= UINT16_MAX;
+      case 32: return from_value <= UINT32_MAX;
       case 64: return true;
       default:
         ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
@@ -143,10 +143,10 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     unsigned long long from_value = TokenToULL(from->token);
 
     switch(BitWidth(target_type)) {
-      case  8: return from_value < INT8_MAX;
-      case 16: return from_value < INT16_MAX;
-      case 32: return from_value < INT32_MAX;
-      case 64: return from_value < INT64_MAX;
+      case  8: return from_value <= INT8_MAX;
+      case 16: return from_value <= INT16_MAX;
+      case 32: return from_value <= INT32_MAX;
+      case 64: return from_value <= INT64_MAX;
       default:
         ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
         return false;
