@@ -10,6 +10,8 @@
 
 static SymbolTable *SYMBOL_TABLE;
 
+bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
+
 /* === HELPERS === */
 static int BitWidth(AST_Node *node) {
   return node->annotation.bit_width;
@@ -36,18 +38,9 @@ void VerifyTypeIs(ActualType type, AST_Node *node) {
   if (NodeActualType(node) == type) return;
 
   ERROR_AT_TOKEN(node->token,
-                 "Type disagreement, expected type '%s', got type '%s'",
+                 "VerifyTypeIs(): Type disagreement, expected type '%s', got type '%s'",
                  ActualTypeTranslation(type),
                  ActualTypeTranslation(node->annotation.actual_type));
-}
-
-void CheckTypeDisagreement(AST_Node *a, AST_Node *b) {
-  if (NodeActualType(a) == NodeActualType(b)) return;
-
-  ERROR_AT_TOKEN(b->token,
-                 "Type disagreement between %s and %s",
-                 ActualTypeTranslation(a->annotation.actual_type),
-                 ActualTypeTranslation(b->annotation.actual_type));
 }
 
 void ActualizeType(AST_Node *node, ParserAnnotation a) {
@@ -141,7 +134,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       case 32: return from_value < UINT32_MAX;
       case 64: return true;
       default:
-        ERROR_AND_EXIT_FMTMSG("Unknown bit width: %d\n", BitWidth(target_type));
+        ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
         return false;
     }
   }
@@ -155,7 +148,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       case 32: return from_value < INT32_MAX;
       case 64: return from_value < INT64_MAX;
       default:
-        ERROR_AND_EXIT_FMTMSG("Unknown bit width: %d\n", BitWidth(target_type));
+        ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
         return false;
     }
   }
@@ -217,6 +210,11 @@ static void Declaration(AST_Node *identifier) {
 
 static void Assignment(AST_Node *identifier) {
   AST_Node *value = identifier->nodes[LEFT];
+
+  if (identifier->type == TERSE_ASSIGNMENT_NODE) {
+    // Treat terse assignment node actual type as the identifier's type
+    ActualizeType(identifier, value->annotation);
+  }
 
   bool types_are_same = NodeOstensibleType(identifier) == NodeOstensibleType(value);
   bool types_are_compatible = types_are_same || TypeIsConvertible(value, identifier);
@@ -303,11 +301,16 @@ static void UnaryOp(AST_Node *node) {
 }
 
 static void BinaryOp(AST_Node *node) {
-  CheckTypeDisagreement(node->nodes[LEFT],
-                        node->nodes[RIGHT]);
-
   node->annotation = node->nodes[LEFT]->annotation;
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
+
+  if (!TypeIsConvertible(node->nodes[RIGHT], node)) {
+     ERROR_AT_TOKEN(
+      node->nodes[RIGHT]->token,
+      "BinaryOp(): Cannot convert from type '%s' to '%s'\n",
+      AnnotationTranslation(node->annotation),
+      AnnotationTranslation(node->nodes[RIGHT]->annotation));
+  }
 
   ActualizeType(node->nodes[RIGHT], node->annotation);
 }
@@ -334,6 +337,7 @@ void CheckTypesRecurse(AST_Node *node) {
     case DECLARATION_NODE: {
       Declaration(node);
     } break;
+    case TERSE_ASSIGNMENT_NODE:
     case ASSIGNMENT_NODE: {
       Assignment(node);
     } break;
