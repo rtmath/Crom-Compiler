@@ -172,7 +172,7 @@ ParserAnnotation AnnotateType(TokenType t) {
     case STRUCT: return Annotation(OST_STRUCT, _, _);
 
     default:
-      ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): Unimplemented ToOstensibleType for TokenType '%s'\n", TokenTypeTranslation(t));
+      ERROR_AND_CONTINUE_FMTMSG("AnnotateType(): unimplemented token type '%s'\n", TokenTypeTranslation(t));
       return Annotation(OST_UNKNOWN, _, _);
   }
 }
