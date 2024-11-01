@@ -461,7 +461,8 @@ static AST_Node *Identifier(bool can_assign) {
   // for future error messages
   Symbol s = RetrieveFrom(SYMBOL_TABLE, identifier_token);
   return NewNodeFromToken(
-    (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE : IDENTIFIER_NODE,
+    (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE
+                                          : IDENTIFIER_NODE,
     NULL, array_index, NULL, identifier_token, s.annotation
   );
 }
@@ -720,6 +721,44 @@ static AST_Node *ArraySubscripting(bool) {
   return return_value;
 }
 
+static AST_Node *EnumIdentifier(bool can_assign) {
+  Symbol symbol = RetrieveFrom(SYMBOL_TABLE, Parser.current);
+  bool is_in_symbol_table = IsIn(SYMBOL_TABLE, Parser.current);
+  Token identifier_token = Parser.current;
+
+  if (!is_in_symbol_table) {
+    ERROR_AT_TOKEN(identifier_token,
+                   "EnumIdentifier(): Line %d: Undeclared identifier '%.*s'",
+                   identifier_token.on_line,
+                   identifier_token.length,
+                   identifier_token.position_in_source);
+  }
+
+  if (symbol.declaration_type == DECL_NONE && can_assign) {
+    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE, identifier_token);
+    REDECLARATION_AT_TOKEN(identifier_token,
+                           already_declared.token,
+                           "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                           identifier_token.length,
+                           identifier_token.position_in_source,
+                           already_declared.annotation.declared_on_line);
+  }
+
+  if (Match(EQUALS)) {
+    if (!can_assign) {
+      ERROR_AT_TOKEN(identifier_token,
+                     "Identifier(): Cannot assign to identifier '%.*s'",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
+    }
+
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
+    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(UNUSED), NULL, NULL, stored_symbol);
+  }
+
+  return NewNodeFromToken(ENUM_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
+}
+
 static AST_Node *EnumBlock() {
   AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
   AST_Node **current = &n;
@@ -741,9 +780,9 @@ static AST_Node *EnumBlock() {
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
-    AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, NoAnnotation(), DECL_DEFINED));
+    AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
-    (*current)->nodes[LEFT] = Identifier(CAN_ASSIGN);
+    (*current)->nodes[LEFT] = EnumIdentifier(CAN_ASSIGN);
     (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
@@ -760,7 +799,7 @@ static AST_Node *Enum(bool) {
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
           TokenTypeTranslation(Parser.next.type));
-  AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, AnnotateType(Parser.current.type), DECL_DECLARED));
+  AddTo(SYMBOL_TABLE, NewSymbol(Parser.current, AnnotateType(ENUM), DECL_DECLARED));
 
   AST_Node *enum_name = Identifier(false);
   enum_name->nodes[LEFT] = EnumBlock();
