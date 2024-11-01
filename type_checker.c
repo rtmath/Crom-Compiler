@@ -50,6 +50,13 @@ void CheckTypeDisagreement(AST_Node *a, AST_Node *b) {
                  ActualTypeTranslation(b->annotation.actual_type));
 }
 
+void ActualizeType(AST_Node *node, ParserAnnotation a) {
+  int preserve_dol = node->annotation.declared_on_line;
+  node->annotation = a;
+  node->annotation.actual_type = (ActualType)a.ostensible_type;
+  node->annotation.declared_on_line = preserve_dol;
+}
+
 long long TokenToLL(Token t) {
   errno = 0;
   long long value = strtoll(t.position_in_source, NULL, 10);
@@ -81,9 +88,15 @@ double TokenToDouble(Token t) {
 }
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
-  bool types_dont_match = NodeOstensibleType(from) != NodeOstensibleType(target_type);
+  bool types_match = NodeOstensibleType(from) == NodeOstensibleType(target_type);
   bool both_types_arent_numbers = !(HasNumberOstType(from) && HasNumberOstType(target_type));
-  if (types_dont_match && both_types_arent_numbers) return false;
+
+  if (from->annotation.is_array &&
+      NodeOstensibleType(from) == OST_CHAR &&
+      NodeOstensibleType(target_type) == OST_STRING) return true;
+
+  if (!types_match && both_types_arent_numbers) return false;
+  if (types_match && both_types_arent_numbers) return true;
 
   if (IsSigned(from) == IsSigned(target_type) &&
       BitWidth(from) <= BitWidth(target_type) &&
@@ -153,6 +166,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   const bool SIGNED = true;
   const bool UNSIGNED = false;
+  const int _ = 0;
 
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
@@ -181,11 +195,19 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   }
 
   if (NodeOstensibleType(node) == OST_BOOL) {
-    return Annotation(OST_BOOL, 0, 0);
+    return Annotation(OST_BOOL, 8, _);
   }
 
-  ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Unknown Ostensible type");
-  return Annotation(OST_UNKNOWN, 0, 0);
+  if (NodeOstensibleType(node) == OST_CHAR) {
+    return Annotation(OST_CHAR, 8, UNSIGNED);
+  }
+
+  if (NodeOstensibleType(node) == OST_STRING) {
+    return ArrayAnnotation(CHAR, node->token.length - 2); // -2 to subtract the '"'s from the string length
+  }
+
+  ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Type not implemented yet");
+  return Annotation(OST_UNKNOWN, _, _);
 }
 /* === END HELPERS === */
 
@@ -200,10 +222,17 @@ static void Assignment(AST_Node *identifier) {
   bool types_are_compatible = types_are_same || TypeIsConvertible(value, identifier);
 
   if (types_are_compatible) {
-    identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
-    value->annotation.actual_type = identifier->annotation.actual_type;
-    value->annotation.bit_width = BitWidth(identifier);
-    value->annotation.is_signed = IsSigned(identifier);
+    if (NodeOstensibleType(identifier) == OST_STRING) {
+      // For strings, propagate the type information from child node
+      // to parent in order to get the length of the string
+      ActualizeType(identifier, value->annotation);
+    } else {
+      // Otherwise actualize the ostensible declared type of the identifier
+      ActualizeType(identifier, identifier->annotation);
+    }
+
+    // Synchronize information between nodes
+    ActualizeType(value, identifier->annotation);
     return;
   }
 
@@ -227,12 +256,10 @@ static void Literal(AST_Node *node) {
     case OST_INT:
     case OST_FLOAT:
     case OST_BOOL:
+    case OST_CHAR:
+    case OST_STRING:
     {
-      // Actualize type from its smallest containing ostensible type
-      ParserAnnotation type_anno = ShrinkToSmallestContainingType(node);
-      node->annotation.is_signed = type_anno.is_signed;
-      node->annotation.bit_width = type_anno.bit_width;
-      node->annotation.actual_type = (ActualType)type_anno.ostensible_type;
+      ActualizeType(node, ShrinkToSmallestContainingType(node));
       return;
     } break;
 
