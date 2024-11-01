@@ -8,9 +8,14 @@
 #include "parser_annotation.h"
 #include "type_checker.h"
 
+#define BASE_DECIMAL 10
+#define BASE_HEX 16
+#define BASE_BINARY 2
+
 static SymbolTable *SYMBOL_TABLE;
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
+ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node);
 
 /* === HELPERS === */
 static int BitWidth(AST_Node *node) {
@@ -50,9 +55,13 @@ void ActualizeType(AST_Node *node, ParserAnnotation a) {
   node->annotation.declared_on_line = preserve_dol;
 }
 
-long long TokenToLL(Token t) {
+void ShrinkAndActualizeType(AST_Node *node) {
+  ActualizeType(node, ShrinkToSmallestContainingType(node));
+}
+
+long long TokenToLL(Token t, int base) {
   errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, 10);
+  long long value = strtoll(t.position_in_source, NULL, base);
   if (errno != 0) {
     ERROR_AND_EXIT("TokenToLL() underflow or overflow");
   }
@@ -60,9 +69,9 @@ long long TokenToLL(Token t) {
   return value;
 }
 
-unsigned long long TokenToULL(Token t) {
+unsigned long long TokenToULL(Token t, int base) {
   errno = 0;
-  unsigned long long value = strtoull(t.position_in_source, NULL, 10);
+  unsigned long long value = strtoull(t.position_in_source, NULL, base);
   if (errno != 0) {
     ERROR_AND_EXIT("TokenToULL() underflow or overflow");
   }
@@ -110,22 +119,23 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     return false;
   }
 
-  if (NodeOstensibleType(target_type) == OST_FLOAT) {
-    if (BitWidth(target_type) == 32) {
-      double d = TokenToDouble(from->token);
-      return d >= FLT_MIN && d <= FLT_MAX;
-    }
+  const int base =
+    (from->token.type == HEX_LITERAL)
+    ? BASE_HEX
+    : (from->token.type == BINARY_LITERAL)
+      ? BASE_BINARY
+      : BASE_DECIMAL;
 
-    if (BitWidth(target_type) == 64) {
-      double d = TokenToDouble(from->token);
-      return d >= DBL_MIN && d <= DBL_MAX;
-    }
+  if (NodeOstensibleType(target_type) == OST_FLOAT) {
+    double d = TokenToDouble(from->token);
+    if (BitWidth(target_type) == 32) return d >= FLT_MIN && d <= FLT_MAX;
+    if (BitWidth(target_type) == 64) return d >= DBL_MIN && d <= DBL_MAX;
 
     ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bitwidth '%d'", BitWidth(target_type));
   }
 
   if (IsSigned(from) && !IsSigned(target_type)) {
-    long long from_value = TokenToLL(from->token);
+    long long from_value = TokenToLL(from->token, base);
 
     if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
@@ -140,7 +150,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   }
 
   if (!IsSigned(from) && IsSigned(target_type)) {
-    unsigned long long from_value = TokenToULL(from->token);
+    unsigned long long from_value = TokenToULL(from->token, base);
 
     switch(BitWidth(target_type)) {
       case  8: return from_value <= INT8_MAX;
@@ -161,9 +171,17 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   const bool UNSIGNED = false;
   const int _ = 0;
 
+  const int base =
+    (node->token.type == HEX_LITERAL)
+    ? BASE_HEX
+    : (node->token.type == BINARY_LITERAL)
+      ? BASE_BINARY
+      : BASE_DECIMAL;
+
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
-      long long value = TokenToLL(node->token);
+      long long value = TokenToLL(node->token, base);
+      printf("Shrink(): value is '%lld'\n", value);
 
       if (value >= INT8_MIN  && value <= INT8_MAX)  return Annotation(OST_INT,  8, SIGNED);
       if (value >= INT16_MIN && value <= INT16_MAX) return Annotation(OST_INT, 16, SIGNED);
@@ -171,7 +189,8 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
       if (value >= INT64_MIN && value <= INT64_MAX) return Annotation(OST_INT, 64, SIGNED);
 
     } else {
-      unsigned long long value = TokenToULL(node->token);
+      unsigned long long value = TokenToULL(node->token, base);
+      printf("Shrink(): value is '%llu'\n", value);
 
       if (value <= UINT8_MAX)  return Annotation(OST_INT,  8, UNSIGNED);
       if (value <= UINT16_MAX) return Annotation(OST_INT, 16, UNSIGNED);
@@ -182,6 +201,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 
   if (NodeOstensibleType(node) == OST_FLOAT) {
     double d = TokenToDouble(node->token);
+    printf("Shrink(): value is '%f'\n", d);
 
     if (d >= FLT_MIN && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
     if (d >= DBL_MIN && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
@@ -251,6 +271,12 @@ static void Identifier(AST_Node *identifier) {
 }
 
 static void Literal(AST_Node *node) {
+  if (node->token.type == HEX_LITERAL ||
+      node->token.type == BINARY_LITERAL) {
+      ShrinkAndActualizeType(node);
+    return;
+  }
+
   switch (NodeOstensibleType(node)) {
     case OST_INT:
     case OST_FLOAT:
@@ -258,7 +284,7 @@ static void Literal(AST_Node *node) {
     case OST_CHAR:
     case OST_STRING:
     {
-      ActualizeType(node, ShrinkToSmallestContainingType(node));
+      ShrinkAndActualizeType(node);
       return;
     } break;
 
@@ -268,8 +294,6 @@ static void Literal(AST_Node *node) {
                             OstensibleTypeTranslation(node->annotation.ostensible_type));
     } break;
   }
-
-  node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 }
 
 static void IncrementOrDecrement(AST_Node *node) {
@@ -317,8 +341,8 @@ static void BinaryOp(AST_Node *node) {
      ERROR_AT_TOKEN(
       node->nodes[RIGHT]->token,
       "BinaryOp(): Cannot convert from type '%s' to '%s'\n",
-      AnnotationTranslation(node->annotation),
-      AnnotationTranslation(node->nodes[RIGHT]->annotation));
+      AnnotationTranslation(node->nodes[RIGHT]->annotation),
+      AnnotationTranslation(node->annotation));
   }
 
   ActualizeType(node->nodes[RIGHT], node->annotation);
