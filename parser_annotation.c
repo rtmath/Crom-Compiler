@@ -132,7 +132,12 @@ ParserAnnotation AnnotateType(TokenType t) {
     case I64: return Annotation(OST_INT, 64, SIGNED);
 
     case BINARY_LITERAL:
-    case HEX_LITERAL:
+    case HEX_LITERAL: {
+      // Treat hex and binary literals as largest available type,
+      // Type Checker will shrink them later
+      return Annotation(OST_INT, 64, UNSIGNED);
+    }
+
     case INT_LITERAL:
     case ENUM_LITERAL: {
       // Treat integer literals as largest available type,
