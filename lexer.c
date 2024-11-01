@@ -134,16 +134,22 @@ static Token Hex() {
 static Token Binary() {
   Advance(); // consume the Peek()'d "'"
 
+  // Forget the "b'" from the start of the lexeme
+  Lexer.start = Lexer.end;
+
   while (Peek() == '0' || Peek() == '1') Advance();
 
   if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Literal");
   Advance(); // consume the Peek()'d "'"
 
-  if (LexemeLength() > (3 + 64)) { // "b'" + up to 64 0s or 1s + "'"
+  if (LexemeLength() > (64)) {
     return MakeErrorToken("Binary Literal cannot be more than 64 bits wide");
   }
 
-  return MakeToken(BINARY_LITERAL);
+  Token t = MakeToken(BINARY_LITERAL);
+  t.length--; // Shave the "'" from the end of the lexeme
+
+  return t;
 }
 
 static Token Number() {
