@@ -126,6 +126,13 @@ static ParseRule Rules[] = {
   [PLUS_PLUS]      = {  Unary, NULL, PREFIX_INCREMENT },
   [MINUS_MINUS]    = {  Unary, NULL, PREFIX_DECREMENT },
 
+  [BITWISE_NOT]         = { Unary,   NULL, BITWISE },
+  [BITWISE_AND]         = {  NULL, Binary, BITWISE },
+  [BITWISE_XOR]         = {  NULL, Binary, BITWISE },
+  [BITWISE_OR]          = {  NULL, Binary, BITWISE },
+  [BITWISE_LEFT_SHIFT]  = {  NULL, Binary, BITWISE },
+  [BITWISE_RIGHT_SHIFT] = {  NULL, Binary, BITWISE },
+
   // Misc
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
 };
