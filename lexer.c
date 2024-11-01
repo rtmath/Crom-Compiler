@@ -270,7 +270,7 @@ Token ScanToken() {
     }
     case '-': {
       if (Match('=')) return MakeToken(MINUS_EQUALS);
-      if (Match('+')) return MakeToken(MINUS_MINUS);
+      if (Match('-')) return MakeToken(MINUS_MINUS);
       return MakeToken(MINUS);
     }
     case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);

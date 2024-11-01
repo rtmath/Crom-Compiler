@@ -419,7 +419,7 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.position_in_source);
     }
 
-    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, NoAnnotation());
+    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.annotation);
   }
 
   if (Match(MINUS_MINUS)) {
@@ -430,7 +430,7 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.position_in_source);
     }
 
-    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, NoAnnotation());
+    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.annotation);
   }
 
   if (Match(EQUALS)) {
@@ -477,7 +477,7 @@ static AST_Node *Unary(bool) {
     case PLUS_PLUS:
       return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     case MINUS_MINUS:
-      return NewNodeFromToken(POSTFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
+      return NewNodeFromToken(PREFIX_DECREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     case LOGICAL_NOT:
     case MINUS:
       return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
@@ -627,7 +627,7 @@ static AST_Node *WhileStmt(bool) {
   AST_Node *condition = Expression(UNUSED);
   Consume(LCURLY, "WhileStmt(): Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *block = Block(UNUSED);
-
+  Match(SEMICOLON);
   return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
 }
 
