@@ -453,7 +453,9 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
-    return NewNodeFromToken(ASSIGNMENT_NODE, TerseAssignment(UNUSED), NULL, NULL, identifier_token, NoAnnotation());
+    AST_Node *terse_assignment = TerseAssignment(UNUSED);
+    terse_assignment->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
+    return terse_assignment;
   }
 
   // Retrieve symbol from the table to use its declaration type and
@@ -538,7 +540,7 @@ static AST_Node *TerseAssignment(bool) {
     case BITWISE_NOT_EQUALS:
     case BITWISE_LEFT_SHIFT_EQUALS:
     case BITWISE_RIGHT_SHIFT_EQUALS:
-      return NewNodeFromToken(ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(TERSE_ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "TerseAssignment(): Unknown operator '%s'\n",
