@@ -12,6 +12,7 @@ static const char* const _NodeTypeTranslation[] =
   [STATEMENT_NODE] = "Statement",
   [DECLARATION_NODE] = "Declaration",
   [IDENTIFIER_NODE] = "Identifier",
+  [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
 
   [IF_NODE] = "If",
