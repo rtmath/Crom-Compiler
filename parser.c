@@ -377,7 +377,7 @@ static AST_Node *Identifier(bool can_assign) {
   Token identifier_token = Parser.current;
 
   if (Match(LPAREN)) {
-    if (NextTokenIsAnyType()) { // Declaration
+    if (NextTokenIsAnyType() || NextTokenIs(RPAREN)) { // Declaration
       if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
         REDECLARATION_AT_TOKEN(identifier_token,
                                symbol.token,
