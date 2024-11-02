@@ -181,7 +181,6 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
       long long value = TokenToLL(node->token, base);
-      printf("Shrink(): value is '%lld'\n", value);
 
       if (value >= INT8_MIN  && value <= INT8_MAX)  return Annotation(OST_INT,  8, SIGNED);
       if (value >= INT16_MIN && value <= INT16_MAX) return Annotation(OST_INT, 16, SIGNED);
@@ -190,7 +189,6 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 
     } else {
       unsigned long long value = TokenToULL(node->token, base);
-      printf("Shrink(): value is '%llu'\n", value);
 
       if (value <= UINT8_MAX)  return Annotation(OST_INT,  8, UNSIGNED);
       if (value <= UINT16_MAX) return Annotation(OST_INT, 16, UNSIGNED);
@@ -201,7 +199,6 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 
   if (NodeOstensibleType(node) == OST_FLOAT) {
     double d = TokenToDouble(node->token);
-    printf("Shrink(): value is '%f'\n", d);
 
     if (d >= FLT_MIN && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
     if (d >= DBL_MIN && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
@@ -267,7 +264,7 @@ static void Assignment(AST_Node *identifier) {
 
 static void Identifier(AST_Node *identifier) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
-  identifier->annotation.actual_type = (ActualType)symbol.annotation.ostensible_type;
+  ActualizeType(identifier, symbol.annotation);
 }
 
 static void Literal(AST_Node *node) {
@@ -301,6 +298,10 @@ static void IncrementOrDecrement(AST_Node *node) {
    node->type == PREFIX_DECREMENT_NODE)
   ? ActualizeType(node, node->nodes[LEFT]->annotation)
   : ActualizeType(node, node->annotation);
+}
+
+static void Return(AST_Node* node) {
+  ActualizeType(node, node->nodes[LEFT]->annotation);
 }
 
 static void UnaryOp(AST_Node *node) {
@@ -349,9 +350,19 @@ static void BinaryOp(AST_Node *node) {
 }
 
 void CheckTypesRecurse(AST_Node *node) {
+  SymbolTable *remember_st = SYMBOL_TABLE;
+  if (node->type == FUNCTION_NODE) {
+    Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
+    SYMBOL_TABLE = s.fn_params;
+  }
+
   if (node->nodes[LEFT]   != NULL) CheckTypesRecurse(node->nodes[LEFT]);
   if (node->nodes[MIDDLE] != NULL) CheckTypesRecurse(node->nodes[MIDDLE]);
   if (node->nodes[RIGHT]  != NULL) CheckTypesRecurse(node->nodes[RIGHT]);
+
+  if (node->type == FUNCTION_NODE) {
+    SYMBOL_TABLE = remember_st;
+  }
 
   switch(node->type) {
     case LITERAL_NODE: {
@@ -379,6 +390,13 @@ void CheckTypesRecurse(AST_Node *node) {
     case POSTFIX_INCREMENT_NODE:
     case POSTFIX_DECREMENT_NODE: {
       IncrementOrDecrement(node);
+    } break;
+    case FUNCTION_NODE:
+    case FUNCTION_PARAM_NODE: {
+      ActualizeType(node, node->annotation);
+    } break;
+    case RETURN_NODE: {
+      Return(node);
     } break;
     default: {
     } break;
