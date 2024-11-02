@@ -131,7 +131,8 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
 
   if (node->type != UNTYPED &&
       node->type != CHAIN_NODE &&
-      node->type != START_NODE) {
+      node->type != START_NODE &&
+      node->type != FUNCTION_NODE) {
     printf("%s", NodeTypeTranslation(node->type));
   }
 
@@ -150,9 +151,9 @@ void PrintAST(AST_Node *root) {
 }
 
 static void InlinePrintNodeSummary(AST_Node *node) {
-  printf("%s Node -> %s Token",
-         NodeTypeTranslation(node->type),
-         TokenTypeTranslation(node->token.type));
+  printf("%s Node | ",
+         NodeTypeTranslation(node->type));
+  InlinePrintToken(node->token);
   printf(" [OST ");
   InlinePrintOstAnnotation(node->annotation);
   printf(" : ACT ");

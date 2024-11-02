@@ -19,16 +19,18 @@ ParserAnnotation NoAnnotation() {
 static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
   bool print_bit_width = (a.bit_width > 0) &&
                          (a.actual_type == ACT_FLOAT ||
-                          a.actual_type == ACT_INT);
+                          a.actual_type == ACT_INT ||
+                          a.ostensible_type == OST_FLOAT ||
+                          a.ostensible_type == OST_INT);
 
   if (a.is_function) {
     (print_bit_width)
-    ? printf("Fn :: %s%d", s, a.bit_width)
-    : printf("Fn :: %s", s);
+    ? printf("Fn -> %s%d", s, a.bit_width)
+    : printf("Fn -> %s", s);
     return;
   }
 
-  if (a.actual_type == ACT_STRING) {
+  if (a.actual_type == ACT_STRING || a.ostensible_type == OST_STRING) {
     printf("CHAR[%d]", a.array_size);
     return;
   }
@@ -169,7 +171,6 @@ ParserAnnotation AnnotateType(TokenType t) {
     case STRING:
     case STRING_LITERAL: {
       return Annotation(OST_STRING, _, _);
-      //return ArrayAnnotation(CHAR, 0);
     }
 
     case ENUM: return Annotation(OST_ENUM, _, _);
