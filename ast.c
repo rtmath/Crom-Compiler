@@ -121,7 +121,9 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
 
   printf("%s", buf);
   if (node->token.type != UNINITIALIZED) {
-    printf("%.*s ", node->token.length, node->token.position_in_source);
+    (node->token.type == STRING_LITERAL)
+    ? printf("\"%.*s\" ", node->token.length, node->token.position_in_source)
+    : printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
   if (node->annotation.actual_type != ACT_NOT_APPLICABLE) {

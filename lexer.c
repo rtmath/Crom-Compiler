@@ -175,6 +175,8 @@ static Token Char() {
 }
 
 static Token String() {
+  Lexer.start = Lexer.end; // Forget the '"' part of the lexeme
+
   while (Peek() != '"' && !AtEOF()) {
     if (Peek() == '\n') {
       return MakeErrorToken("Multi-line strings are not allowed");
@@ -186,7 +188,11 @@ static Token String() {
   if (AtEOF()) return MakeErrorToken("Unterminated string.");
 
   Advance();
-  return MakeToken(STRING_LITERAL);
+
+  Token t = MakeToken(STRING_LITERAL);
+  t.length--; // Shave the '"' from the end of the lexeme
+
+  return t;
 }
 
 static bool LexemeEquals(const char *str, int len) {

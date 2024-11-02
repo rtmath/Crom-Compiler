@@ -213,7 +213,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   }
 
   if (NodeOstensibleType(node) == OST_STRING) {
-    return ArrayAnnotation(CHAR, node->token.length - 2); // -2 to subtract the '"'s from the string length
+    return ArrayAnnotation(CHAR, node->token.length);
   }
 
   ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Type not implemented yet");
@@ -392,7 +392,8 @@ void CheckTypesRecurse(AST_Node *node) {
       IncrementOrDecrement(node);
     } break;
     case FUNCTION_NODE:
-    case FUNCTION_PARAM_NODE: {
+    case FUNCTION_PARAM_NODE:
+    case FUNCTION_RETURN_TYPE_NODE: {
       ActualizeType(node, node->annotation);
     } break;
     case RETURN_NODE: {
