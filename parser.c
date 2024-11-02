@@ -867,7 +867,7 @@ static AST_Node *Struct() {
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params) {
-  AST_Node *params = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *params = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &params;
 
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
@@ -886,12 +886,14 @@ static AST_Node *FunctionParams(SymbolTable *fn_params) {
     }
     Symbol stored_symbol = AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
 
-    (*current)->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, stored_symbol);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(FUNCTION_PARAM_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    (*current)->annotation = stored_symbol.annotation;
+    (*current)->token = identifier_token;
 
-    current = &(*current)->nodes[RIGHT];
+    if (Match(COMMA) || !NextTokenIs(RPAREN)) {
+      (*current)->nodes[LEFT] = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    Match(COMMA);
+      current = &(*current)->nodes[LEFT];
+    }
   }
 
   return params;
@@ -946,15 +948,13 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
                    already_declared.annotation.declared_on_line);
   }
 
-  Symbol stored_symbol = AddTo(SYMBOL_TABLE, NewSymbol(symbol.token,
-                                                      (symbol.declaration_type == DECL_DECLARED)
-                                                        ? symbol.annotation
-                                                        : FunctionAnnotation(return_type->token.type),
-                                                      (body == NULL)
-                                                        ? DECL_DECLARED
-                                                        : DECL_DEFINED));
+  symbol.annotation= (symbol.declaration_type == DECL_DECLARED)
+                       ? symbol.annotation
+                       : FunctionAnnotation(return_type->token.type);
+  symbol.declaration_type = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
+  Symbol updated_symbol = AddTo(SYMBOL_TABLE, symbol);
 
-  return NewNodeFromSymbol(FUNCTION_NODE, return_type, params, body, stored_symbol);
+  return NewNodeFromSymbol(FUNCTION_NODE, return_type, params, body, updated_symbol);
 }
 
 static AST_Node *Literal(bool) {
