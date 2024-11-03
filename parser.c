@@ -180,7 +180,7 @@ static Symbol ExistsInOuterScope(Token t) {
     .on_line = 1,
   };
 
-  return NewSymbol(SYMBOL_NOT_FOUND, NoAnnotation(), DECL_NONE);;
+  return NewSymbol(SYMBOL_NOT_FOUND, NoAnnotation(), DECL_NONE);
 }
 
 static SymbolTable *SYMBOL_TABLE() {
@@ -441,7 +441,7 @@ static AST_Node *Identifier(bool can_assign) {
                                symbol.annotation.declared_on_line);
       }
 
-      // TODO: Check for function definintion in outer scope
+      // TODO: Check for function definition in outer scope
       if (!is_in_symbol_table) AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
       symbol = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
 
