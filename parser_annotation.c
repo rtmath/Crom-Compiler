@@ -6,11 +6,17 @@
 ParserAnnotation NoAnnotation() {
   ParserAnnotation a = {
     .ostensible_type = OST_UNKNOWN,
-    .bit_width = 0,
+    .actual_type = ACT_NOT_APPLICABLE,
+
     .is_signed = 0,
-    .declared_on_line = -1,
+    .bit_width = 0,
+
     .is_array = 0,
     .array_size = 0,
+
+    .is_function = 0,
+
+    .declared_on_line = -1,
   };
 
   return a;
