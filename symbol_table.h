@@ -37,6 +37,7 @@ struct SymbolTable_impl {
 };
 
 SymbolTable *NewSymbolTable();
+void DeleteSymbolTable(SymbolTable *st);
 Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d);
 
 Symbol AddTo(SymbolTable *st, Symbol s);

@@ -102,7 +102,7 @@ static SymbolTable *NewSymbolTable_Sized(int initial_capacity) {
   return st;
 }
 
-static void DeleteSymbolTable(SymbolTable *st) {
+void DeleteSymbolTable(SymbolTable *st) {
   for (int i = 0; i < st->capacity; i++) {
     Bucket *b = st->buckets[i];
     if (b != NULL) FreeBucket(b);
