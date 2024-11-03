@@ -302,6 +302,57 @@ static void IncrementOrDecrement(AST_Node *node) {
 
 static void Return(AST_Node* node) {
   ActualizeType(node, node->nodes[LEFT]->annotation);
+  // TODO: Can I put an unreachable code check here?
+}
+
+static bool IsDeadEnd(AST_Node *node) {
+  return (node == NULL) ||
+         (node->type == CHAIN_NODE    &&
+          node->nodes[LEFT]   == NULL &&
+          node->nodes[MIDDLE] == NULL &&
+          node->nodes[RIGHT]  == NULL);
+}
+
+static void Function(AST_Node *node) {
+  AST_Node *return_type = node->nodes[LEFT];
+  AST_Node *body = node->nodes[RIGHT];
+  AST_Node **check = &body;
+
+  do {
+    if ((*check)->nodes[LEFT]->type == RETURN_NODE) {
+      if (TypeIsConvertible((*check)->nodes[LEFT], return_type)) {
+        ActualizeType(node, node->annotation);
+
+        if (!IsDeadEnd((*check)->nodes[RIGHT])) {
+          ERROR_AT_TOKEN(
+            (*check)->nodes[RIGHT]->nodes[LEFT]->token,
+            "Function(): Unreachable code in function %.*s",
+            node->token.length,
+            node->token.position_in_source);
+        }
+
+        return;
+      } else {
+        ERROR_AT_TOKEN(
+          (*check)->nodes[LEFT]->nodes[LEFT]->token,
+          "Function(): in function '%.*s': Return type '%s' is not convertible to '%s'",
+          node->token.length,
+          node->token.position_in_source,
+          AnnotationTranslation((*check)->nodes[LEFT]->annotation),
+          AnnotationTranslation(return_type->annotation));
+      }
+    }
+
+    *check = (*check)->nodes[RIGHT];
+  } while (!IsDeadEnd(*check));
+
+  if (return_type->annotation.actual_type != ACT_VOID) {
+    ERROR_AT_TOKEN(
+      node->token,
+      "Function(): Missing return statement in non-void function '%.*s'",
+      node->token.length,
+      node->token.position_in_source);
+  }
 }
 
 static void UnaryOp(AST_Node *node) {
@@ -391,10 +442,12 @@ void CheckTypesRecurse(AST_Node *node) {
     case POSTFIX_DECREMENT_NODE: {
       IncrementOrDecrement(node);
     } break;
-    case FUNCTION_NODE:
     case FUNCTION_PARAM_NODE:
     case FUNCTION_RETURN_TYPE_NODE: {
       ActualizeType(node, node->annotation);
+    } break;
+    case FUNCTION_NODE: {
+      Function(node);
     } break;
     case RETURN_NODE: {
       Return(node);
@@ -403,8 +456,7 @@ void CheckTypesRecurse(AST_Node *node) {
     } break;
   }
 
-  if (node->type != CHAIN_NODE &&
-      node->type != START_NODE) {
+  if (node->type != START_NODE) {
     PrintNode(node);
   }
 }
