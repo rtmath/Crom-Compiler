@@ -360,6 +360,11 @@ static void Function(AST_Node *node) {
   }
 }
 
+static void FunctionCall(AST_Node *node) {
+  // TODO: Validate argument types
+  ActualizeType(node, node->annotation);
+}
+
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = node->nodes[LEFT];
   if (node->token.type == LOGICAL_NOT) {
@@ -450,12 +455,16 @@ void CheckTypesRecurse(AST_Node *node) {
     case POSTFIX_DECREMENT_NODE: {
       IncrementOrDecrement(node);
     } break;
+    case FUNCTION_ARGUMENT_NODE:
     case FUNCTION_PARAM_NODE:
     case FUNCTION_RETURN_TYPE_NODE: {
       ActualizeType(node, node->annotation);
     } break;
     case FUNCTION_NODE: {
       Function(node);
+    } break;
+    case FUNCTION_CALL_NODE: {
+      FunctionCall(node);
     } break;
     case RETURN_NODE: {
       Return(node);

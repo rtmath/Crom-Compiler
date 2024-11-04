@@ -16,6 +16,7 @@
 struct {
   Token current;
   Token next;
+  Token after_next;
 } Parser;
 
 typedef enum {
@@ -47,6 +48,7 @@ struct {
 
 /* Forward Declarations */
 static AST_Node *FunctionDeclaration(Symbol symbol);
+static AST_Node *FunctionCall(Symbol symbol);
 
 static void BeginScope();
 static void EndScope();
@@ -191,7 +193,8 @@ static SymbolTable *SYMBOL_TABLE() {
 
 static void Advance() {
   Parser.current = Parser.next;
-  Parser.next = ScanToken();
+  Parser.next = Parser.after_next;
+  Parser.after_next = ScanToken();
 
   if (Parser.next.type != ERROR) return;
 
@@ -204,6 +207,10 @@ static void Advance() {
 
 static bool NextTokenIs(TokenType type) {
   return (Parser.next.type == type);
+}
+
+static bool TokenAfterNextIs(TokenType type) {
+  return Parser.after_next.type == type;
 }
 
 static bool NextTokenIsAnyType() {
@@ -222,6 +229,23 @@ static bool NextTokenIsAnyType() {
     case STRUCT:
     case CHAR:
     case STRING:
+    {
+      return true;
+    }
+    default: return false;
+  }
+}
+
+static bool NextTokenIsLiteral() {
+  switch (Parser.next.type) {
+    case BINARY_LITERAL:
+    case HEX_LITERAL:
+    case INT_LITERAL:
+    case FLOAT_LITERAL:
+    case ENUM_LITERAL:
+    case CHAR_LITERAL:
+    case BOOL_LITERAL:
+    case STRING_LITERAL:
     {
       return true;
     }
@@ -300,6 +324,28 @@ static void ConsumeAnyType(const char *msg, ...) {
   va_end(args);
 }
 
+static void ConsumeAnyLiteral(const char *msg, ...) {
+  if (NextTokenIs(BINARY_LITERAL) ||
+      NextTokenIs(HEX_LITERAL)    ||
+      NextTokenIs(INT_LITERAL)    ||
+      NextTokenIs(FLOAT_LITERAL)  ||
+      NextTokenIs(ENUM_LITERAL)   ||
+      NextTokenIs(CHAR_LITERAL)   ||
+      NextTokenIs(BOOL_LITERAL)   ||
+      NextTokenIs(STRING_LITERAL))
+  {
+    Advance();
+    return;
+  }
+
+  va_list args;
+  va_start(args, msg);
+
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
+
+  va_end(args);
+}
+
 static void ConsumeAnyTerseAssignment(const char *msg, ...) {
   if (NextTokenIs(PLUS_EQUALS)                ||
       NextTokenIs(MINUS_EQUALS)               ||
@@ -332,12 +378,13 @@ void InitParser(SymbolTable **st) {
   Scope.depth = 0;
   Scope.locals[Scope.depth] = *st;
 
-  /* One call to Advance() will prime the parser, such that
+  /* Two calls to Advance() will prime the parser, such that
    * Parser.current will still be zeroed out, and
    * Parser.next will hold the First Token(TM) from the lexer.
    * The first call to Advance() from inside Parse() will then
    * set Parser.current to the First Token, and Parser.next to
    * look ahead one token, and parsing will proceed normally. */
+  Advance();
   Advance();
 }
 
@@ -431,7 +478,9 @@ static AST_Node *Identifier(bool can_assign) {
   Token identifier_token = Parser.current;
 
   if (Match(LPAREN)) {
-    if (NextTokenIsAnyType() || NextTokenIs(RPAREN)) { // Declaration
+    if (NextTokenIsAnyType() ||
+        (NextTokenIs(RPAREN) && TokenAfterNextIs(COLON_SEPARATOR)))
+    { // Declaration
       if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
         REDECLARATION_AT_TOKEN(identifier_token,
                                symbol.token,
@@ -447,8 +496,20 @@ static AST_Node *Identifier(bool can_assign) {
 
       return FunctionDeclaration(symbol);
     } else { // Function call
-      // TODO: Implement
+      if (!is_in_symbol_table) {
+        ERROR_AT_TOKEN(
+          identifier_token,
+          "Undeclared function", "");
+      } else if (symbol.declaration_type != DECL_DEFINED) {
+        ERROR_AT_TOKEN(
+          identifier_token,
+          "Can't call an undefined function", "");
+      }
+
+      return FunctionCall(symbol);
     }
+
+    ERROR_AND_EXIT("Identifier(): How'd you get here?\n");
   }
 
   if (!is_in_symbol_table) {
@@ -521,6 +582,7 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
+
     AST_Node *terse_assignment = TerseAssignment(UNUSED);
     terse_assignment->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
@@ -1013,13 +1075,54 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
                    already_declared.annotation.declared_on_line);
   }
 
-  symbol.annotation= (symbol.declaration_type == DECL_DECLARED)
+  symbol.annotation = (symbol.declaration_type == DECL_DECLARED)
                        ? symbol.annotation
                        : FunctionAnnotation(return_type->token.type);
   symbol.declaration_type = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
   Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
 
-  return NewNodeFromSymbol(FUNCTION_NODE, return_type, params, body, updated_symbol);
+  return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);
+}
+
+static AST_Node *FunctionCall(Symbol s) {
+  AST_Node *args = NULL;
+  AST_Node **current = &args;
+
+  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
+    if (args == NULL) {
+      args = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());
+    }
+
+    if (NextTokenIs(IDENTIFIER)) {
+      Consume(IDENTIFIER, "FunctionCall(): Expected identifier\n");
+      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
+
+      if (Match(LPAREN)) {
+        (*current)->nodes[LEFT] = FunctionCall(identifier);
+      } else {
+        (*current)->nodes[LEFT] = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
+      }
+
+    } else if (NextTokenIsLiteral()) {
+      ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
+      PrintToken(Parser.current);
+      Token literal = Parser.current;
+
+      (*current)->nodes[LEFT] = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
+    }
+
+    if (NextTokenIs(COMMA)) {
+      Consume(COMMA, "");
+      if (NextTokenIs(RPAREN)) { break; }
+
+      (*current)->nodes[RIGHT] = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());;
+      current = &(*current)->nodes[RIGHT];
+    }
+  }
+
+  Consume(RPAREN, "FunctionCall(): Expected ')'");
+
+  return NewNodeFromSymbol(FUNCTION_CALL_NODE, NULL, args, NULL, s);
 }
 
 static AST_Node *Literal(bool) {

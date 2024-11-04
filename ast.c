@@ -23,9 +23,11 @@ static const char* const _NodeTypeTranslation[] =
   [RETURN_NODE] = "Return",
 
   [FUNCTION_NODE] = "Function",
-  [FUNCTION_RETURN_TYPE_NODE] = "Return Type",
-  [FUNCTION_PARAM_NODE] = "Function Param",
-  [FUNCTION_BODY_NODE] = "Function Body",
+  [FUNCTION_RETURN_TYPE_NODE] = "Fn Return Type",
+  [FUNCTION_PARAM_NODE] = "Fn Param",
+  [FUNCTION_BODY_NODE] = "Fn Body",
+  [FUNCTION_CALL_NODE] = "Fn Call",
+  [FUNCTION_ARGUMENT_NODE] = "Fn Argument",
 
   [LITERAL_NODE] = "Literal",
 
@@ -104,7 +106,7 @@ AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_
 }
 
 static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
-  #define NUM_INDENT_SPACES 2
+  #define NUM_INDENT_SPACES 4
 
   if (node == NULL) return;
   if (node->type == CHAIN_NODE &&
