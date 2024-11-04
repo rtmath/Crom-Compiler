@@ -222,7 +222,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 /* === END HELPERS === */
 
 static void Declaration(AST_Node *identifier) {
-  identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
+  ActualizeType(identifier, identifier->annotation);
 }
 
 static void Assignment(AST_Node *identifier) {
@@ -248,7 +248,12 @@ static void Assignment(AST_Node *identifier) {
     }
 
     // Synchronize information between nodes
+    bool assignment_to_array_slot = (identifier->annotation.is_array && !value->annotation.is_array);
     ActualizeType(value, identifier->annotation);
+    if (assignment_to_array_slot) {
+      value->annotation.is_array = false;
+    }
+
     return;
   }
 
@@ -429,6 +434,9 @@ void CheckTypesRecurse(AST_Node *node) {
     case ENUM_IDENTIFIER_NODE: {
       Identifier(node);
     } break;
+    case ARRAY_SUBSCRIPT_NODE: {
+      ShrinkAndActualizeType(node);
+    } break;
     case DECLARATION_NODE: {
       Declaration(node);
     } break;
@@ -456,7 +464,8 @@ void CheckTypesRecurse(AST_Node *node) {
     } break;
   }
 
-  if (node->type != START_NODE) {
+  if (node->type != START_NODE &&
+      node->type != CHAIN_NODE) {
     PrintNode(node);
   }
 }
