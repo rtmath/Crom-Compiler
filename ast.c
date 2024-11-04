@@ -153,7 +153,7 @@ void PrintAST(AST_Node *root) {
 }
 
 static void InlinePrintNodeSummary(AST_Node *node) {
-  printf("%s Node | ",
+  printf("%16s Node | ",
          NodeTypeTranslation(node->type));
   InlinePrintToken(node->token);
   printf(" [OST ");
@@ -164,17 +164,17 @@ static void InlinePrintNodeSummary(AST_Node *node) {
 }
 
 void PrintNode(AST_Node *node) {
-  printf("%11s Node ", NodeTypeTranslation(node->type));
+  printf("%16s Node ", NodeTypeTranslation(node->type));
   printf("'%.*s'", node->token.length, node->token.position_in_source);
   printf(" [OST ");
   InlinePrintOstAnnotation(node->annotation);
   printf(" : ACT ");
   InlinePrintActAnnotation(node->annotation);
   printf("]");
-  printf("\n");
+  printf("\n\n");
 
   if (node->nodes[LEFT] != NULL) {
-    printf("\n  LEFT: ");
+    printf("  LEFT: ");
     InlinePrintNodeSummary(node->nodes[LEFT]);
     printf("\n");
   }
