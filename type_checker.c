@@ -226,7 +226,7 @@ static void Declaration(AST_Node *identifier) {
 }
 
 static void Assignment(AST_Node *identifier) {
-  AST_Node *value = identifier->nodes[LEFT];
+  AST_Node *value = LEFT_NODE(identifier);
 
   if (identifier->type == TERSE_ASSIGNMENT_NODE) {
     // Treat terse assignment node actual type as the identifier's type
@@ -264,7 +264,7 @@ static void Assignment(AST_Node *identifier) {
     identifier->token.length,
     identifier->token.position_in_source,
     AnnotationTranslation(identifier->annotation),
-    AnnotationTranslation(identifier->nodes[LEFT]->annotation));
+    AnnotationTranslation(LEFT_NODE(identifier)->annotation));
 }
 
 static void Identifier(AST_Node *identifier) {
@@ -301,36 +301,36 @@ static void Literal(AST_Node *node) {
 static void IncrementOrDecrement(AST_Node *node) {
   (node->type == PREFIX_INCREMENT_NODE ||
    node->type == PREFIX_DECREMENT_NODE)
-  ? ActualizeType(node, node->nodes[LEFT]->annotation)
+  ? ActualizeType(node, LEFT_NODE(node)->annotation)
   : ActualizeType(node, node->annotation);
 }
 
 static void Return(AST_Node* node) {
-  ActualizeType(node, node->nodes[LEFT]->annotation);
+  ActualizeType(node, LEFT_NODE(node)->annotation);
   // TODO: Can I put an unreachable code check here?
 }
 
 static bool IsDeadEnd(AST_Node *node) {
   return (node == NULL) ||
          (node->type == CHAIN_NODE    &&
-          node->nodes[LEFT]   == NULL &&
-          node->nodes[MIDDLE] == NULL &&
-          node->nodes[RIGHT]  == NULL);
+          LEFT_NODE(node)   == NULL &&
+          MIDDLE_NODE(node) == NULL &&
+          RIGHT_NODE(node)  == NULL);
 }
 
 static void Function(AST_Node *node) {
-  AST_Node *return_type = node->nodes[LEFT];
-  AST_Node *body = node->nodes[RIGHT];
+  AST_Node *return_type = LEFT_NODE(node);
+  AST_Node *body = RIGHT_NODE(node);
   AST_Node **check = &body;
 
   do {
-    if ((*check)->nodes[LEFT]->type == RETURN_NODE) {
-      if (TypeIsConvertible((*check)->nodes[LEFT], return_type)) {
+    if (LEFT_NODE(*check)->type == RETURN_NODE) {
+      if (TypeIsConvertible(LEFT_NODE(*check), return_type)) {
         ActualizeType(node, node->annotation);
 
-        if (!IsDeadEnd((*check)->nodes[RIGHT])) {
+        if (!IsDeadEnd(RIGHT_NODE(*check))) {
           ERROR_AT_TOKEN(
-            (*check)->nodes[RIGHT]->nodes[LEFT]->token,
+            RIGHT_NODE(*check)->nodes[LEFT]->token,
             "Function(): Unreachable code in function %.*s",
             node->token.length,
             node->token.position_in_source);
@@ -339,7 +339,7 @@ static void Function(AST_Node *node) {
         return;
       } else {
         ERROR_AT_TOKEN(
-          (*check)->nodes[LEFT]->nodes[LEFT]->token,
+          LEFT_NODE(*check)->nodes[LEFT]->token,
           "Function(): in function '%.*s': Return type '%s' is not convertible to '%s'",
           node->token.length,
           node->token.position_in_source,
@@ -348,7 +348,7 @@ static void Function(AST_Node *node) {
       }
     }
 
-    *check = (*check)->nodes[RIGHT];
+    check = &RIGHT_NODE(*check);
   } while (!IsDeadEnd(*check));
 
   if (return_type->annotation.actual_type != ACT_VOID) {
@@ -361,7 +361,7 @@ static void Function(AST_Node *node) {
 }
 
 static void FunctionCall(AST_Node *node) {
-  AST_Node **current = &node->nodes[MIDDLE];
+  AST_Node **current = &MIDDLE_NODE(node);
   Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE, node->token);
 
   for (int i = 0; i < fn_definition.fn_param_count; i++) {
@@ -375,7 +375,7 @@ static void FunctionCall(AST_Node *node) {
         i);
     }
 
-    AST_Node *argument = (*current)->nodes[LEFT];
+    AST_Node *argument = LEFT_NODE(*current);
     if (argument == NULL) {
       // This branch might be unreachable as long as the AST is well-formed
       ERROR_AT_TOKEN(
@@ -401,13 +401,13 @@ static void FunctionCall(AST_Node *node) {
         OstensibleTypeTranslation(CODE_SMELL->annotation.ostensible_type));
     }
 
-    current = &(*current)->nodes[RIGHT];
+    current = &RIGHT_NODE(*current);
   }
 
   if ((*current) != NULL &&
-      (*current)->nodes[LEFT] != NULL) {
+      LEFT_NODE(*current) != NULL) {
     ERROR_AT_TOKEN(
-      (*current)->nodes[LEFT]->token,
+      LEFT_NODE(*current)->token,
       "%.*s(): Too many arguments",
       node->token.length,
       node->token.position_in_source);
@@ -417,24 +417,24 @@ static void FunctionCall(AST_Node *node) {
 }
 
 static void UnaryOp(AST_Node *node) {
-  AST_Node *check_node = node->nodes[LEFT];
+  AST_Node *check_node = LEFT_NODE(node);
   if (node->token.type == LOGICAL_NOT) {
     VerifyTypeIs(ACT_BOOL, check_node);
-    node->annotation = node->nodes[LEFT]->annotation;
+    node->annotation = LEFT_NODE(node)->annotation;
     node->annotation.actual_type = ACT_BOOL;
     return;
   }
 
   if (node->token.type == MINUS) {
     if (NodeActualType(check_node) == ACT_INT) {
-      node->annotation = node->nodes[LEFT]->annotation;
+      node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_INT;
       node->annotation.is_signed = true;
       return;
     }
 
     if (NodeActualType(check_node) == ACT_FLOAT) {
-      node->annotation = node->nodes[LEFT]->annotation;
+      node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_FLOAT;
       node->annotation.is_signed = true;
       return;
@@ -447,18 +447,18 @@ static void UnaryOp(AST_Node *node) {
 }
 
 static void BinaryOp(AST_Node *node) {
-  node->annotation = node->nodes[LEFT]->annotation;
+  node->annotation = LEFT_NODE(node)->annotation;
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 
-  if (!TypeIsConvertible(node->nodes[RIGHT], node)) {
+  if (!TypeIsConvertible(RIGHT_NODE(node), node)) {
      ERROR_AT_TOKEN(
-      node->nodes[RIGHT]->token,
+      RIGHT_NODE(node)->token,
       "BinaryOp(): Cannot convert from type '%s' to '%s'\n",
-      AnnotationTranslation(node->nodes[RIGHT]->annotation),
+      AnnotationTranslation(RIGHT_NODE(node)->annotation),
       AnnotationTranslation(node->annotation));
   }
 
-  ActualizeType(node->nodes[RIGHT], node->annotation);
+  ActualizeType(RIGHT_NODE(node), node->annotation);
 }
 
 void CheckTypesRecurse(AST_Node *node) {
@@ -468,9 +468,9 @@ void CheckTypesRecurse(AST_Node *node) {
     SYMBOL_TABLE = s.fn_params;
   }
 
-  if (node->nodes[LEFT]   != NULL) CheckTypesRecurse(node->nodes[LEFT]);
-  if (node->nodes[MIDDLE] != NULL) CheckTypesRecurse(node->nodes[MIDDLE]);
-  if (node->nodes[RIGHT]  != NULL) CheckTypesRecurse(node->nodes[RIGHT]);
+  if (LEFT_NODE(node)   != NULL) CheckTypesRecurse(LEFT_NODE(node));
+  if (MIDDLE_NODE(node) != NULL) CheckTypesRecurse(MIDDLE_NODE(node));
+  if (RIGHT_NODE(node)  != NULL) CheckTypesRecurse(RIGHT_NODE(node));
 
   if (node->type == FUNCTION_NODE) {
     SYMBOL_TABLE = remember_st;

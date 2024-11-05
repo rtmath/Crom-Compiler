@@ -11,6 +11,10 @@
 #define RIGHT 1
 #define MIDDLE 2
 
+#define LEFT_NODE(n) ((n)->nodes[LEFT])
+#define RIGHT_NODE(n) ((n)->nodes[RIGHT])
+#define MIDDLE_NODE(n) ((n)->nodes[MIDDLE])
+
 typedef enum {
   UNTYPED,
   START_NODE,

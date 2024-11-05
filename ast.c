@@ -53,9 +53,9 @@ AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *rig
   n->type = type;
   n->annotation = a;
 
-  n->nodes[LEFT] = left;
-  n->nodes[MIDDLE] = middle;
-  n->nodes[RIGHT] = right;
+  LEFT_NODE(n) = left;
+  MIDDLE_NODE(n) = middle;
+  RIGHT_NODE(n) = right;
 
   return n;
 }
@@ -67,9 +67,9 @@ AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_
   n->type = type;
   n->annotation = a;
 
-  n->nodes[LEFT] = left;
-  n->nodes[MIDDLE] = middle;
-  n->nodes[RIGHT] = right;
+  LEFT_NODE(n) = left;
+  MIDDLE_NODE(n) = middle;
+  RIGHT_NODE(n) = right;
 
   return n;
 }
@@ -81,9 +81,9 @@ AST_Node *NewNodeFromSymbol(NodeType type, AST_Node *left, AST_Node *middle, AST
   n->type = type;
   n->annotation = symbol.annotation;
 
-  n->nodes[LEFT] = left;
-  n->nodes[MIDDLE] = middle;
-  n->nodes[RIGHT] = right;
+  LEFT_NODE(n) = left;
+  MIDDLE_NODE(n) = middle;
+  RIGHT_NODE(n) = right;
 
   return n;
 }
@@ -93,9 +93,9 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
 
   if (node == NULL) return;
   if (node->type == CHAIN_NODE &&
-      node->nodes[LEFT] == NULL &&
-      node->nodes[MIDDLE] == NULL &&
-      node->nodes[RIGHT] == NULL) return;
+      LEFT_NODE(node) == NULL &&
+      MIDDLE_NODE(node) == NULL &&
+      RIGHT_NODE(node) == NULL) return;
 
   char buf[100] = {0};
   int i = 0;
@@ -126,9 +126,9 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
   printf("\n");
 
   if (node->type == CHAIN_NODE) unindent += NUM_INDENT_SPACES;
-  PrintASTRecurse(node->nodes[LEFT], depth + 1, unindent);
-  PrintASTRecurse(node->nodes[MIDDLE], depth + 1, unindent);
-  PrintASTRecurse(node->nodes[RIGHT], depth + 1, unindent);
+  PrintASTRecurse(LEFT_NODE(node), depth + 1, unindent);
+  PrintASTRecurse(MIDDLE_NODE(node), depth + 1, unindent);
+  PrintASTRecurse(RIGHT_NODE(node), depth + 1, unindent);
 
   #undef NUM_INDENT_SPACES
 }
@@ -158,19 +158,19 @@ void PrintNode(AST_Node *node) {
   printf("]");
   printf("\n\n");
 
-  if (node->nodes[LEFT] != NULL) {
+  if (LEFT_NODE(node) != NULL) {
     printf("  LEFT: ");
-    InlinePrintNodeSummary(node->nodes[LEFT]);
+    InlinePrintNodeSummary(LEFT_NODE(node));
     printf("\n");
   }
-  if (node->nodes[MIDDLE] != NULL) {
+  if (MIDDLE_NODE(node) != NULL) {
     printf("MIDDLE: ");
-    InlinePrintNodeSummary(node->nodes[MIDDLE]);
+    InlinePrintNodeSummary(MIDDLE_NODE(node));
     printf("\n");
   }
-  if (node->nodes[RIGHT] != NULL) {
+  if (RIGHT_NODE(node) != NULL) {
     printf(" RIGHT: ");
-    InlinePrintNodeSummary(node->nodes[RIGHT]);
+    InlinePrintNodeSummary(RIGHT_NODE(node));
     printf("\n");
   }
   printf("----------------------------------------------------------\n");

@@ -418,9 +418,9 @@ static AST_Node *Parse(int PrecedenceLevel) {
     AST_Node *infix_node = infix_rule(can_assign);
 
     if (return_node == NULL) {
-      infix_node->nodes[LEFT] = prefix_node;
+      LEFT_NODE(infix_node) = prefix_node;
     } else {
-      infix_node->nodes[LEFT] = return_node;
+      LEFT_NODE(infix_node) = return_node;
       return_node = infix_node;
     }
 
@@ -585,7 +585,7 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     AST_Node *terse_assignment = TerseAssignment(_);
-    terse_assignment->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
+    LEFT_NODE(terse_assignment) = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
   }
 
@@ -685,10 +685,10 @@ static AST_Node *Block(bool) {
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(_);
-    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    LEFT_NODE(*current) = Statement(_);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &(*current)->nodes[RIGHT];
+    current = &RIGHT_NODE(*current);
   }
 
   Consume(RCURLY, "Block(): Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
@@ -779,9 +779,9 @@ static AST_Node *ForStmt(bool) {
   AST_Node *body = Block(_);
   AST_Node **find_last_body_statement = &body;
 
-  while ((*find_last_body_statement)->nodes[RIGHT] != NULL) find_last_body_statement = &(*find_last_body_statement)->nodes[RIGHT];
+  while (RIGHT_NODE(*find_last_body_statement) != NULL) find_last_body_statement = &RIGHT_NODE(*find_last_body_statement);
 
-  (*find_last_body_statement)->nodes[RIGHT] = after_loop;
+  RIGHT_NODE(*find_last_body_statement) = after_loop;
 
   AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
   return NewNode(STATEMENT_NODE, initialization, NULL, while_node, NoAnnotation());
@@ -920,10 +920,10 @@ static AST_Node *EnumBlock() {
             TokenTypeTranslation(Parser.next.type));
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
-    (*current)->nodes[LEFT] = EnumIdentifier(CAN_ASSIGN);
-    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    LEFT_NODE(*current) = EnumIdentifier(CAN_ASSIGN);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &(*current)->nodes[RIGHT];
+    current = &RIGHT_NODE(*current);
 
     Match(COMMA);
   }
@@ -940,7 +940,7 @@ static AST_Node *Enum(bool) {
   AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM), DECL_DECLARED));
 
   AST_Node *enum_name = Identifier(false);
-  enum_name->nodes[LEFT] = EnumBlock();
+  LEFT_NODE(enum_name) = EnumBlock();
 
   return enum_name;
 }
@@ -973,10 +973,10 @@ static AST_Node *Struct() {
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     has_empty_body = false;
-    (*current)->nodes[LEFT] = Statement(_);
-    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    LEFT_NODE(*current) = Statement(_);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &(*current)->nodes[RIGHT];
+    current = &RIGHT_NODE(*current);
   }
 
   Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%s' instead",
@@ -1023,9 +1023,9 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
     (*current)->token = identifier_token;
 
     if (Match(COMMA) || !NextTokenIs(RPAREN)) {
-      (*current)->nodes[LEFT] = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
+      LEFT_NODE(*current) = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
 
-      current = &(*current)->nodes[LEFT];
+      current = &LEFT_NODE(*current);
     }
   }
 
@@ -1053,10 +1053,10 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   ShadowSymbolTable(fn_params);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(_);
-    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    LEFT_NODE(*current) = Statement(_);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &(*current)->nodes[RIGHT];
+    current = &RIGHT_NODE(*current);
   }
 
   UnshadowSymbolTable();
@@ -1105,24 +1105,24 @@ static AST_Node *FunctionCall(Token function_name) {
       Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
 
       if (Match(LPAREN)) {
-        (*current)->nodes[LEFT] = FunctionCall(identifier.token);
+        LEFT_NODE(*current) = FunctionCall(identifier.token);
       } else {
-        (*current)->nodes[LEFT] = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
+        LEFT_NODE(*current) = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
       }
 
     } else if (NextTokenIsLiteral()) {
       ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
       Token literal = Parser.current;
 
-      (*current)->nodes[LEFT] = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
+      LEFT_NODE(*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
     }
 
     if (NextTokenIs(COMMA)) {
       Consume(COMMA, "");
       if (NextTokenIs(RPAREN)) { break; }
 
-      (*current)->nodes[RIGHT] = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());;
-      current = &(*current)->nodes[RIGHT];
+      RIGHT_NODE(*current) = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());;
+      current = &RIGHT_NODE(*current);
     }
   }
 
@@ -1148,10 +1148,10 @@ AST_Node *ParserBuildAST() {
 
     AST_Node *next_statement = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    (*current_node)->nodes[LEFT] = parse_result;
-    (*current_node)->nodes[RIGHT] = next_statement;
+    LEFT_NODE(*current_node) = parse_result;
+    RIGHT_NODE(*current_node) = next_statement;
 
-    current_node = &(*current_node)->nodes[RIGHT];
+    current_node = &RIGHT_NODE(*current_node);
   }
 
   return root;
