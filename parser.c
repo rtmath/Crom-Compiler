@@ -993,7 +993,7 @@ static AST_Node *Struct() {
   return NewNodeFromSymbol(IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
 }
 
-static AST_Node *FunctionParams(SymbolTable *fn_params) {
+static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
   AST_Node *params = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &params;
 
@@ -1005,9 +1005,10 @@ static AST_Node *FunctionParams(SymbolTable *fn_params) {
             TokenTypeTranslation(Parser.next.type));
     Token identifier_token = Parser.current;
 
-    if (IsIn(fn_params, identifier_token)) {
+    Symbol existing_symbol = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
+    if (IsIn(fn_params, identifier_token) && existing_symbol.declaration_type != DECL_DECLARED) {
       ERROR_AT_TOKEN(identifier_token,
-                     "FunctionParams(): duplicate parameter name '%.*s'",
+                     "FunctionParams(): Duplicate parameter name '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
@@ -1061,7 +1062,7 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
 }
 
 static AST_Node *FunctionDeclaration(Symbol symbol) {
-  AST_Node *params = FunctionParams(symbol.fn_params);
+  AST_Node *params = FunctionParams(symbol.fn_params, symbol);
   AST_Node *return_type = FunctionReturnType();
   AST_Node *body = FunctionBody(symbol.fn_params);
 
@@ -1075,8 +1076,8 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   }
 
   symbol.annotation = (symbol.declaration_type == DECL_DECLARED)
-                       ? symbol.annotation
-                       : FunctionAnnotation(return_type->token.type);
+                        ? symbol.annotation
+                        : FunctionAnnotation(return_type->token.type);
   symbol.declaration_type = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
   Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
 
