@@ -341,6 +341,13 @@ static void Function(AST_Node *node) {
         }
 
         return;
+      } else if (NodeActualType(LEFT_NODE(*check)) == ACT_VOID) {
+        /* Do nothing
+         *
+         * This case occurs when a non-void function has no return in the body.
+         * The parser inserts a void return node into the body and this function
+         * segfaults without this check. The 'missing return' error will
+         * trigger appropriately after the do-while loop finishes. */
       } else {
         ERROR_AT_TOKEN(
           LEFT_NODE(*check)->nodes[LEFT]->token,
