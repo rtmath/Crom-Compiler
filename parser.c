@@ -231,6 +231,7 @@ static bool NextTokenIsAnyType() {
     case STRUCT:
     case CHAR:
     case STRING:
+    case VOID:
     {
       return true;
     }
@@ -312,7 +313,8 @@ static void ConsumeAnyType(const char *msg, ...) {
       NextTokenIs(BOOL)   ||
       NextTokenIs(STRUCT) ||
       NextTokenIs(CHAR)   ||
-      NextTokenIs(STRING))
+      NextTokenIs(STRING) ||
+      NextTokenIs(VOID))
   {
     Advance();
     return;
@@ -450,6 +452,13 @@ static AST_Node *Type(bool) {
   }
 
   if (NextTokenIs(IDENTIFIER)) {
+    if (type_token.type == VOID) {
+      ERROR_AT_TOKEN(
+        Parser.next,
+        "Type(): Cannot use VOID as a type declaration", "");
+
+    }
+
     if (IsIn(SYMBOL_TABLE(), Parser.next)) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
       REDECLARATION_AT_TOKEN(Parser.next,
@@ -500,11 +509,11 @@ static AST_Node *Identifier(bool can_assign) {
       if (!is_in_symbol_table) {
         ERROR_AT_TOKEN(
           identifier_token,
-          "Undeclared function", "");
+          "Identifier(): Undeclared function", "");
       } else if (symbol.declaration_type != DECL_DEFINED) {
         ERROR_AT_TOKEN(
           identifier_token,
-          "Can't call an undefined function", "");
+          "Identifier(): Can't call an undefined function", "");
       }
 
       return FunctionCall(identifier_token);
@@ -1002,8 +1011,14 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
     identifier = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
 
+    // TODO: Handle array types
     ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
     Token type_token = Parser.current;
+    if (type_token.type == VOID) {
+      ERROR_AT_TOKEN(
+        Parser.current,
+        "FunctionParams(): Cannot declare a function parameter VOID", "");
+    }
 
     Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
             TokenTypeTranslation(Parser.next.type));
@@ -1062,6 +1077,10 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   UnshadowSymbolTable();
 
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
+
+  if (LEFT_NODE(body) == NULL) { // Insert a Void Return if there's no function body
+    LEFT_NODE(body) = NewNode(RETURN_NODE, NULL, NULL, NULL, AnnotateType(VOID));
+  }
 
   return body;
 }

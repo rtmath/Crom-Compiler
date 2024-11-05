@@ -243,6 +243,7 @@ const char *AnnotationTranslation(ParserAnnotation a) {
 
     case ACT_CHAR: return "CHAR";
     case ACT_STRING: return "STRING";
+    case ACT_VOID: return "VOID";
 
     default: return "AnnotationTranslation(): Not implemented yet";
   }

@@ -291,7 +291,6 @@ static void Literal(AST_Node *node) {
     } break;
 
     default: {
-      // TODO
       ERROR_AND_EXIT_FMTMSG("Literal(): Case '%s' not implemented yet",
                             OstensibleTypeTranslation(node->annotation.ostensible_type));
     } break;
@@ -306,8 +305,12 @@ static void IncrementOrDecrement(AST_Node *node) {
 }
 
 static void Return(AST_Node* node) {
+  if (NodeOstensibleType(node) == OST_VOID) {
+    node->annotation.actual_type = ACT_VOID;
+    return;
+  }
+
   ActualizeType(node, LEFT_NODE(node)->annotation);
-  // TODO: Can I put an unreachable code check here?
 }
 
 static bool IsDeadEnd(AST_Node *node) {
@@ -326,6 +329,7 @@ static void Function(AST_Node *node) {
   do {
     if (LEFT_NODE(*check)->type == RETURN_NODE) {
       if (TypeIsConvertible(LEFT_NODE(*check), return_type)) {
+        printf("Type is convertible\n");
         ActualizeType(node, node->annotation);
 
         if (!IsDeadEnd(RIGHT_NODE(*check))) {
@@ -351,7 +355,9 @@ static void Function(AST_Node *node) {
     check = &RIGHT_NODE(*check);
   } while (!IsDeadEnd(*check));
 
-  if (return_type->annotation.actual_type != ACT_VOID) {
+  if (NodeActualType(return_type) == ACT_VOID) {
+    node->annotation.actual_type = ACT_VOID;
+  } else {
     ERROR_AT_TOKEN(
       node->token,
       "Function(): Missing return statement in non-void function '%.*s'",
