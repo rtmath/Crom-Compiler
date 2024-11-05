@@ -50,7 +50,6 @@ const char *NodeTypeTranslation(NodeType t) {
 AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation a) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
-  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
   n->type = type;
   n->annotation = a;
 
@@ -65,7 +64,6 @@ AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->token = token;
-  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
   n->type = type;
   n->annotation = a;
 
@@ -80,23 +78,8 @@ AST_Node *NewNodeFromSymbol(NodeType type, AST_Node *left, AST_Node *middle, AST
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->token = symbol.token;
-  n->arity = (left != NULL) + (middle != NULL) + (right != NULL);
   n->type = type;
   n->annotation = symbol.annotation;
-
-  n->nodes[LEFT] = left;
-  n->nodes[MIDDLE] = middle;
-  n->nodes[RIGHT] = right;
-
-  return n;
-}
-
-AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation a) {
-  AST_Node *n = calloc(1, sizeof(AST_Node));
-
-  n->arity = arity;
-  n->type = type;
-  n->annotation = a;
 
   n->nodes[LEFT] = left;
   n->nodes[MIDDLE] = middle;

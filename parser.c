@@ -679,12 +679,12 @@ static AST_Node *TerseAssignment(bool) {
 }
 
 static AST_Node *Block(bool) {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
@@ -896,7 +896,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
 }
 
 static AST_Node *EnumBlock() {
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &n;
 
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %s", TokenTypeTranslation(Parser.current.type));
@@ -919,7 +919,7 @@ static AST_Node *EnumBlock() {
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
     (*current)->nodes[LEFT] = EnumIdentifier(CAN_ASSIGN);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
 
@@ -964,7 +964,7 @@ static AST_Node *Struct() {
   Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
 
-  AST_Node *n = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &n;
 
   bool has_empty_body = true;
@@ -972,7 +972,7 @@ static AST_Node *Struct() {
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     has_empty_body = false;
     (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
@@ -1045,14 +1045,14 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
 
   Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
 
-  AST_Node *body = NewNodeWithArity(FUNCTION_BODY_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *body = NewNode(FUNCTION_BODY_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &body;
 
   ShadowSymbolTable(fn_params);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->nodes[LEFT] = Statement(UNUSED);
-    (*current)->nodes[RIGHT] = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
@@ -1134,7 +1134,7 @@ static AST_Node *Literal(bool) {
 }
 
 AST_Node *ParserBuildAST() {
-  AST_Node *root = NewNodeWithArity(START_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+  AST_Node *root = NewNode(START_NODE, NULL, NULL, NULL, NoAnnotation());
 
   AST_Node **current_node = &root;
 
@@ -1144,7 +1144,7 @@ AST_Node *ParserBuildAST() {
       ERROR_AND_EXIT("ParserBuildAST(): AST could not be created");
     }
 
-    AST_Node *next_statement = NewNodeWithArity(CHAIN_NODE, NULL, NULL, NULL, BINARY_ARITY, NoAnnotation());
+    AST_Node *next_statement = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     (*current_node)->nodes[LEFT] = parse_result;
     (*current_node)->nodes[RIGHT] = next_statement;

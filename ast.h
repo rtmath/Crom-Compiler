@@ -12,13 +12,6 @@
 #define MIDDLE 2
 
 typedef enum {
-  NO_ARITY = 0,
-  UNARY_ARITY = 1,
-  BINARY_ARITY = 2,
-  TERNARY_ARITY = 3,
-} Arity;
-
-typedef enum {
   UNTYPED,
   START_NODE,
   CHAIN_NODE,
@@ -58,9 +51,8 @@ typedef enum {
 } NodeType;
 
 typedef struct AST_Node {
-  Token token;
-  Arity arity;
   NodeType type;
+  Token token;
   ParserAnnotation annotation;
 
   struct AST_Node *nodes[3];
@@ -69,7 +61,6 @@ typedef struct AST_Node {
 AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation annotation);
 AST_Node *NewNodeFromToken(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation annotation);
 AST_Node *NewNodeFromSymbol(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Symbol symbol);
-AST_Node *NewNodeWithArity(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, Arity arity, ParserAnnotation annotation);
 
 const char *NodeTypeTranslation(NodeType t);
 
