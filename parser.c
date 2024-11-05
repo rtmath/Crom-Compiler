@@ -10,8 +10,13 @@
 #include "io.h"
 #include "lexer.h"
 
-#define UNUSED false
-#define CAN_ASSIGN true
+/* Global Variables */
+static SymbolTable *SYMBOL_TABLE();
+static SymbolTable *shadowed_symbol_table;
+
+/* Forward Declarations */
+static AST_Node *FunctionDeclaration(Symbol symbol);
+static AST_Node *FunctionCall(Token identifier);
 
 struct {
   Token current;
@@ -41,24 +46,10 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
-struct {
-  int depth;
-  SymbolTable *locals[10]; // TODO: figure out actual size or make dynamic array
-} Scope;
-
-/* Forward Declarations */
-static AST_Node *FunctionDeclaration(Symbol symbol);
-static AST_Node *FunctionCall(Token identifier);
-
-static void BeginScope();
-static void EndScope();
-static void ShadowSymbolTable(SymbolTable *st);
-static Symbol ExistsInOuterScope(Token t);
-
-static SymbolTable *SYMBOL_TABLE();
-static SymbolTable *shadowed_symbol_table;
-
 /* Rules table Forward Declarations */
+#define _ false
+#define CAN_ASSIGN true
+
 static AST_Node *Type(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Unary(bool unused);
@@ -150,6 +141,12 @@ static ParseRule Rules[] = {
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
 };
 
+/*= == Scope Related === */
+struct {
+  int depth;
+  SymbolTable *locals[10]; // TODO: figure out actual size or make dynamic array
+} Scope;
+
 static void BeginScope() {
   Scope.depth++;
   Scope.locals[Scope.depth] = NewSymbolTable();
@@ -165,6 +162,10 @@ static void EndScope() {
 
 static void ShadowSymbolTable(SymbolTable *st) {
   shadowed_symbol_table = st;
+}
+
+static void UnshadowSymbolTable() {
+  shadowed_symbol_table = NULL;
 }
 
 static Symbol ExistsInOuterScope(Token t) {
@@ -184,6 +185,7 @@ static Symbol ExistsInOuterScope(Token t) {
 
   return NewSymbol(SYMBOL_NOT_FOUND, NoAnnotation(), DECL_NONE);
 }
+/* === End Scope Related === */
 
 static SymbolTable *SYMBOL_TABLE() {
   return (shadowed_symbol_table != NULL)
@@ -536,7 +538,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (Match(LBRACKET)) {
-    array_index = ArraySubscripting(UNUSED);
+    array_index = ArraySubscripting(_);
   }
 
   if (Match(PLUS_PLUS)) {
@@ -570,7 +572,7 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(UNUSED), array_index, NULL, stored_symbol);
+    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), array_index, NULL, stored_symbol);
   }
 
   if (NextTokenIsTerseAssignment()) {
@@ -582,7 +584,7 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.position_in_source);
     }
 
-    AST_Node *terse_assignment = TerseAssignment(UNUSED);
+    AST_Node *terse_assignment = TerseAssignment(_);
     terse_assignment->nodes[LEFT] = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
   }
@@ -683,7 +685,7 @@ static AST_Node *Block(bool) {
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[LEFT] = Statement(_);
     (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
@@ -699,11 +701,11 @@ static AST_Node *Expression(bool) {
 }
 
 static AST_Node *Statement(bool) {
-  if (Match(IF)) return IfStmt(UNUSED);
-  if (Match(WHILE)) return WhileStmt(UNUSED);
-  if (Match(FOR)) return ForStmt(UNUSED);
+  if (Match(IF)) return IfStmt(_);
+  if (Match(WHILE)) return WhileStmt(_);
+  if (Match(FOR)) return ForStmt(_);
 
-  AST_Node *expr_result = Expression(UNUSED);
+  AST_Node *expr_result = Expression(_);
 
   // Allow optional semicolon after Enum, Struct and Function definitions
   if (expr_result->annotation.ostensible_type == OST_ENUM   ||
@@ -722,7 +724,7 @@ static AST_Node *Statement(bool) {
 static AST_Node *IfStmt(bool) {
   Consume(LPAREN, "IfStmt(): Expected '(' after IF token, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
-  AST_Node *condition = Expression(UNUSED);
+  AST_Node *condition = Expression(_);
   Consume(RPAREN, "IfStmt(): Expected ')' after IF condition, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
@@ -730,15 +732,15 @@ static AST_Node *IfStmt(bool) {
 
   BeginScope();
 
-  AST_Node *body_if_true = Block(UNUSED);
+  AST_Node *body_if_true = Block(_);
   AST_Node *body_if_false = NULL;
 
   if (Match(ELSE)) {
     if (Match(IF))  {
-      body_if_false = IfStmt(UNUSED);
+      body_if_false = IfStmt(_);
     } else {
       Consume(LCURLY, "IfStmt(): Expected block starting with '{' after ELSE, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-      body_if_false = Block(UNUSED);
+      body_if_false = Block(_);
     }
   }
 
@@ -749,18 +751,18 @@ static AST_Node *IfStmt(bool) {
 
 static AST_Node *TernaryIfStmt(AST_Node *condition) {
   Consume(QUESTION_MARK, "TernaryIfStmt(): Expected '?' after Ternary Condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  AST_Node *if_true = Expression(UNUSED);
+  AST_Node *if_true = Expression(_);
 
   Consume(COLON, "TernaryIfStmt(): Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  AST_Node *if_false = Expression(UNUSED);
+  AST_Node *if_false = Expression(_);
 
   return NewNode(IF_NODE, condition, if_true, if_false, NoAnnotation());
 }
 
 static AST_Node *WhileStmt(bool) {
-  AST_Node *condition = Expression(UNUSED);
+  AST_Node *condition = Expression(_);
   Consume(LCURLY, "WhileStmt(): Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  AST_Node *block = Block(UNUSED);
+  AST_Node *block = Block(_);
   Match(SEMICOLON);
   return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
 }
@@ -768,13 +770,13 @@ static AST_Node *WhileStmt(bool) {
 static AST_Node *ForStmt(bool) {
   Consume(LPAREN, "ForStmt(): Expected '(' after For, got '%s instead", TokenTypeTranslation(Parser.next.type));
 
-  AST_Node *initialization = Statement(UNUSED);
-  AST_Node *condition = Statement(UNUSED);
-  AST_Node *after_loop = Expression(UNUSED);
+  AST_Node *initialization = Statement(_);
+  AST_Node *condition = Statement(_);
+  AST_Node *after_loop = Expression(_);
 
   Consume(RPAREN, "ForStmt(): Expected ')' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   Consume(LCURLY, "ForStmt(): Expected '{' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
-  AST_Node *body = Block(UNUSED);
+  AST_Node *body = Block(_);
   AST_Node **find_last_body_statement = &body;
 
   while ((*find_last_body_statement)->nodes[RIGHT] != NULL) find_last_body_statement = &(*find_last_body_statement)->nodes[RIGHT];
@@ -809,14 +811,14 @@ static AST_Node *Return(bool) {
   AST_Node *expr = NULL;
 
   if (!NextTokenIs(SEMICOLON)) {
-    expr = Expression(UNUSED);
+    expr = Expression(_);
   }
 
   return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? AnnotateType(VOID) : expr->annotation);
 }
 
 static AST_Node *Parens(bool) {
-  AST_Node *parse_result = Expression(UNUSED);
+  AST_Node *parse_result = Expression(_);
   Consume(RPAREN, "Parens(): Missing ')' after expression");
 
   if (NextTokenIs(QUESTION_MARK)) {
@@ -889,7 +891,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
     }
 
     Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(UNUSED), NULL, NULL, stored_symbol);
+    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
   return NewNodeFromToken(ENUM_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
@@ -971,7 +973,7 @@ static AST_Node *Struct() {
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     has_empty_body = false;
-    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[LEFT] = Statement(_);
     (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
@@ -980,7 +982,7 @@ static AST_Node *Struct() {
   Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
 
-  ShadowSymbolTable(NULL);
+  UnshadowSymbolTable();
 
   if (has_empty_body) {
     ERROR_AT_TOKEN(identifier_symbol.token,
@@ -1051,13 +1053,13 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   ShadowSymbolTable(fn_params);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    (*current)->nodes[LEFT] = Statement(UNUSED);
+    (*current)->nodes[LEFT] = Statement(_);
     (*current)->nodes[RIGHT] = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &(*current)->nodes[RIGHT];
   }
 
-  ShadowSymbolTable(NULL);
+  UnshadowSymbolTable();
 
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
 
@@ -1139,7 +1141,7 @@ AST_Node *ParserBuildAST() {
   AST_Node **current_node = &root;
 
   while (!Match(TOKEN_EOF)) {
-    AST_Node *parse_result = Statement(UNUSED);
+    AST_Node *parse_result = Statement(_);
     if (parse_result == NULL) {
       ERROR_AND_EXIT("ParserBuildAST(): AST could not be created");
     }
