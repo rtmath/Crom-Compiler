@@ -242,6 +242,7 @@ Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d) {
     .declaration_type = d,
     .struct_fields = fields,
     .fn_params = fn_params,
+    .fn_param_count = 0,
   };
 
   return s;
@@ -279,6 +280,19 @@ bool IsIn(SymbolTable *st, Token token) {
   return (symbol.token.type != ERROR);
 }
 
+void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
+  FnParam fp = {
+    .ordinal_value = function.fn_param_count,
+    .param_token = param.token,
+    .ostensible_type = param.annotation.ostensible_type,
+    .actual_type = param.annotation.actual_type,
+  };
+  function.fn_param_list[function.fn_param_count] = fp;
+  function.fn_param_count++;
+
+  AddTo(st, function);
+}
+
 void PrintSymbol(Symbol s) {
   PrintTokenVerbose(s.token);
   printf("Symbol ID: '%d'\n", s.debug_id);
@@ -287,5 +301,5 @@ void PrintSymbol(Symbol s) {
   InlinePrintOstAnnotation(s.annotation);
   printf("\n");
   if (s.struct_fields != NULL) printf("has Struct Fields\n");
-  if (s.fn_params != NULL) printf("has Function Params\n");
+  if (s.fn_params != NULL) printf("has %d Function Params\n", s.fn_param_count);
 }

@@ -48,7 +48,7 @@ struct {
 
 /* Forward Declarations */
 static AST_Node *FunctionDeclaration(Symbol symbol);
-static AST_Node *FunctionCall(Symbol symbol);
+static AST_Node *FunctionCall(Token identifier);
 
 static void BeginScope();
 static void EndScope();
@@ -505,7 +505,7 @@ static AST_Node *Identifier(bool can_assign) {
           "Can't call an undefined function", "");
       }
 
-      return FunctionCall(symbol);
+      return FunctionCall(identifier_token);
     }
 
     ERROR_AND_EXIT("Identifier(): How'd you get here?\n");
@@ -998,6 +998,8 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
   AST_Node **current = &params;
 
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
+    identifier = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
+
     ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
     Token type_token = Parser.current;
 
@@ -1013,6 +1015,7 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
                      identifier_token.position_in_source);
     }
     Symbol stored_symbol = AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+    RegisterFnParam(SYMBOL_TABLE(), identifier, stored_symbol);
 
     (*current)->annotation = stored_symbol.annotation;
     (*current)->token = identifier_token;
@@ -1074,6 +1077,8 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
                    symbol.token.position_in_source,
                    already_declared.annotation.declared_on_line);
   }
+  // Retrieve updated reference to symbol before modifying
+  symbol = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
 
   symbol.annotation = (symbol.declaration_type == DECL_DECLARED)
                         ? symbol.annotation
@@ -1084,7 +1089,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);
 }
 
-static AST_Node *FunctionCall(Symbol s) {
+static AST_Node *FunctionCall(Token function_name) {
   AST_Node *args = NULL;
   AST_Node **current = &args;
 
@@ -1098,14 +1103,13 @@ static AST_Node *FunctionCall(Symbol s) {
       Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
 
       if (Match(LPAREN)) {
-        (*current)->nodes[LEFT] = FunctionCall(identifier);
+        (*current)->nodes[LEFT] = FunctionCall(identifier.token);
       } else {
         (*current)->nodes[LEFT] = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
       }
 
     } else if (NextTokenIsLiteral()) {
       ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
-      PrintToken(Parser.current);
       Token literal = Parser.current;
 
       (*current)->nodes[LEFT] = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
@@ -1122,7 +1126,7 @@ static AST_Node *FunctionCall(Symbol s) {
 
   Consume(RPAREN, "FunctionCall(): Expected ')'");
 
-  return NewNodeFromSymbol(FUNCTION_CALL_NODE, NULL, args, NULL, s);
+  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
 }
 
 static AST_Node *Literal(bool) {

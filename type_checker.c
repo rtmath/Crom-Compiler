@@ -361,7 +361,58 @@ static void Function(AST_Node *node) {
 }
 
 static void FunctionCall(AST_Node *node) {
-  // TODO: Validate argument types
+  AST_Node **current = &node->nodes[MIDDLE];
+  Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE, node->token);
+
+  for (int i = 0; i < fn_definition.fn_param_count; i++) {
+    if (*current == NULL) {
+      ERROR_AT_TOKEN(
+        node->token,
+        "%.*s(): Expected %d arguments, got %d\n",
+        node->token.length,
+        node->token.position_in_source,
+        fn_definition.fn_param_count,
+        i);
+    }
+
+    AST_Node *argument = (*current)->nodes[LEFT];
+    if (argument == NULL) {
+      // This branch might be unreachable as long as the AST is well-formed
+      ERROR_AT_TOKEN(
+        (*current)->token,
+        "%.*s(): Missing '%.*s' argument when calling function\n",
+        node->token.length,
+        node->token.position_in_source,
+        fn_definition.fn_param_list[i].param_token.length,
+        fn_definition.fn_param_list[i].param_token.position_in_source
+      );
+    }
+
+    // TODO: TypeIsConvertible deals with AST_Nodes but fn_params
+    // aren't an AST_Node
+    AST_Node *CODE_SMELL = NewNodeFromToken(UNTYPED, NULL, NULL, NULL, fn_definition.fn_param_list[i].param_token, AnnotateType(INT_LITERAL));
+    if (!TypeIsConvertible(argument, CODE_SMELL)) {
+      ERROR_AT_TOKEN(
+        argument->token,
+        "%.*s(): Can't convert type from %s to %s\n",
+        node->token.length,
+        node->token.position_in_source,
+        OstensibleTypeTranslation(argument->annotation.ostensible_type),
+        OstensibleTypeTranslation(CODE_SMELL->annotation.ostensible_type));
+    }
+
+    current = &(*current)->nodes[RIGHT];
+  }
+
+  if ((*current) != NULL &&
+      (*current)->nodes[LEFT] != NULL) {
+    ERROR_AT_TOKEN(
+      (*current)->nodes[LEFT]->token,
+      "%.*s(): Too many arguments",
+      node->token.length,
+      node->token.position_in_source);
+  }
+
   ActualizeType(node, node->annotation);
 }
 
