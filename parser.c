@@ -1014,10 +1014,17 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
     // TODO: Handle array types
     ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
     Token type_token = Parser.current;
+
     if (type_token.type == VOID) {
       ERROR_AT_TOKEN(
         Parser.current,
         "FunctionParams(): Cannot declare a function parameter VOID", "");
+    }
+
+    bool is_array = false;
+    if (Match(LBRACKET)) {
+      Consume(RBRACKET, "Expected ']' after '['");
+      is_array = true;
     }
 
     Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
@@ -1031,7 +1038,13 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
-    Symbol stored_symbol = AddTo(fn_params, NewSymbol(identifier_token, AnnotateType(type_token.type), DECL_FN_PARAM));
+    Symbol stored_symbol = AddTo(fn_params,
+                                 NewSymbol(identifier_token,
+                                           (is_array)
+                                             ? ArrayAnnotation(type_token.type, 0)
+                                             : AnnotateType(type_token.type),
+                                           DECL_FN_PARAM)
+    );
     RegisterFnParam(SYMBOL_TABLE(), identifier, stored_symbol);
 
     (*current)->annotation = stored_symbol.annotation;
