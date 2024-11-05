@@ -168,7 +168,7 @@ static void ShadowSymbolTable(SymbolTable *st) {
 }
 
 static Symbol ExistsInOuterScope(Token t) {
-  for (int i = Scope.depth - 1; i <= 0; i--) {
+  for (int i = Scope.depth - 1; i >= 0; i--) {
     Symbol result = RetrieveFrom(Scope.locals[i], t);
     if (result.token.type != ERROR) {
       return result;
@@ -450,7 +450,6 @@ static AST_Node *Type(bool) {
   if (NextTokenIs(IDENTIFIER)) {
     if (IsIn(SYMBOL_TABLE(), Parser.next)) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
-      PrintSymbol(s);
       REDECLARATION_AT_TOKEN(Parser.next,
                              s.token,
                              "Type(): Redeclaration of identifier '%.*s', previously declared on line %d\n",
