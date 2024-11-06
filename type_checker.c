@@ -16,7 +16,6 @@ static SymbolTable *SYMBOL_TABLE;
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
 ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node);
-static void TypeCheckWhileReturns(AST_Node *while_node, AST_Node *return_type);
 
 /* === HELPERS === */
 static int BitWidth(AST_Node *node) {
@@ -322,17 +321,16 @@ static bool IsDeadEnd(AST_Node *node) {
           RIGHT_NODE(node)  == NULL);
 }
 
-static void TypeCheckIfReturns(AST_Node *if_node, AST_Node *return_type) {
-  AST_Node **current = &if_node;
+static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
+  AST_Node **current = &node;
 
   do {
     if (LEFT_NODE(*current) != NULL) {
       switch(LEFT_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(LEFT_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(LEFT_NODE(*current), return_type);
+        case IF_NODE:
+        case WHILE_NODE:
+        case FOR_NODE: {
+          TypeCheckNestedReturns(LEFT_NODE(*current), return_type);
         } break;
         default: break;
       }
@@ -340,14 +338,11 @@ static void TypeCheckIfReturns(AST_Node *if_node, AST_Node *return_type) {
 
     if (MIDDLE_NODE(*current) != NULL) {
       switch(MIDDLE_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(MIDDLE_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(MIDDLE_NODE(*current), return_type);
-        } break;
+        case IF_NODE:
+        case WHILE_NODE:
+        case FOR_NODE:
         case CHAIN_NODE: {
-          TypeCheckIfReturns(MIDDLE_NODE(*current), return_type);
+          TypeCheckNestedReturns(MIDDLE_NODE(*current), return_type);
         } break;
         default: break;
       }
@@ -355,75 +350,16 @@ static void TypeCheckIfReturns(AST_Node *if_node, AST_Node *return_type) {
 
     if (RIGHT_NODE(*current) != NULL) {
       switch(RIGHT_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(RIGHT_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(RIGHT_NODE(*current), return_type);
-        } break;
-        default: break;
-      }
-    }
-
-    if (LEFT_NODE(*current)->type == RETURN_NODE) {
-      if (!TypeIsConvertible(LEFT_NODE(*current)->nodes[LEFT], return_type)) {
-        ERROR_AT_TOKEN(
-          LEFT_NODE(*current)->nodes[LEFT]->token,
-          "Can't convert type from %s to %s",
-          AnnotationTranslation((*current)->nodes[LEFT]->annotation),
-          AnnotationTranslation(return_type->annotation)
-        );
-      }
-    }
-
-    current = &RIGHT_NODE(*current);
-
-  } while(!IsDeadEnd(*current));
-}
-
-static void TypeCheckWhileReturns(AST_Node *while_node, AST_Node *return_type) {
-  AST_Node **current = &while_node;
-
-  do {
-    if (LEFT_NODE(*current) != NULL) {
-      switch(LEFT_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(LEFT_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(LEFT_NODE(*current), return_type);
+        case IF_NODE:
+        case WHILE_NODE:
+        case FOR_NODE: {
+          TypeCheckNestedReturns(RIGHT_NODE(*current), return_type);
         } break;
         default: break;
       }
     }
 
-    if (MIDDLE_NODE(*current) != NULL) {
-      switch(MIDDLE_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(MIDDLE_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(MIDDLE_NODE(*current), return_type);
-        } break;
-        case CHAIN_NODE: {
-          TypeCheckIfReturns(MIDDLE_NODE(*current), return_type);
-        } break;
-        default: break;
-      }
-    }
-
-    if (RIGHT_NODE(*current) != NULL) {
-      switch(RIGHT_NODE(*current)->type) {
-        case IF_NODE: {
-          TypeCheckIfReturns(RIGHT_NODE(*current), return_type);
-        } break;
-        case WHILE_NODE: {
-          TypeCheckWhileReturns(RIGHT_NODE(*current), return_type);
-        } break;
-        default: break;
-      }
-    }
-
+    PrintNode(*current);
     if (LEFT_NODE(*current)->type == RETURN_NODE) {
       if (!TypeIsConvertible(LEFT_NODE(*current)->nodes[LEFT], return_type)) {
         ERROR_AT_TOKEN(
@@ -446,12 +382,10 @@ static void Function(AST_Node *node) {
   AST_Node **check = &body;
 
   do {
-    if (LEFT_NODE(*check)->type == IF_NODE) {
-      TypeCheckIfReturns(LEFT_NODE(*check), return_type);
-    }
-
-    if (LEFT_NODE(*check)->type == WHILE_NODE) {
-      TypeCheckWhileReturns(LEFT_NODE(*check), return_type);
+    if (LEFT_NODE(*check)->type == IF_NODE ||
+        LEFT_NODE(*check)->type == WHILE_NODE ||
+        LEFT_NODE(*check)->type == FOR_NODE) {
+      TypeCheckNestedReturns(LEFT_NODE(*check), return_type);
     }
 
     if (LEFT_NODE(*check)->type == RETURN_NODE) {

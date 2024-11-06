@@ -790,7 +790,7 @@ static AST_Node *ForStmt(bool) {
 
   while (RIGHT_NODE(*find_last_body_statement) != NULL) find_last_body_statement = &RIGHT_NODE(*find_last_body_statement);
 
-  RIGHT_NODE(*find_last_body_statement) = after_loop;
+  LEFT_NODE(*find_last_body_statement) = after_loop;
 
   AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
   return NewNode(FOR_NODE, initialization, NULL, while_node, NoAnnotation());
