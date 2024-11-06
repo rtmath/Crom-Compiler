@@ -972,7 +972,6 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
-//TODO: Change Struct node structure
 static AST_Node *Struct() {
   Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
           TokenTypeTranslation(Parser.current.type),
@@ -994,13 +993,14 @@ static AST_Node *Struct() {
   Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
 
-  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
+
+  AST_Node *n = NULL;
   AST_Node **current = &n;
 
-  bool has_empty_body = true;
-
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    has_empty_body = false;
+    if (n == NULL) n = NewNodeFromSymbol(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, stored_symbol);
+
     LEFT_NODE(*current) = Statement(_);
     RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
@@ -1012,15 +1012,14 @@ static AST_Node *Struct() {
 
   UnshadowSymbolTable();
 
-  if (has_empty_body) {
+  if (n == NULL) {
     ERROR_AT_TOKEN(identifier_symbol.token,
                    "Struct(): Struct '%.*s' has empty body",
                    identifier_symbol.token.length,
                    identifier_symbol.token.position_in_source);
   }
 
-  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
-  return NewNodeFromSymbol(STRUCT_IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
+  return n;;
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
@@ -1176,51 +1175,6 @@ static AST_Node *FunctionCall(Token function_name) {
 
   return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
 }
-
-/*
-static AST_Node *FunctionCall(Token function_name) {
-  // Assign args to NULL here so it can be used as-is in the function
-  // return if there are no function arguments to parse
-  AST_Node *args = NULL;
-  AST_Node **current = &args;
-
-  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
-    if (args == NULL) {
-      args = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());
-    }
-
-    if (NextTokenIs(IDENTIFIER)) {
-      Consume(IDENTIFIER, "FunctionCall(): Expected identifier\n");
-      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
-
-      if (Match(LPAREN)) {
-        LEFT_NODE(*current) = FunctionCall(identifier.token);
-      } else {
-        LEFT_NODE(*current) = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
-      }
-
-    } else if (NextTokenIsLiteral()) {
-      ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
-      Token literal = Parser.current;
-
-      LEFT_NODE(*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
-    }
-
-    if (NextTokenIs(COMMA)) {
-      Consume(COMMA, "");
-      if (NextTokenIs(RPAREN)) { break; }
-
-      // Should this be a CHAIN node?
-      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());;
-      current = &RIGHT_NODE(*current);
-    }
-  }
-
-  Consume(RPAREN, "FunctionCall(): Expected ')'");
-
-  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
-}
-*/
 
 static AST_Node *Literal(bool) {
   return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
