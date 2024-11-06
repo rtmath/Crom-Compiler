@@ -321,6 +321,16 @@ static bool IsDeadEnd(AST_Node *node) {
           RIGHT_NODE(node)  == NULL);
 }
 
+/*
+static void TypeCheckIfReturns(AST_Node *if_node) {
+
+}
+
+static void TypeCheckWhileReturns(AST_Node *while_node) {
+
+}
+*/
+
 static void Function(AST_Node *node) {
   AST_Node *return_type = LEFT_NODE(node);
   AST_Node *body = RIGHT_NODE(node);
@@ -329,7 +339,6 @@ static void Function(AST_Node *node) {
   do {
     if (LEFT_NODE(*check)->type == RETURN_NODE) {
       if (TypeIsConvertible(LEFT_NODE(*check), return_type)) {
-        printf("Type is convertible\n");
         ActualizeType(node, node->annotation);
 
         if (!IsDeadEnd(RIGHT_NODE(*check))) {
@@ -388,7 +397,7 @@ static void FunctionCall(AST_Node *node) {
         i);
     }
 
-    AST_Node *argument = LEFT_NODE(*current);
+    AST_Node *argument = *current;
     if (argument == NULL) {
       // This branch might be unreachable as long as the AST is well-formed
       ERROR_AT_TOKEN(
@@ -417,10 +426,9 @@ static void FunctionCall(AST_Node *node) {
     current = &RIGHT_NODE(*current);
   }
 
-  if ((*current) != NULL &&
-      LEFT_NODE(*current) != NULL) {
+  if ((*current) != NULL) {
     ERROR_AT_TOKEN(
-      LEFT_NODE(*current)->token,
+      (*current)->token,
       "%.*s(): Too many arguments",
       node->token.length,
       node->token.position_in_source);

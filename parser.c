@@ -1012,7 +1012,6 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
     identifier = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
 
-    // TODO: Handle array types
     ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
     Token type_token = Parser.current;
 
@@ -1124,8 +1123,46 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);
 }
 
-// TODO: The top most argument node is empty
 static AST_Node *FunctionCall(Token function_name) {
+  AST_Node *args = NULL;
+  AST_Node **current = &args;
+
+  while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
+    if (NextTokenIs(IDENTIFIER)) {
+      Consume(IDENTIFIER, "FunctionCall(): Expected identifier\n");
+      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
+
+      if (Match(LPAREN)) {
+        (*current) = FunctionCall(identifier.token);
+      } else {
+        (*current) = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
+      }
+
+    } else if (NextTokenIsLiteral()) {
+      ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
+      Token literal = Parser.current;
+
+      (*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
+    }
+
+    if (NextTokenIs(COMMA)) {
+      Consume(COMMA, "");
+      if (NextTokenIs(RPAREN)) { break; }
+
+      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());;
+      current = &RIGHT_NODE(*current);
+    }
+  }
+
+  Consume(RPAREN, "FunctionCall(): Expected ')'");
+
+  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
+}
+
+/*
+static AST_Node *FunctionCall(Token function_name) {
+  // Assign args to NULL here so it can be used as-is in the function
+  // return if there are no function arguments to parse
   AST_Node *args = NULL;
   AST_Node **current = &args;
 
@@ -1156,7 +1193,7 @@ static AST_Node *FunctionCall(Token function_name) {
       if (NextTokenIs(RPAREN)) { break; }
 
       // Should this be a CHAIN node?
-      RIGHT_NODE(*current) = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());;
+      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());;
       current = &RIGHT_NODE(*current);
     }
   }
@@ -1165,6 +1202,7 @@ static AST_Node *FunctionCall(Token function_name) {
 
   return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
 }
+*/
 
 static AST_Node *Literal(bool) {
   return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
