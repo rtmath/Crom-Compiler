@@ -9,14 +9,15 @@ static const char* const _NodeTypeTranslation[] =
   [UNTYPED] = "UNTYPED",
   [START_NODE] = "Start",
   [CHAIN_NODE] = "Chain",
-  [STATEMENT_NODE] = "Statement",
   [DECLARATION_NODE] = "Declaration",
   [IDENTIFIER_NODE] = "Identifier",
+  [STRUCT_IDENTIFIER_NODE] = "Struct Identifier",
   [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
 
   [IF_NODE] = "If",
   [WHILE_NODE] = "While",
+  [FOR_NODE] = "For",
 
   [BREAK_NODE] = "Break",
   [CONTINUE_NODE] = "Continue",

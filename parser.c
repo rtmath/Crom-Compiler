@@ -793,7 +793,7 @@ static AST_Node *ForStmt(bool) {
   RIGHT_NODE(*find_last_body_statement) = after_loop;
 
   AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
-  return NewNode(STATEMENT_NODE, initialization, NULL, while_node, NoAnnotation());
+  return NewNode(FOR_NODE, initialization, NULL, while_node, NoAnnotation());
 }
 
 static AST_Node *Break(bool) {
@@ -954,6 +954,7 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
+//TODO: Change Struct node structure
 static AST_Node *Struct() {
   Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
           TokenTypeTranslation(Parser.current.type),
@@ -1001,7 +1002,7 @@ static AST_Node *Struct() {
   }
 
   Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
-  return NewNodeFromSymbol(IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
+  return NewNodeFromSymbol(STRUCT_IDENTIFIER_NODE, n, NULL, NULL, stored_symbol);
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
@@ -1123,6 +1124,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);
 }
 
+// TODO: The top most argument node is empty
 static AST_Node *FunctionCall(Token function_name) {
   AST_Node *args = NULL;
   AST_Node **current = &args;
@@ -1153,6 +1155,7 @@ static AST_Node *FunctionCall(Token function_name) {
       Consume(COMMA, "");
       if (NextTokenIs(RPAREN)) { break; }
 
+      // Should this be a CHAIN node?
       RIGHT_NODE(*current) = NewNode(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, NoAnnotation());;
       current = &RIGHT_NODE(*current);
     }
