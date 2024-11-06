@@ -602,6 +602,12 @@ static AST_Node *Identifier(bool can_assign) {
   // annotation, but use the identifier_token to preserve the line number
   // for future error messages
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
+
+  // Check for invalid syntax like "i64 i + 1;"
+  if (s.declaration_type == DECL_DECLARED && !NextTokenIs(SEMICOLON)) {
+    ERROR_AT_TOKEN(Parser.next, "What are you doing, my guy?", "");
+  }
+
   return NewNodeFromToken(
     (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE
                                           : IDENTIFIER_NODE,
@@ -610,6 +616,12 @@ static AST_Node *Identifier(bool can_assign) {
 }
 
 static AST_Node *Unary(bool) {
+  if (NextTokenIsAnyType()) {
+    ERROR_AT_TOKEN(
+      Parser.next,
+      "Unary(): Can't declare variable in the middle of an expression", "");
+  }
+
   Token operator_token = Parser.current;
   AST_Node *parse_result = Parse(UNARY);
 
@@ -631,6 +643,12 @@ static AST_Node *Unary(bool) {
 
 static AST_Node *Binary(bool) {
   Token operator_token = Parser.current;
+
+  if (NextTokenIsAnyType()) {
+    ERROR_AT_TOKEN(
+      Parser.next,
+      "Binary(): Can't declare variable in the middle of an expression", "");
+  }
 
   Precedence precedence = Rules[Parser.current.type].precedence;
   AST_Node *parse_result = Parse(precedence + 1);
