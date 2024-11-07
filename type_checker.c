@@ -134,8 +134,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bitwidth '%d'", BitWidth(target_type));
   }
 
-  if (IsSigned(from) && !IsSigned(target_type)) {
-    long long from_value = TokenToLL(from->token, base);
+  if (!IsSigned(target_type)) {
+    long long from_value = TokenToULL(from->token, base);
 
     if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
@@ -149,8 +149,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     }
   }
 
-  if (!IsSigned(from) && IsSigned(target_type)) {
-    unsigned long long from_value = TokenToULL(from->token, base);
+  if (IsSigned(target_type)) {
+    long long from_value = TokenToLL(from->token, base);
 
     switch(BitWidth(target_type)) {
       case  8: return from_value <= INT8_MAX;
