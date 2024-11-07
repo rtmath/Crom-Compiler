@@ -11,10 +11,10 @@
 #include "lexer.h"
 
 /* Global Variables */
-static SymbolTable *SYMBOL_TABLE();
 static SymbolTable *shadowed_symbol_table;
 
 /* Forward Declarations */
+static SymbolTable *SYMBOL_TABLE();
 static AST_Node *FunctionDeclaration(Symbol symbol);
 static AST_Node *FunctionCall(Token identifier);
 
@@ -1116,6 +1116,7 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   AST_Node *body = NewNode(FUNCTION_BODY_NODE, NULL, NULL, NULL, NoAnnotation());
   AST_Node **current = &body;
 
+  BeginScope();
   ShadowSymbolTable(fn_params);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
@@ -1125,9 +1126,11 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
     current = &RIGHT_NODE(*current);
   }
 
-  UnshadowSymbolTable();
 
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
+
+  EndScope();
+  UnshadowSymbolTable();
 
   if (LEFT_NODE(body) == NULL) { // Insert a Void Return if there's no function body
     LEFT_NODE(body) = NewNode(RETURN_NODE, NULL, NULL, NULL, AnnotateType(VOID));
@@ -1137,6 +1140,10 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
 }
 
 static AST_Node *FunctionDeclaration(Symbol symbol) {
+  if (Scope.depth != 0) {
+    ERROR_AT_TOKEN(symbol.token, "Functions must be declared in global scope.", "");
+  }
+
   AST_Node *params = FunctionParams(symbol.fn_params, symbol);
   AST_Node *return_type = FunctionReturnType();
   AST_Node *body = FunctionBody(symbol.fn_params);
