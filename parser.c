@@ -970,11 +970,26 @@ static AST_Node *Enum(bool) {
   Consume(IDENTIFIER, "Enum(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
           TokenTypeTranslation(Parser.next.type),
           TokenTypeTranslation(Parser.next.type));
-  AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM), DECL_DECLARED));
+
+  Token enum_identifier = Parser.current;
+  Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), enum_identifier);
+
+  if (stored_symbol.declaration_type == DECL_DEFINED) {
+    REDECLARATION_AT_TOKEN(
+      enum_identifier,
+      stored_symbol.token,
+      "Redeclaration of Enum '%.*s', original declaration on Line %d",
+      stored_symbol.token.length,
+      stored_symbol.token.position_in_source,
+      stored_symbol.annotation.declared_on_line);
+  }
+
+  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_UNINITIALIZED));
 
   AST_Node *enum_name = Identifier(false);
   LEFT_NODE(enum_name) = EnumBlock();
 
+  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_DEFINED));
   return enum_name;
 }
 
