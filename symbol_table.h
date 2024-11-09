@@ -3,6 +3,7 @@
 
 #include "parser_annotation.h"
 #include "token.h"
+#include "value.h"
 
 #define MAX_FN_PARAMS 20
 
@@ -11,14 +12,13 @@ typedef enum {
   DECL_UNINITIALIZED,
   DECL_DECLARED,
   DECL_DEFINED,
-  DECL_FN_PARAM,
-  DECL_TYPE_COUNT,
-} DeclarationType;
+  DECL_ENUM_COUNT, // For bounds checking
+} DeclarationState;
 
 typedef struct SymbolTable_impl SymbolTable;
 
 typedef struct {
-  int ordinal_value; // 0 is the first param, 1 is the second, etc
+  int ordinality; // 0 is the first param, 1 is the second, etc
   Token param_token;
   OstensibleType ostensible_type;
   ActualType actual_type;
@@ -26,9 +26,10 @@ typedef struct {
 
 typedef struct {
   int debug_id;
-  DeclarationType declaration_type;
+  DeclarationState declaration_state;
   ParserAnnotation annotation;
   Token token;
+  Value value;
   SymbolTable *struct_fields;
 
   SymbolTable *fn_params;
@@ -50,7 +51,7 @@ struct SymbolTable_impl {
 
 SymbolTable *NewSymbolTable();
 void DeleteSymbolTable(SymbolTable *st);
-Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d);
+Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationState d);
 
 Symbol AddTo(SymbolTable *st, Symbol s);
 Symbol RetrieveFrom(SymbolTable *st, Token t);

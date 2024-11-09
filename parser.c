@@ -142,7 +142,7 @@ static ParseRule Rules[] = {
 };
 
 /*= == Scope Related === */
-struct {
+static struct {
   int depth;
   SymbolTable *locals[10]; // TODO: figure out actual size or make dynamic array
 } Scope;
@@ -497,7 +497,7 @@ static AST_Node *Identifier(bool can_assign) {
     if (NextTokenIsAnyType() ||
         (NextTokenIs(RPAREN) && TokenAfterNextIs(COLON_SEPARATOR)))
     { // Declaration
-      if (is_in_symbol_table && symbol.declaration_type != DECL_DECLARED) {
+      if (is_in_symbol_table && symbol.declaration_state != DECL_DECLARED) {
         REDECLARATION_AT_TOKEN(identifier_token,
                                symbol.token,
                                "Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
@@ -516,7 +516,7 @@ static AST_Node *Identifier(bool can_assign) {
         ERROR_AT_TOKEN(
           identifier_token,
           "Identifier(): Undeclared function", "");
-      } else if (symbol.declaration_type != DECL_DEFINED) {
+      } else if (symbol.declaration_state != DECL_DEFINED) {
         ERROR_AT_TOKEN(
           identifier_token,
           "Identifier(): Can't call an undefined function", "");
@@ -542,7 +542,7 @@ static AST_Node *Identifier(bool can_assign) {
     is_in_symbol_table = true;
   }
 
-  if (symbol.declaration_type == DECL_NONE && can_assign) {
+  if (symbol.declaration_state == DECL_NONE && can_assign) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
     REDECLARATION_AT_TOKEN(identifier_token,
                            already_declared.token,
@@ -557,7 +557,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (Match(PLUS_PLUS)) {
-    if (symbol.declaration_type != DECL_DEFINED) {
+    if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(identifier_token,
                      "Identifier(): Cannot increment undefined variable '%.*s",
                      identifier_token.length,
@@ -568,7 +568,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (Match(MINUS_MINUS)) {
-    if (symbol.declaration_type != DECL_DEFINED) {
+    if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(identifier_token,
                      "Identifier(): Cannot decrement undefined variable '%.*s",
                      identifier_token.length,
@@ -592,7 +592,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   if (NextTokenIsTerseAssignment()) {
     ConsumeAnyTerseAssignment("Identifier() Terse Assignment: How did this error message appear?");
-    if (symbol.declaration_type != DECL_DEFINED) {
+    if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(identifier_token,
                      "Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
                      identifier_token.length,
@@ -610,12 +610,12 @@ static AST_Node *Identifier(bool can_assign) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
 
   // Check for invalid syntax like "i64 i + 1;"
-  if (s.declaration_type == DECL_DECLARED && !NextTokenIs(SEMICOLON)) {
+  if (s.declaration_state == DECL_DECLARED && !NextTokenIs(SEMICOLON)) {
     ERROR_AT_TOKEN(Parser.next, "What are you doing, my guy?", "");
   }
 
   return NewNodeFromToken(
-    (s.declaration_type == DECL_DECLARED) ? DECLARATION_NODE
+    (s.declaration_state == DECL_DECLARED) ? DECLARATION_NODE
                                           : IDENTIFIER_NODE,
     NULL, array_index, NULL, identifier_token, s.annotation
   );
@@ -875,7 +875,7 @@ static AST_Node *ArraySubscripting(bool) {
                      Parser.current.position_in_source);
     }
 
-    if (symbol.declaration_type != DECL_DEFINED) {
+    if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(Parser.current,
                      "ArraySubscripting(): Can't access array with uninitialized identifier '%.*s'",
                      Parser.current.length,
@@ -905,7 +905,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
                    identifier_token.position_in_source);
   }
 
-  if (symbol.declaration_type == DECL_NONE && can_assign) {
+  if (symbol.declaration_state == DECL_NONE && can_assign) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
     REDECLARATION_AT_TOKEN(identifier_token,
                            already_declared.token,
@@ -974,7 +974,7 @@ static AST_Node *Enum(bool) {
   Token enum_identifier = Parser.current;
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), enum_identifier);
 
-  if (stored_symbol.declaration_type == DECL_DEFINED) {
+  if (stored_symbol.declaration_state == DECL_DEFINED) {
     REDECLARATION_AT_TOKEN(
       enum_identifier,
       stored_symbol.token,
@@ -1070,7 +1070,7 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
     Token identifier_token = Parser.current;
 
     Symbol existing_symbol = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
-    if (IsIn(fn_params, identifier_token) && existing_symbol.declaration_type != DECL_DECLARED) {
+    if (IsIn(fn_params, identifier_token) && existing_symbol.declaration_state != DECL_DECLARED) {
       ERROR_AT_TOKEN(identifier_token,
                      "FunctionParams(): Duplicate parameter name '%.*s'",
                      identifier_token.length,
@@ -1081,7 +1081,7 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
                                            (is_array)
                                              ? ArrayAnnotation(type_token.type, 0)
                                              : AnnotateType(type_token.type),
-                                           DECL_FN_PARAM)
+                                           DECL_DEFINED)
     );
     RegisterFnParam(SYMBOL_TABLE(), identifier, stored_symbol);
 
@@ -1148,7 +1148,7 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   AST_Node *return_type = FunctionReturnType();
   AST_Node *body = FunctionBody(symbol.fn_params);
 
-  if ((symbol.declaration_type == DECL_DECLARED) && body == NULL) {
+  if ((symbol.declaration_state == DECL_DECLARED) && body == NULL) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
     ERROR_AT_TOKEN(symbol.token,
                    "FunctionDeclaration(): Double declaration of function '%.*s' (declared on line %d)\n",
@@ -1159,10 +1159,10 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
   // Retrieve updated reference to symbol before modifying
   symbol = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
 
-  symbol.annotation = (symbol.declaration_type == DECL_DECLARED)
+  symbol.annotation = (symbol.declaration_state == DECL_DECLARED)
                         ? symbol.annotation
                         : FunctionAnnotation(return_type->token.type);
-  symbol.declaration_type = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
+  symbol.declaration_state = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
   Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
 
   return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);

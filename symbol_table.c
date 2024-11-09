@@ -193,24 +193,23 @@ static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
   return b->entry;
 }
 
-static const char* const _DeclarationTypeTranslation[] =
+static const char* const _DeclarationStateTranslation[] =
 {
   [DECL_NONE] = "NONE",
   [DECL_UNINITIALIZED] = "UNINITIALIZED",
   [DECL_DECLARED] = "DECLARED",
   [DECL_DEFINED] = "DEFINED",
-  [DECL_FN_PARAM] = "FUNCTION PARAM",
 };
 
-static const char *DeclarationTypeTranslation(DeclarationType dt) {
-  if (dt < 0 || dt >= DECL_TYPE_COUNT) {
-    ERROR_AND_EXIT_FMTMSG("PrintDeclarationType(): '%d' out of range", dt);
+static const char *DeclarationStateTranslation(DeclarationState ds) {
+  if (ds < 0 || ds >= DECL_ENUM_COUNT) {
+    ERROR_AND_EXIT_FMTMSG("PrintDeclarationState(): '%d' out of range", ds);
   }
-  return _DeclarationTypeTranslation[dt];
+  return _DeclarationStateTranslation[ds];
 }
 
-static void InlinePrintDeclarationType(DeclarationType dt) {
-  printf("DECL %s", DeclarationTypeTranslation(dt));
+static void InlinePrintDeclarationState(DeclarationState ds) {
+  printf("DECL %s", DeclarationStateTranslation(ds));
 }
 
 static char *ExtractString(Token token) {
@@ -227,7 +226,7 @@ SymbolTable *NewSymbolTable() {
   return NewSymbolTable_Sized(INITIAL_TABLE_CAPACITY);
 }
 
-Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d) {
+Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationState d) {
   SymbolTable *fields = (a.ostensible_type == OST_STRUCT)
   ? NewSymbolTable()
   : NULL;
@@ -239,7 +238,7 @@ Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationType d) {
   Symbol s = {
     .token = t,
     .annotation = a,
-    .declaration_type = d,
+    .declaration_state = d,
     .struct_fields = fields,
     .fn_params = fn_params,
     .fn_param_count = 0,
@@ -282,7 +281,7 @@ bool IsIn(SymbolTable *st, Token token) {
 
 void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
   FnParam fp = {
-    .ordinal_value = function.fn_param_count,
+    .ordinality = function.fn_param_count,
     .param_token = param.token,
     .ostensible_type = param.annotation.ostensible_type,
     .actual_type = param.annotation.actual_type,
@@ -296,10 +295,11 @@ void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
 void PrintSymbol(Symbol s) {
   PrintTokenVerbose(s.token);
   printf("Symbol ID: '%d'\n", s.debug_id);
-  InlinePrintDeclarationType(s.declaration_type);
+  InlinePrintDeclarationState(s.declaration_state);
   printf(" ");
   InlinePrintOstAnnotation(s.annotation);
   printf("\n");
   if (s.struct_fields != NULL) printf("has Struct Fields\n");
   if (s.fn_params != NULL) printf("has %d Function Params\n", s.fn_param_count);
+  PrintValue(s.value);
 }
