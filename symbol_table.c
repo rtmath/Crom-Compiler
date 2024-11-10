@@ -284,8 +284,7 @@ void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
   FnParam fp = {
     .ordinality = function.fn_param_count,
     .param_token = param.token,
-    .ostensible_type = param.annotation.ostensible_type,
-    .actual_type = param.annotation.actual_type,
+    .annotation = param.annotation,
   };
   function.fn_param_list[function.fn_param_count] = fp;
   function.fn_param_count++;

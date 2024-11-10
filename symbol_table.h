@@ -20,8 +20,7 @@ typedef struct SymbolTable_impl SymbolTable;
 typedef struct {
   int ordinality; // 0 is the first param, 1 is the second, etc
   Token param_token;
-  OstensibleType ostensible_type;
-  ActualType actual_type;
+  ParserAnnotation annotation;
 } FnParam;
 
 typedef struct {

@@ -230,7 +230,7 @@ static void Assignment(AST_Node *identifier) {
   if (!identifier->annotation.is_array && MIDDLE_NODE(identifier) != NULL) {
     ERROR_AT_TOKEN(
       identifier->token,
-      "'%.*s' is not an array\n",
+      "Assignment(): '%.*s' is not an array\n",
       identifier->token.length,
       identifier->token.position_in_source);
   }
@@ -368,12 +368,11 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
       }
     }
 
-    PrintNode(*current);
     if (LEFT_NODE(*current)->type == RETURN_NODE) {
       if (!TypeIsConvertible(LEFT_NODE(*current)->nodes[LEFT], return_type)) {
         ERROR_AT_TOKEN(
           LEFT_NODE(*current)->nodes[LEFT]->token,
-          "Can't convert type from %s to %s",
+          "TypeCheckNestedReturns(): Can't convert type from %s to %s",
           AnnotationTranslation((*current)->nodes[LEFT]->annotation),
           AnnotationTranslation(return_type->annotation)
         );
@@ -470,17 +469,20 @@ static void FunctionCall(AST_Node *node) {
       );
     }
 
-    // TODO: TypeIsConvertible deals with AST_Nodes but fn_params
-    // aren't an AST_Node
-    AST_Node *CODE_SMELL = NewNodeFromToken(UNTYPED, NULL, NULL, NULL, fn_definition.fn_param_list[i].param_token, AnnotateType(INT_LITERAL));
-    if (!TypeIsConvertible(argument, CODE_SMELL)) {
+    // TypeIsConvertible deals with AST_Nodes but fn_params aren't an AST_Node
+    AST_Node *wrapped_param = NewNodeFromToken(UNTYPED, NULL, NULL, NULL,
+      fn_definition.fn_param_list[i].param_token,
+      fn_definition.fn_param_list[i].annotation
+    );
+
+    if (!TypeIsConvertible(argument, wrapped_param)) {
       ERROR_AT_TOKEN(
         argument->token,
         "%.*s(): Can't convert type from %s to %s\n",
         node->token.length,
         node->token.position_in_source,
         OstensibleTypeTranslation(argument->annotation.ostensible_type),
-        OstensibleTypeTranslation(CODE_SMELL->annotation.ostensible_type));
+        OstensibleTypeTranslation(wrapped_param->annotation.ostensible_type));
     }
 
     current = &RIGHT_NODE(*current);
@@ -522,7 +524,7 @@ static void UnaryOp(AST_Node *node) {
     }
 
     ERROR_AT_TOKEN(node->token,
-                   "Type disagreement: expected INT or FLOAT, got '%s'",
+                   "UnaryOp(): Type disagreement: expected INT or FLOAT, got '%s'",
                    ActualTypeTranslation(check_node->annotation.actual_type));
   }
 }
@@ -543,14 +545,12 @@ static void BinaryOp(AST_Node *node) {
 }
 
 static void InitializerList(AST_Node *node) {
-  PrintNode(node);
   AST_Node **current = &node;
 
   int num_literals_in_list = 0;
   do {
     if (!TypeIsConvertible(LEFT_NODE(*current), node)) {
-      // Actualize Type so that the node's (ostensible) type shows up in
-      // the error message (rather than it displaying 'N/A')
+      // Actualize the ostensible type for the error message
       ActualizeType(node, node->annotation);
       ERROR_AT_TOKEN(
         LEFT_NODE(*current)->token,
@@ -563,7 +563,7 @@ static void InitializerList(AST_Node *node) {
     if (num_literals_in_list > node->annotation.array_size) {
       ERROR_AT_TOKEN(
         LEFT_NODE(*current)->token,
-        "Too many elements in initializer list (array size is %d)",
+        "InitializerList(): Too many elements in initializer list (array size is %d)",
         node->annotation.array_size);
     }
 
