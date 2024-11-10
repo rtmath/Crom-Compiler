@@ -18,6 +18,7 @@ static SymbolTable *SYMBOL_TABLE();
 static AST_Node *StructField(Token struct_name);
 static AST_Node *FunctionDeclaration(Symbol symbol);
 static AST_Node *FunctionCall(Token identifier);
+static AST_Node *InitializerList(ParserAnnotation expected_type);
 
 struct {
   Token current;
@@ -587,6 +588,15 @@ static AST_Node *Identifier(bool can_assign) {
                      identifier_token.position_in_source);
     }
 
+    if (symbol.annotation.is_array) {
+      if (Match(LCURLY)) {
+        AST_Node *initializer_list = InitializerList(symbol.annotation);
+        return NewNodeFromSymbol(ASSIGNMENT_NODE, initializer_list, array_index, NULL, symbol);
+      } else {
+        ERROR_AT_TOKEN(identifier_token, "Arrays are not assignable", "");
+      }
+    }
+
     Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
     return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), array_index, NULL, stored_symbol);
   }
@@ -1095,6 +1105,32 @@ static AST_Node *Struct() {
 
   identifier_symbol.declaration_state = DECL_DEFINED;
   AddTo(SYMBOL_TABLE(), identifier_symbol);
+
+  return n;
+}
+
+static AST_Node *InitializerList(ParserAnnotation expected_type) {
+  AST_Node *n = NULL;
+  AST_Node **current = &n;
+
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    if (n == NULL) n = NewNode(ARRAY_INITIALIZER_LIST_NODE, NULL, NULL, NULL, expected_type);
+
+    LEFT_NODE(*current) = Expression(_);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+
+    current = &RIGHT_NODE(*current);
+
+    Match(COMMA);
+  }
+
+  Consume(RCURLY, "Expected '}' after Initializer List", "");
+
+  if (n == NULL) {
+    ERROR_AT_TOKEN(
+      Parser.current,
+      "Initializer List cannot be empty", "");
+  }
 
   return n;
 }

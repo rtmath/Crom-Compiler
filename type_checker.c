@@ -200,8 +200,9 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   if (NodeOstensibleType(node) == OST_FLOAT) {
     double d = TokenToDouble(node->token);
 
-    if (d >= FLT_MIN && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
-    if (d >= DBL_MIN && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
+    if (d >= 0 && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
+    if (d >= 0 && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
+    ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Value %e fell through both float and double checks\n", d);
   }
 
   if (NodeOstensibleType(node) == OST_BOOL) {
@@ -216,7 +217,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
     return ArrayAnnotation(CHAR, node->token.length);
   }
 
-  ERROR_AND_EXIT("ShrinkToSmallestContainingType(): Type not implemented yet");
+  ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Type %d not implemented yet", NodeOstensibleType(node));
   return Annotation(OST_UNKNOWN, _, _);
 }
 /* === END HELPERS === */
@@ -541,6 +542,37 @@ static void BinaryOp(AST_Node *node) {
   ActualizeType(RIGHT_NODE(node), node->annotation);
 }
 
+static void InitializerList(AST_Node *node) {
+  PrintNode(node);
+  AST_Node **current = &node;
+
+  int num_literals_in_list = 0;
+  do {
+    if (!TypeIsConvertible(LEFT_NODE(*current), node)) {
+      // Actualize Type so that the node's (ostensible) type shows up in
+      // the error message (rather than it displaying 'N/A')
+      ActualizeType(node, node->annotation);
+      ERROR_AT_TOKEN(
+        LEFT_NODE(*current)->token,
+        "InitializerList(): Cannot convert from type '%s' to '%s'\n",
+        AnnotationTranslation(LEFT_NODE(*current)->annotation),
+        AnnotationTranslation(node->annotation));
+    }
+
+    num_literals_in_list++;
+    if (num_literals_in_list > node->annotation.array_size) {
+      ERROR_AT_TOKEN(
+        LEFT_NODE(*current)->token,
+        "Too many elements in initializer list (array size is %d)",
+        node->annotation.array_size);
+    }
+
+    current = &RIGHT_NODE(*current);
+  } while (*current != NULL && LEFT_NODE(*current) != NULL);
+
+  ActualizeType(node, LEFT_NODE(node)->annotation);
+}
+
 void CheckTypesRecurse(AST_Node *node) {
   SymbolTable *remember_st = SYMBOL_TABLE;
   if (node->type == FUNCTION_NODE) {
@@ -602,6 +634,9 @@ void CheckTypesRecurse(AST_Node *node) {
     } break;
     case STRUCT_FIELD_IDENTIFIER_NODE: {
       ActualizeType(node, node->annotation);
+    } break;
+    case ARRAY_INITIALIZER_LIST_NODE: {
+      InitializerList(node);
     } break;
     default: {
     } break;

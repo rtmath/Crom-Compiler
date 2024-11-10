@@ -14,6 +14,7 @@ static const char* const _NodeTypeTranslation[] =
   [STRUCT_FIELD_IDENTIFIER_NODE] = "Struct Field Identifier",
   [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
+  [ARRAY_INITIALIZER_LIST_NODE] = "Array Initializer List",
 
   [IF_NODE] = "If",
   [WHILE_NODE] = "While",
