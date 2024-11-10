@@ -226,6 +226,14 @@ static void Declaration(AST_Node *identifier) {
 }
 
 static void Assignment(AST_Node *identifier) {
+  if (!identifier->annotation.is_array && MIDDLE_NODE(identifier) != NULL) {
+    ERROR_AT_TOKEN(
+      identifier->token,
+      "'%.*s' is not an array\n",
+      identifier->token.length,
+      identifier->token.position_in_source);
+  }
+
   AST_Node *value = LEFT_NODE(identifier);
 
   if (identifier->type == TERSE_ASSIGNMENT_NODE) {
