@@ -1267,10 +1267,11 @@ static AST_Node *FunctionCall(Token function_name) {
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
     if (NextTokenIs(IDENTIFIER)) {
       Consume(IDENTIFIER, "FunctionCall(): Expected identifier\n");
-      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
+      Token identifier_token = Parser.current;
+      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
 
       if (Match(LPAREN)) {
-        (*current) = FunctionCall(identifier.token);
+        (*current) = FunctionCall(identifier_token);
       } else {
         (*current) = NewNodeFromSymbol(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, identifier);
       }
@@ -1286,14 +1287,16 @@ static AST_Node *FunctionCall(Token function_name) {
       Consume(COMMA, "");
       if (NextTokenIs(RPAREN)) { break; }
 
-      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());;
+      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
       current = &RIGHT_NODE(*current);
     }
   }
 
   Consume(RPAREN, "FunctionCall(): Expected ')'");
 
-  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, NoAnnotation());
+  Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE(), function_name);
+
+  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, fn_definition.annotation);
 }
 
 static AST_Node *Literal(bool) {
