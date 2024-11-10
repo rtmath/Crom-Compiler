@@ -34,6 +34,7 @@ typedef struct {
 } Value;
 
 Value NewValue(ParserAnnotation a, Token t);
+void InlinePrintValue(Value v);
 void PrintValue(Value v);
 
 #endif

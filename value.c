@@ -123,31 +123,35 @@ Value NewValue(ParserAnnotation a, Token t) {
   return ret_val;
 }
 
-void PrintValue(Value v) {
+void InlinePrintValue(Value v) {
   switch(v.type) {
     case V_NONE: {
-      printf("None\n");
+      printf("None");
     } break;
     case V_INT: {
-      printf("Integer: %ld\n", v.as.integer);
+      printf("Integer: %ld", v.as.integer);
     } break;
     case V_UINT: {
-      printf("Unsigned Integer: %lu\n", v.as.uinteger);
+      printf("Unsigned Integer: %lu", v.as.uinteger);
     } break;
     case V_FLOAT: {
-      printf("Float: %f\n", v.as.floating);
+      printf("Float: %f", v.as.floating);
     } break;
     case V_CHAR: {
-      printf("Char: %c\n", v.as.character);
+      printf("Char: %c", v.as.character);
     } break;
     case V_STRING: {
-      printf("String: %s\n", v.as.string);
+      printf("String: %s", v.as.string);
     } break;
     case V_BOOL: {
-      printf("Bool: %s\n", (v.as.boolean) ? "true" : "false");
+      printf("Bool: %s", (v.as.boolean) ? "true" : "false");
     } break;
     default: {
-      printf("PrintValue(): Value type implemented yet\n");
+      printf("PrintValue(): Value type implemented yet.");
     } break;
   }
+}
+void PrintValue(Value v) {
+  InlinePrintValue(v);
+  printf("\n");
 }
