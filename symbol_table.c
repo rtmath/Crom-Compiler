@@ -171,9 +171,11 @@ static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
       // When SetEntry() overwrites an existing entry,
       // preserve the line it was declared on
       int preserve_dol = check_bucket->entry.annotation.declared_on_line;
+      int preserve_id = check_bucket->entry.debug_id;
       FreeBucket(check_bucket);
 
       b->entry.annotation.declared_on_line = preserve_dol;
+      b->entry.debug_id = preserve_id;
       st->buckets[index] = b;
       return b->entry;
     }
@@ -209,7 +211,7 @@ static const char *DeclarationStateTranslation(DeclarationState ds) {
 }
 
 static void InlinePrintDeclarationState(DeclarationState ds) {
-  printf("DECL %s", DeclarationStateTranslation(ds));
+  printf("%s", DeclarationStateTranslation(ds));
 }
 
 static char *ExtractString(Token token) {
@@ -253,7 +255,6 @@ Symbol AddTo(SymbolTable *st, Symbol s) {
   char *key = ExtractString(s.token);
 
   Symbol stored_symbol = SetSymbol(st, key, s);
-
   free(key);
 
   return stored_symbol;
@@ -293,8 +294,7 @@ void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
 }
 
 void PrintSymbol(Symbol s) {
-  PrintTokenVerbose(s.token);
-  printf("Symbol ID: '%d'\n", s.debug_id);
+  printf("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   printf(" ");
   InlinePrintOstAnnotation(s.annotation);
