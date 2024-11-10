@@ -271,7 +271,7 @@ Token ScanToken() {
     case ')': return MakeToken(RPAREN);
     case '[': return MakeToken(LBRACKET);
     case ']': return MakeToken(RBRACKET);
-    case '.': return MakeToken(COMMA);
+    case '.': return MakeToken(PERIOD);
     case ',': return MakeToken(COMMA);
     case ':': return MakeToken(Match(':') ? COLON_SEPARATOR : COLON);
     case ';': return MakeToken(SEMICOLON);
