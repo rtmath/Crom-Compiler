@@ -601,7 +601,7 @@ void CheckTypesRecurse(AST_Node *node) {
 
   if (node->type != START_NODE &&
       node->type != CHAIN_NODE) {
-    PrintNode(node);
+    //PrintNode(node);
   }
 }
 
