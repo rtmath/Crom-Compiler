@@ -15,6 +15,7 @@ static SymbolTable *shadowed_symbol_table;
 
 /* Forward Declarations */
 static SymbolTable *SYMBOL_TABLE();
+static AST_Node *StructField(Token struct_name);
 static AST_Node *FunctionDeclaration(Symbol symbol);
 static AST_Node *FunctionCall(Token identifier);
 
@@ -169,7 +170,7 @@ static void UnshadowSymbolTable() {
 }
 
 static Symbol ExistsInOuterScope(Token t) {
-  for (int i = Scope.depth - 1; i >= 0; i--) {
+  for (int i = Scope.depth; i >= 0; i--) {
     Symbol result = RetrieveFrom(Scope.locals[i], t);
     if (result.token.type != ERROR) {
       return result;
@@ -597,11 +598,16 @@ static AST_Node *Identifier(bool can_assign) {
                      "Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
-    }
+
 
     AST_Node *terse_assignment = TerseAssignment(_);
     LEFT_NODE(terse_assignment) = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
+    }
+  }
+
+  if (symbol.annotation.ostensible_type == OST_STRUCT && Match(PERIOD)) {
+    return StructField(identifier_token);
   }
 
   // Retrieve symbol from the table to use its declaration type and
@@ -993,6 +999,50 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
+static AST_Node *StructField(Token struct_name) {
+  AST_Node *expr = NULL;
+  Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_name);
+  if (struct_symbol.declaration_state != DECL_DEFINED) {
+    ERROR_AT_TOKEN(
+      Parser.next,
+      "Can't use field from undefined struct", "");
+  }
+
+  BeginScope();
+  ShadowSymbolTable(struct_symbol.struct_fields);
+
+  Consume(IDENTIFIER, "Expected identifier", "");
+  Token field_name = Parser.current;
+  if (!IsIn(SYMBOL_TABLE(), field_name)) {
+    ERROR_AT_TOKEN(
+      field_name,
+      "Struct '%.*s' has no field '%.*s'",
+      struct_name.length, struct_name.position_in_source,
+      field_name.length, field_name.position_in_source);
+  }
+
+  if (Match(EQUALS)) {
+    expr = Expression(_);
+    Symbol s = RetrieveFrom(SYMBOL_TABLE(), field_name);
+    s.declaration_state = DECL_DEFINED;
+    AddTo(SYMBOL_TABLE(), s);
+  }
+
+  Symbol field_symbol = RetrieveFrom(SYMBOL_TABLE(), field_name);
+  if (field_symbol.declaration_state != DECL_DEFINED) {
+    ERROR_AT_TOKEN(
+      field_name,
+      "Field '%.*s' has not been defined",
+      field_name.length,
+      field_name.position_in_source);
+  }
+
+  UnshadowSymbolTable();
+  EndScope();
+
+  return NewNodeFromToken(STRUCT_FIELD_IDENTIFIER_NODE, expr, NULL, NULL, field_name, field_symbol.annotation);
+}
+
 static AST_Node *Struct() {
   Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
           TokenTypeTranslation(Parser.current.type),
@@ -1014,13 +1064,11 @@ static AST_Node *Struct() {
   Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
 
-  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DEFINED));
-
   AST_Node *n = NULL;
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    if (n == NULL) n = NewNodeFromSymbol(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, stored_symbol);
+    if (n == NULL) n = NewNodeFromSymbol(STRUCT_FIELD_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_symbol);
 
     LEFT_NODE(*current) = Statement(_);
     RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
@@ -1040,7 +1088,10 @@ static AST_Node *Struct() {
                    identifier_symbol.token.position_in_source);
   }
 
-  return n;;
+  identifier_symbol.declaration_state = DECL_DEFINED;
+  AddTo(SYMBOL_TABLE(), identifier_symbol);
+
+  return n;
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {

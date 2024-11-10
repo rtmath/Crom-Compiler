@@ -592,7 +592,7 @@ void CheckTypesRecurse(AST_Node *node) {
     case RETURN_NODE: {
       Return(node);
     } break;
-    case STRUCT_IDENTIFIER_NODE: {
+    case STRUCT_FIELD_IDENTIFIER_NODE: {
       ActualizeType(node, node->annotation);
     } break;
     default: {

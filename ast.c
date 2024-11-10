@@ -11,7 +11,7 @@ static const char* const _NodeTypeTranslation[] =
   [CHAIN_NODE] = "Chain",
   [DECLARATION_NODE] = "Declaration",
   [IDENTIFIER_NODE] = "Identifier",
-  [STRUCT_IDENTIFIER_NODE] = "Struct Identifier",
+  [STRUCT_FIELD_IDENTIFIER_NODE] = "Struct Field Identifier",
   [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
 
