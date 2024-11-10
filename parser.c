@@ -1001,6 +1001,7 @@ static AST_Node *Enum(bool) {
 
 static AST_Node *StructField(Token struct_name) {
   AST_Node *expr = NULL;
+  AST_Node *array_index = NULL;
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_name);
   if (struct_symbol.declaration_state != DECL_DEFINED) {
     ERROR_AT_TOKEN(
@@ -1019,6 +1020,10 @@ static AST_Node *StructField(Token struct_name) {
       "Struct '%.*s' has no field '%.*s'",
       struct_name.length, struct_name.position_in_source,
       field_name.length, field_name.position_in_source);
+  }
+
+  if (Match(LBRACKET)) {
+    array_index = ArraySubscripting(_);
   }
 
   if (Match(EQUALS)) {
@@ -1040,7 +1045,7 @@ static AST_Node *StructField(Token struct_name) {
   UnshadowSymbolTable();
   EndScope();
 
-  return NewNodeFromToken(STRUCT_FIELD_IDENTIFIER_NODE, expr, NULL, NULL, field_name, field_symbol.annotation);
+  return NewNodeFromToken(STRUCT_FIELD_IDENTIFIER_NODE, expr, array_index, NULL, field_name, field_symbol.annotation);
 }
 
 static AST_Node *Struct() {
