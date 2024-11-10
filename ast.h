@@ -6,6 +6,7 @@
 #include "parser_annotation.h"
 #include "symbol_table.h"
 #include "token.h"
+#include "value.h"
 
 #define LEFT 0
 #define RIGHT 1
@@ -59,6 +60,7 @@ typedef struct AST_Node {
   NodeType type;
   Token token;
   ParserAnnotation annotation;
+  Value value;
 
   struct AST_Node *nodes[3];
 } AST_Node;

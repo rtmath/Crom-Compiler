@@ -1,6 +1,7 @@
 #include <stdio.h> // for printf
 
 #include "compiler.h"
+#include "interpreter.h"
 #include "lexer.h"
 #include "parser.h"
 #include "symbol_table.h"
@@ -16,4 +17,6 @@ void Compile(const char *filename, const char *source) {
   CheckTypes(ast, SYMBOL_TABLE);
 
   PrintAST(ast);
+
+  Interpret(ast);
 }
