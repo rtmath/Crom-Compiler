@@ -157,8 +157,9 @@ void PrintNode(AST_Node *node) {
   InlinePrintOstAnnotation(node->annotation);
   printf(" : ACT ");
   InlinePrintActAnnotation(node->annotation);
-  printf("]");
-  printf("\n\n");
+  printf("] | Value: ");
+  PrintValue(node->value);
+  printf("\n");
 
   if (LEFT_NODE(node) != NULL) {
     printf("  LEFT: ");

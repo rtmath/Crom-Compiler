@@ -300,7 +300,7 @@ void InlinePrintValue(Value v) {
 
         if (i < v.array_size - 1) { printf(", "); }
       }
-      printf("]\n");
+      printf("]");
     } break;
     default: {
       printf("PrintValue(): Value type implemented yet.");
