@@ -1,7 +1,6 @@
 #include <errno.h>
 #include <float.h>    // for FLT_MIN, FLT_MAX, DBL_MIN, DBL_MAX
 #include <inttypes.h> // for INTX_MIN and INTX_MAX
-#include <stdio.h>
 #include <stdlib.h>   // for strtol and friends
 
 #include "error.h"
@@ -113,9 +112,6 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     //
     // Ergo, range validation is not performed on identifiers
     // if their type is not obviously convertible.
-    //
-    // TODO: Store symbol value in table and use it here for range
-    // validation
     return false;
   }
 
