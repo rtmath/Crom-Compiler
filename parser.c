@@ -591,6 +591,8 @@ static AST_Node *Identifier(bool can_assign) {
     if (symbol.annotation.is_array) {
       if (Match(LCURLY)) {
         AST_Node *initializer_list = InitializerList(symbol.annotation);
+        symbol.declaration_state = DECL_DEFINED;
+        symbol = AddTo(SYMBOL_TABLE(), symbol);
         return NewNodeFromSymbol(ASSIGNMENT_NODE, initializer_list, array_index, NULL, symbol);
       } else {
         ERROR_AT_TOKEN(identifier_token, "Arrays are not assignable", "");
@@ -608,12 +610,11 @@ static AST_Node *Identifier(bool can_assign) {
                      "Identifier(): Cannot perform a terse assignment on undefined variable '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
-
+    }
 
     AST_Node *terse_assignment = TerseAssignment(_);
     LEFT_NODE(terse_assignment) = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
-    }
   }
 
   if (symbol.annotation.ostensible_type == OST_STRUCT && Match(PERIOD)) {
@@ -632,7 +633,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   return NewNodeFromToken(
     (s.declaration_state == DECL_DECLARED) ? DECLARATION_NODE
-                                          : IDENTIFIER_NODE,
+                                           : IDENTIFIER_NODE,
     NULL, array_index, NULL, identifier_token, s.annotation
   );
 }
