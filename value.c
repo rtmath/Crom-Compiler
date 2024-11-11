@@ -119,8 +119,155 @@ Value NewValue(ParserAnnotation a, Token t) {
     } break;
   }
 
-  printf("wtf\n");
   return ret_val;
+}
+
+Value AddValues(Value v1, Value v2) {
+  if (v1.type != v2.type) ERROR_AND_EXIT("AddValues(): Type mismatch");
+
+  switch(v1.type) {
+    case V_INT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.integer = v1.as.integer + v2.as.integer
+      };
+    } break;
+    case V_UINT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.uinteger = v1.as.uinteger + v2.as.uinteger
+      };
+    } break;
+    case V_FLOAT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.floating = v1.as.floating + v2.as.floating
+      };
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("AddValues(): Invalid type %d", v1.type);
+  }
+
+  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+}
+
+Value SubValues(Value v1, Value v2) {
+  if (v1.type != v2.type) ERROR_AND_EXIT("SubValues(): Type mismatch");
+
+  switch(v1.type) {
+    case V_INT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.integer = v1.as.integer - v2.as.integer
+      };
+    } break;
+    case V_UINT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.uinteger = v1.as.uinteger - v2.as.uinteger
+      };
+    } break;
+    case V_FLOAT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.floating = v1.as.floating - v2.as.floating
+      };
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("SubValues(): Invalid type %d", v1.type);
+  }
+
+  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+}
+
+Value MulValues(Value v1, Value v2) {
+  if (v1.type != v2.type) ERROR_AND_EXIT("MulValues(): Type mismatch");
+
+  switch(v1.type) {
+    case V_INT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.integer = v1.as.integer * v2.as.integer
+      };
+    } break;
+    case V_UINT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.uinteger = v1.as.uinteger * v2.as.uinteger
+      };
+    } break;
+    case V_FLOAT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.floating = v1.as.floating * v2.as.floating
+      };
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("MulValues(): Invalid type %d", v1.type);
+  }
+
+  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+}
+
+Value DivValues(Value v1, Value v2) {
+  if (v1.type != v2.type) ERROR_AND_EXIT("DivValues(): Type mismatch");
+
+  switch(v1.type) {
+    case V_INT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.integer = v1.as.integer / v2.as.integer
+      };
+    } break;
+    case V_UINT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.uinteger = v1.as.uinteger / v2.as.uinteger
+      };
+    } break;
+    case V_FLOAT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.floating = v1.as.floating / v2.as.floating
+      };
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("DivValues(): Invalid type %d", v1.type);
+  }
+
+  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+}
+
+Value ModValues(Value v1, Value v2) {
+  if (v1.type != v2.type) ERROR_AND_EXIT("ModValues(): Type mismatch");
+
+  switch(v1.type) {
+    case V_INT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.integer = v1.as.integer % v2.as.integer
+      };
+    } break;
+    case V_UINT: {
+      return (Value){
+        .type = V_INT,
+        .array_type = V_NONE,
+        .as.uinteger = v1.as.uinteger % v2.as.uinteger
+      };
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("ModValues(): Invalid type %d", v1.type);
+  }
+
+  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
 void InlinePrintValue(Value v) {
@@ -146,11 +293,21 @@ void InlinePrintValue(Value v) {
     case V_BOOL: {
       printf("Bool: %s", (v.as.boolean) ? "true" : "false");
     } break;
+    case V_ARRAY: {
+      printf("Array [");
+      for (int i = 0; i < v.array_size; i++) {
+        InlinePrintValue(v.as.array[i]);
+
+        if (i < v.array_size - 1) { printf(", "); }
+      }
+      printf("]\n");
+    } break;
     default: {
       printf("PrintValue(): Value type implemented yet.");
     } break;
   }
 }
+
 void PrintValue(Value v) {
   InlinePrintValue(v);
   printf("\n");

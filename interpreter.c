@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h> // for calloc
 
 #include "error.h"
 #include "interpreter.h"
@@ -28,6 +29,32 @@ void Identifier(AST_Node *n) {
   n->value = stored_symbol.value;
 }
 
+Value ArrayInitializerList(AST_Node *n) {
+  AST_Node **current = &LEFT_NODE(n);
+  Value *data = calloc(n->annotation.array_size, sizeof(Value));
+  int i = 0;
+
+  do {
+    if (LEFT_NODE(*current)->type == IDENTIFIER_NODE) {
+      Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(*current)->token);
+      data[i] = s.value;
+    } else {
+      data[i] = NewValue(LEFT_NODE(*current)->annotation,
+                         LEFT_NODE(*current)->token);
+    }
+
+    i++;
+    current = &RIGHT_NODE(*current);
+  } while (*current != NULL && LEFT_NODE(*current) != NULL);
+
+  return (Value){
+    .type = V_ARRAY,
+    .array_type = n->value.type,
+    .array_size = i,
+    .as.array = data,
+  };
+}
+
 void Assignment(AST_Node *n) {
   Symbol symbol;
   if (IsIn(SYMBOL_TABLE(), n->token)) {
@@ -35,160 +62,17 @@ void Assignment(AST_Node *n) {
   } else {
     symbol = NewSymbol(n->token, n->annotation, DECL_NONE);
   }
-  symbol.value = LEFT_NODE(n)->value;
+
+  if (n->annotation.is_array) {
+    symbol.value = ArrayInitializerList(n);
+  } else {
+    symbol.value = LEFT_NODE(n)->value;
+  }
 
   Symbol stored_symbol = AddTo(SYMBOL_TABLE(), symbol);
   PrintSymbol(stored_symbol);
   printf("\n");
   n->value = symbol.value;
-}
-
-Value AddValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("AddValues(): Type mismatch");
-
-  switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer + v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger + v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating + v2.as.floating
-      };
-    } break;
-    default: ERROR_AND_EXIT_FMTMSG("AddValues(): Invalid type %d", v1.type);
-  }
-
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
-}
-
-Value SubValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("SubValues(): Type mismatch");
-
-  switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer - v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger - v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating - v2.as.floating
-      };
-    } break;
-    default: ERROR_AND_EXIT_FMTMSG("SubValues(): Invalid type %d", v1.type);
-  }
-
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
-}
-
-Value MulValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("MulValues(): Type mismatch");
-
-  switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer * v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger * v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating * v2.as.floating
-      };
-    } break;
-    default: ERROR_AND_EXIT_FMTMSG("MulValues(): Invalid type %d", v1.type);
-  }
-
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
-}
-
-Value DivValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("DivValues(): Type mismatch");
-
-  switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer / v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger / v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating / v2.as.floating
-      };
-    } break;
-    default: ERROR_AND_EXIT_FMTMSG("DivValues(): Invalid type %d", v1.type);
-  }
-
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
-}
-
-Value ModValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("ModValues(): Type mismatch");
-
-  switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer % v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger % v2.as.uinteger
-      };
-    } break;
-    default: ERROR_AND_EXIT_FMTMSG("ModValues(): Invalid type %d", v1.type);
-  }
-
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
 void Binary(AST_Node *n) {
@@ -213,6 +97,7 @@ void Binary(AST_Node *n) {
       n->value = ModValues(LEFT_NODE(n)->value,
                            RIGHT_NODE(n)->value);
     } break;
+
     default: {
       printf("Assignment(): Not implemented yet\n");
     } break;
