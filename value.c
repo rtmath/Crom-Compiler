@@ -300,10 +300,10 @@ void InlinePrintValue(Value v) {
     } break;
     case V_ARRAY: {
       printf("Array [");
-      for (int i = 0; i < v.array_size; i++) {
-        InlinePrintValue(v.as.array[i]);
-
-        if (i < v.array_size - 1) { printf(", "); }
+      InlinePrintValue(v.as.array[0]);
+      if (v.array_size > 1) {
+        printf(" .. ");
+        InlinePrintValue(v.as.array[v.array_size - 1]);
       }
       printf("]");
     } break;
