@@ -5,6 +5,11 @@
 
 #include "io.h"
 
+typedef enum {
+  UNSET = 0,
+  OK,
+} ExitCode;
+
 #define ERROR_AND_CONTINUE(msg) ErrorAndContinue(__FILE__, __LINE__, msg)
 #define ERROR_AND_EXIT(msg) ErrorAndExit(__FILE__, __LINE__, msg)
 #define ERROR_AND_CONTINUE_FMTMSG(fmt, ...) ErrorAndContinue_Variadic(__FILE__, __LINE__, fmt, __VA_ARGS__)

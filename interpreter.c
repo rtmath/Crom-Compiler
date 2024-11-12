@@ -300,4 +300,7 @@ void Interpret(AST_Node *root) {
 
   printf("\n");
   InterpretRecurse(root);
+  if (root->exit_code == UNSET) {
+    root->exit_code = OK;
+  }
 }

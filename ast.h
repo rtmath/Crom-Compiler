@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "error.h"
 #include "parser_annotation.h"
 #include "symbol_table.h"
 #include "token.h"
@@ -58,6 +59,7 @@ typedef enum {
 } NodeType;
 
 typedef struct AST_Node {
+  ExitCode exit_code; // This is really only for the Start node of the AST
   NodeType type;
   Token token;
   ParserAnnotation annotation;
