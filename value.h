@@ -42,6 +42,12 @@ Value MulValues(Value v1, Value v2);
 Value DivValues(Value v1, Value v2);
 Value ModValues(Value v1, Value v2);
 
+void TruncateValue(Value *value, int bit_width);
+
+void SetInt(Value *value, int64_t i);
+void SetUint(Value *value, uint64_t u);
+void SetBool(Value *value, bool b);
+
 void InlinePrintValue(Value v);
 void PrintValue(Value v);
 

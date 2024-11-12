@@ -240,6 +240,41 @@ Value ModValues(Value v1, Value v2) {
   return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
+void TruncateValue(Value *value, int bit_width) {
+  switch (bit_width) {
+    case 8: {
+      (value->as.uinteger) &= 0xFF;
+    } break;
+    case 16: {
+      (value->as.uinteger) &= 0xFFFF;
+    } break;
+    case 32: {
+      (value->as.uinteger) &= 0xFFFFFFFF;
+    } break;
+    case 64: {
+      (value->as.uinteger) &= 0xFFFFFFFFFFFFFFFF;
+    } break;
+    default: {
+      printf("Unsupported bit width '%d'\n", bit_width);
+    } break;
+  }
+}
+
+void SetInt(Value *value, int64_t i) {
+  (*value).type = V_INT;
+  (*value).as.integer = i;
+}
+
+void SetUint(Value *value, uint64_t u) {
+  (*value).type = V_UINT;
+  (*value).as.uinteger = u;
+}
+
+void SetBool(Value *value, bool b) {
+  (*value).type = V_BOOL;
+  (*value).as.boolean = b;
+}
+
 void InlinePrintValue(Value v) {
   switch(v.type) {
     case V_NONE: {

@@ -83,6 +83,28 @@ void Assignment(AST_Node *n) {
   n->value = symbol.value;
 }
 
+void Unary(AST_Node *n) {
+  switch(n->token.type) {
+    case LOGICAL_NOT: {
+      SetBool(&n->value, !(LEFT_NODE(n)->value.as.boolean));
+    } break;
+    case MINUS: {
+      if (n->annotation.is_signed) {
+        SetInt(&n->value, -(LEFT_NODE(n)->value.as.integer));
+        TruncateValue(&n->value, n->annotation.bit_width);
+      } else {
+        SetUint(&n->value, -(LEFT_NODE(n)->value.as.integer));
+        TruncateValue(&n->value, n->annotation.bit_width);
+      }
+      PrintNode(n);
+      PrintNode(LEFT_NODE(n));
+    } break;
+    default: {
+      printf("Unary(): Not implemented yet\n");
+    } break;
+  }
+}
+
 void Binary(AST_Node *n) {
   switch(n->token.type) {
     case PLUS: {
@@ -112,12 +134,65 @@ void Binary(AST_Node *n) {
   }
 }
 
+void PrefixIncrement(AST_Node *n) {
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  if (s.annotation.is_signed) {
+    s.value.as.integer++;
+  } else {
+    s.value.as.uinteger++;
+  }
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), s);
+
+  n->value = stored_symbol.value;
+}
+
+void PostfixIncrement(AST_Node *n) {
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->token);
+  n->value = s.value;
+
+  if (s.annotation.is_signed) {
+    s.value.as.integer++;
+  } else {
+    s.value.as.uinteger++;
+  }
+
+  AddTo(SYMBOL_TABLE(), s);
+}
+
+void PrefixDecrement(AST_Node *n) {
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  if (s.annotation.is_signed) {
+    s.value.as.integer--;
+  } else {
+    s.value.as.uinteger--;
+  }
+  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), s);
+
+  n->value = stored_symbol.value;
+}
+
+void PostfixDecrement(AST_Node *n) {
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  n->value = s.value;
+
+  if (s.annotation.is_signed) {
+    s.value.as.integer--;
+  } else {
+    s.value.as.uinteger--;
+  }
+
+  AddTo(SYMBOL_TABLE(), s);
+}
+
 void InterpretRecurse(AST_Node *n) {
   if (LEFT_NODE(n)   != NULL) InterpretRecurse(LEFT_NODE(n));
   if (MIDDLE_NODE(n) != NULL) InterpretRecurse(MIDDLE_NODE(n));
   if (RIGHT_NODE(n)  != NULL) InterpretRecurse(RIGHT_NODE(n));
 
   switch(n->type) {
+    case UNARY_OP_NODE: {
+      Unary(n);
+    } break;
     case BINARY_OP_NODE: {
       Binary(n);
     } break;
@@ -130,7 +205,18 @@ void InterpretRecurse(AST_Node *n) {
     case IDENTIFIER_NODE: {
       Identifier(n);
     } break;
-
+    case PREFIX_INCREMENT_NODE: {
+      PrefixIncrement(n);
+    } break;
+    case PREFIX_DECREMENT_NODE: {
+      PrefixDecrement(n);
+    } break;
+    case POSTFIX_INCREMENT_NODE: {
+      PostfixIncrement(n);
+    } break;
+    case POSTFIX_DECREMENT_NODE: {
+      PostfixDecrement(n);
+    } break;
     default: break;
   }
 }
