@@ -16,7 +16,7 @@ void Compile(const char *filename, const char *source) {
 
   CheckTypes(ast, SYMBOL_TABLE);
 
-  PrintAST(ast);
-
   Interpret(ast);
+
+  PrintAST(ast);
 }

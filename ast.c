@@ -125,6 +125,11 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf("%s", NodeTypeTranslation(node->type));
   }
 
+  if (node->value.type != V_NONE) {
+    printf(" :: ");
+    InlinePrintValue(node->value);
+  }
+
   printf("\n");
 
   if (node->type == CHAIN_NODE) unindent += NUM_INDENT_SPACES;
