@@ -3,6 +3,7 @@
 #include <inttypes.h> // for INTX_MIN and INTX_MAX
 #include <stdlib.h>   // for strtol and friends
 
+#include "common.h"
 #include "error.h"
 #include "parser_annotation.h"
 #include "type_checker.h"
@@ -58,36 +59,6 @@ void ShrinkAndActualizeType(AST_Node *node) {
   ActualizeType(node, ShrinkToSmallestContainingType(node));
 }
 
-long long TokenToLL(Token t, int base) {
-  errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToLL() underflow or overflow");
-  }
-
-  return value;
-}
-
-unsigned long long TokenToULL(Token t, int base) {
-  errno = 0;
-  unsigned long long value = strtoull(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToULL() underflow or overflow");
-  }
-
-  return value;
-}
-
-double TokenToDouble(Token t) {
-  errno = 0;
-  double value = strtod(t.position_in_source, NULL);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToDouble() underflow or overflow");
-  }
-
-  return value;
-}
-
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   bool types_match = NodeOstensibleType(from) == NodeOstensibleType(target_type);
   bool both_types_arent_numbers = !(HasNumberOstType(from) && HasNumberOstType(target_type));
@@ -131,9 +102,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   }
 
   if (!IsSigned(target_type)) {
-    long long from_value = TokenToULL(from->token, base);
+    uint64_t from_value = TokenToUint64(from->token, base);
 
-    if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
       case  8: return from_value <= UINT8_MAX;
       case 16: return from_value <= UINT16_MAX;
@@ -146,8 +116,9 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   }
 
   if (IsSigned(target_type)) {
-    long long from_value = TokenToLL(from->token, base);
+    int64_t from_value = TokenToInt64(from->token, base);
 
+    if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
       case  8: return from_value <= INT8_MAX;
       case 16: return from_value <= INT16_MAX;
@@ -176,7 +147,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
-      long long value = TokenToLL(node->token, base);
+      int64_t value = TokenToInt64(node->token, base);
 
       if (value >= INT8_MIN  && value <= INT8_MAX)  return Annotation(OST_INT,  8, SIGNED);
       if (value >= INT16_MIN && value <= INT16_MAX) return Annotation(OST_INT, 16, SIGNED);
@@ -184,7 +155,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
       if (value >= INT64_MIN && value <= INT64_MAX) return Annotation(OST_INT, 64, SIGNED);
 
     } else {
-      unsigned long long value = TokenToULL(node->token, base);
+      uint64_t value = TokenToUint64(node->token, base);
 
       if (value <= UINT8_MAX)  return Annotation(OST_INT,  8, UNSIGNED);
       if (value <= UINT16_MAX) return Annotation(OST_INT, 16, UNSIGNED);
@@ -196,9 +167,10 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   if (NodeOstensibleType(node) == OST_FLOAT) {
     double d = TokenToDouble(node->token);
 
-    if (d >= 0 && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
-    if (d >= 0 && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
-    ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Value %e fell through both float and double checks\n", d);
+    // FLT_MIN and DBL_MIN are the minimum POSITIVE values a float/double
+    // can have, so I'm comparing to -MAX instead.
+    if (d >= -FLT_MAX && d <= FLT_MAX) return Annotation(OST_FLOAT, 32, SIGNED);
+    if (d >= -DBL_MAX && d <= DBL_MAX) return Annotation(OST_FLOAT, 64, SIGNED);
   }
 
   if (NodeOstensibleType(node) == OST_BOOL) {

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h> // for calloc
 
+#include "common.h"
 #include "error.h"
 #include "interpreter.h"
 #include "symbol_table.h"
@@ -20,38 +21,6 @@ static SymbolTable *SYMBOL_TABLE() {
            : Scope.locals[Scope.depth];
 }
 /* === End Scope Related === */
-/* === Function Copies from Type Checker === */
-static long long TokenToLL(Token t, int base) {
-  errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToLL() underflow or overflow");
-  }
-
-  return value;
-}
-/*
-static unsigned long long TokenToULL(Token t, int base) {
-  errno = 0;
-  unsigned long long value = strtoull(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToULL() underflow or overflow");
-  }
-
-  return value;
-}
-
-static double TokenToDouble(Token t) {
-  errno = 0;
-  double value = strtod(t.position_in_source, NULL);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToDouble() underflow or overflow");
-  }
-
-  return value;
-}
-*/
-/* === End Function Copies from Type Checker === */
 
 void Literal(AST_Node *n) {
   n->value = NewValue(n->annotation, n->token);
@@ -61,7 +30,7 @@ void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
   if (stored_symbol.annotation.is_array) {
-    int subscript = TokenToLL(MIDDLE_NODE(n)->token, 10);
+    int subscript = TokenToInt64(MIDDLE_NODE(n)->token, 10);
     n->value = stored_symbol.value.as.array[subscript];
   } else {
     n->value = stored_symbol.value;

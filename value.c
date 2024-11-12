@@ -1,6 +1,6 @@
 #include <errno.h>
 #include <stdio.h>  // for printf
-#include <stdlib.h> // for strtoll and friends
+#include <stdlib.h> // for malloc
 #include <string.h> // for strcmp
 
 #include "common.h"
@@ -10,36 +10,6 @@
 #define BASE_DECIMAL 10
 #define BASE_HEX 16
 #define BASE_BINARY 2
-
-static long long TokenToLL(Token t, int base) {
-  errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToLL() underflow or overflow");
-  }
-
-  return value;
-}
-
-static unsigned long long TokenToULL(Token t, int base) {
-  errno = 0;
-  unsigned long long value = strtoull(t.position_in_source, NULL, base);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToULL() underflow or overflow");
-  }
-
-  return value;
-}
-
-static double TokenToDouble(Token t) {
-  errno = 0;
-  double value = strtod(t.position_in_source, NULL);
-  if (errno != 0) {
-    ERROR_AND_EXIT("TokenToDouble() underflow or overflow");
-  }
-
-  return value;
-}
 
 static char *ExtractString(Token token) {
   char *str = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
@@ -64,14 +34,14 @@ Value NewValue(ParserAnnotation a, Token t) {
   switch(a.actual_type) {
     case ACT_INT: {
       if (a.is_signed) {
-        long long ll = TokenToLL(t, base);
-        ret_val.as.integer = ll;
+        uint64_t integer = TokenToInt64(t, base);
+        ret_val.as.integer = integer;
         ret_val.type = V_INT;
 
         return ret_val;
       } else {
-        unsigned long long ull = TokenToULL(t, base);
-        ret_val.as.uinteger = ull;
+        uint64_t unsignedint = TokenToUint64(t, base);
+        ret_val.as.uinteger = unsignedint;
         ret_val.type = V_UINT;
 
         return ret_val;
