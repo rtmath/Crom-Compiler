@@ -561,7 +561,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(PLUS_PLUS)) {
     if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(identifier_token,
-                     "Identifier(): Cannot increment undefined variable '%.*s",
+                     "Identifier(): Cannot increment undefined variable '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
@@ -572,7 +572,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(MINUS_MINUS)) {
     if (symbol.declaration_state != DECL_DEFINED) {
       ERROR_AT_TOKEN(identifier_token,
-                     "Identifier(): Cannot decrement undefined variable '%.*s",
+                     "Identifier(): Cannot decrement undefined variable '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
     }
@@ -646,13 +646,44 @@ static AST_Node *Unary(bool) {
   }
 
   Token operator_token = Parser.current;
+  Token token_after_operator = Parser.next; // for error messages
   AST_Node *parse_result = Parse(UNARY);
 
   switch(operator_token.type) {
-    case PLUS_PLUS:
+    case PLUS_PLUS: {
+      if (token_after_operator.type != IDENTIFIER) {
+        ERROR_AT_TOKEN(token_after_operator,
+          "Expected Identifier, got '%s' instead\n",
+          TokenTypeTranslation(token_after_operator.type));
+      }
+
+      Symbol s = RetrieveFrom(SYMBOL_TABLE(), token_after_operator);
+      if (s.declaration_state != DECL_DEFINED) {
+        ERROR_AT_TOKEN(
+          token_after_operator,
+          "Can't increment undefined operator '%.*s'",
+          token_after_operator.length, token_after_operator.position_in_source);
+      }
+
       return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
-    case MINUS_MINUS:
+    } break;
+    case MINUS_MINUS: {
+      if (token_after_operator.type != IDENTIFIER) {
+        ERROR_AT_TOKEN(token_after_operator,
+          "Expected Identifier, got '%s' instead\n",
+          TokenTypeTranslation(token_after_operator.type));
+      }
+
+      Symbol s = RetrieveFrom(SYMBOL_TABLE(), token_after_operator);
+      if (s.declaration_state != DECL_DEFINED) {
+        ERROR_AT_TOKEN(
+          token_after_operator,
+          "Can't decrement undefined operator '%.*s'",
+          token_after_operator.length, token_after_operator.position_in_source);
+      }
+
       return NewNodeFromToken(PREFIX_DECREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
+    } break;
     case LOGICAL_NOT:
     case MINUS:
       return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
