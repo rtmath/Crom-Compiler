@@ -1,11 +1,20 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h> // for calloc
+#include <string.h> // for strncmp
 
 #include "common.h"
 #include "error.h"
 #include "interpreter.h"
 #include "symbol_table.h"
+
+/* === Global === */
+static AST_Node *function_definitions[100]; // TODO: Dynamic array?
+static int fdi = 0;
+static Value return_value; // most recent return value from function call
+
+/* === Forward Declarations === */
+static void InterpretRecurse(AST_Node *n);
 
 /* === Scope Related === */
 SymbolTable *shadowed_symbol_table;
@@ -19,6 +28,19 @@ static SymbolTable *SYMBOL_TABLE() {
   return (shadowed_symbol_table != NULL)
            ? shadowed_symbol_table
            : Scope.locals[Scope.depth];
+}
+
+static void BeginScope() {
+  Scope.depth++;
+  Scope.locals[Scope.depth] = NewSymbolTable();
+}
+
+static void EndScope() {
+  if (Scope.depth == 0) ERROR_AND_EXIT("How'd you end scope at depth 0?");
+
+  DeleteSymbolTable(Scope.locals[Scope.depth]);
+  Scope.locals[Scope.depth] = NULL;
+  Scope.depth--;
 }
 /* === End Scope Related === */
 
@@ -77,9 +99,7 @@ void Assignment(AST_Node *n) {
     symbol.value = LEFT_NODE(n)->value;
   }
 
-  Symbol stored_symbol = AddTo(SYMBOL_TABLE(), symbol);
-  PrintSymbol(stored_symbol);
-  printf("\n");
+  AddTo(SYMBOL_TABLE(), symbol);
   n->value = symbol.value;
 }
 
@@ -96,8 +116,6 @@ void Unary(AST_Node *n) {
         SetUint(&n->value, -(LEFT_NODE(n)->value.as.integer));
         TruncateValue(&n->value, n->annotation.bit_width);
       }
-      PrintNode(n);
-      PrintNode(LEFT_NODE(n));
     } break;
     default: {
       printf("Unary(): Not implemented yet\n");
@@ -132,6 +150,51 @@ void Binary(AST_Node *n) {
       printf("Assignment(): Not implemented yet\n");
     } break;
   }
+}
+
+void FunctionCall(AST_Node *n) {
+  // Linear search for function definition (TODO: Hashtable)
+  AST_Node *fn_def = NULL;
+  for (int i = 0; i < fdi; i++) {
+    if (strncmp(n->token.position_in_source,
+                function_definitions[i]->token.position_in_source,
+                n->token.length) == 0)
+    {
+      fn_def = function_definitions[i];
+      break;
+    }
+  }
+
+  if (fn_def == NULL) {
+    ERROR_AND_EXIT_FMTMSG(
+      "FunctionCall(): Couldn't find function definition for %.*s()",
+      n->token.length, n->token.position_in_source);
+  }
+
+  BeginScope();
+
+  // Create variables for all args
+  AST_Node *params = MIDDLE_NODE(fn_def);
+  AST_Node *args   = MIDDLE_NODE(n);
+  while (args != NULL) {
+    Symbol s = AddTo(SYMBOL_TABLE(),
+                     NewSymbol(params->token,
+                               params->annotation,
+                               DECL_DEFINED));
+    s.value = NewValue(args->annotation, args->token);
+    AddTo(SYMBOL_TABLE(), s);
+
+    params = LEFT_NODE(params);
+    args   = RIGHT_NODE(args);
+  }
+
+  // Evaluate function body
+  if (RIGHT_NODE(fn_def) != NULL) {
+    InterpretRecurse(RIGHT_NODE(fn_def));
+    n->value = return_value;
+  }
+
+  EndScope();
 }
 
 void PrefixIncrement(AST_Node *n) {
@@ -184,7 +247,12 @@ void PostfixDecrement(AST_Node *n) {
   AddTo(SYMBOL_TABLE(), s);
 }
 
-void InterpretRecurse(AST_Node *n) {
+static void InterpretRecurse(AST_Node *n) {
+  if (n->type == FUNCTION_NODE) {
+    function_definitions[fdi++] = n;
+    return;
+  }
+
   if (LEFT_NODE(n)   != NULL) InterpretRecurse(LEFT_NODE(n));
   if (MIDDLE_NODE(n) != NULL) InterpretRecurse(MIDDLE_NODE(n));
   if (RIGHT_NODE(n)  != NULL) InterpretRecurse(RIGHT_NODE(n));
@@ -216,6 +284,12 @@ void InterpretRecurse(AST_Node *n) {
     } break;
     case POSTFIX_DECREMENT_NODE: {
       PostfixDecrement(n);
+    } break;
+    case FUNCTION_CALL_NODE: {
+      FunctionCall(n);
+    } break;
+    case RETURN_NODE: {
+      return_value = LEFT_NODE(n)->value;
     } break;
     default: break;
   }
