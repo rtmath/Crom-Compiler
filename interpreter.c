@@ -298,7 +298,6 @@ static void InterpretRecurse(AST_Node *n) {
 void Interpret(AST_Node *root) {
   Scope.locals[Scope.depth] = NewSymbolTable();
 
-  printf("\n");
   InterpretRecurse(root);
   if (root->exit_code == UNSET) {
     root->exit_code = OK;

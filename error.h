@@ -17,22 +17,29 @@ typedef enum {
 #define ERROR_AND_CONTINUE_VALIST(fmt, valist) ErrorAndContinue_VAList(__FILE__, __LINE__, fmt, valist)
 #define ERROR_AND_EXIT_VALIST(fmt, valist) ErrorAndExit_VAList(__FILE__, __LINE__, fmt, valist)
 
-#define ERROR_AT_TOKEN(token, fmt, ...) {  \
-  PrintSourceLineOfToken(token);           \
-  ERROR_AND_EXIT_FMTMSG(fmt, __VA_ARGS__); \
-}
+#ifdef OVERRIDE_ERROR_PRINTING
+  #define ERROR_AT_TOKEN(token, fmt, ...) { /* do nothing */ }
+  #define ERROR_AT_TOKEN_VALIST(token, fmt, valist) { /* do nothing */ }
+  #define REDECLARATION_AT_TOKEN(offending, original, fmt, ...) { /* do nothing */ }
+#else
 
-#define ERROR_AT_TOKEN_VALIST(token, fmt, valist) {  \
-  PrintSourceLineOfToken(token);                     \
-  ERROR_AND_EXIT_VALIST(fmt, valist);                \
-}
+  #define ERROR_AT_TOKEN(token, fmt, ...) {  \
+    PrintSourceLineOfToken(token);           \
+    ERROR_AND_EXIT_FMTMSG(fmt, __VA_ARGS__); \
+  }
 
-#define REDECLARATION_AT_TOKEN(offending, original, fmt, ...) {  \
-  PrintSourceLineOfToken(offending);                             \
-  ERROR_AND_CONTINUE_FMTMSG(fmt, __VA_ARGS__);                   \
-  PrintSourceLineOfToken(original);                              \
-  Exit();                                                        \
-}
+  #define ERROR_AT_TOKEN_VALIST(token, fmt, valist) {  \
+    PrintSourceLineOfToken(token);                     \
+    ERROR_AND_EXIT_VALIST(fmt, valist);                \
+  }
+
+ #define REDECLARATION_AT_TOKEN(offending, original, fmt, ...) {  \
+    PrintSourceLineOfToken(offending);                             \
+    ERROR_AND_CONTINUE_FMTMSG(fmt, __VA_ARGS__);                   \
+    PrintSourceLineOfToken(original);                              \
+    Exit();                                                        \
+  }
+#endif
 
 void ErrorAndContinue(const char *src_filename, int line_number, const char *msg);
 void ErrorAndExit(const char *src_filename, int line_number, const char *msg);

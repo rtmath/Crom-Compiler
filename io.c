@@ -30,6 +30,10 @@ int ReadFile(const char *filename, char **dest) {
 }
 
 void PrintSourceLine(const char *filename, int line_number) {
+#if OVERRIDE_ERROR_PRINTING
+  return;
+#endif
+
   char buf[200];
 
   FILE *fd = fopen(filename, "r");
@@ -46,6 +50,10 @@ void PrintSourceLine(const char *filename, int line_number) {
 }
 
 void PrintSourceLineOfToken(Token t) {
+#if OVERRIDE_ERROR_PRINTING
+  return;
+#endif
+
   PrintSourceLine(t.from_filename, t.on_line);
 
   char buf[200] = {0};

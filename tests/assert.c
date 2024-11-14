@@ -18,7 +18,7 @@ bool ASSERT(bool predicate, const char *msg, const char *file_name, const char *
 
   if (!predicate) {
     if (emi < MAX_ERROR_MESSAGES) {
-      snprintf(str, 99, "%s() Assertion failed: %s", func_name, msg);
+      snprintf(str, 99, "    %s() assertion failed %s", func_name, msg);
       error_msgs[emi++] = str;
     }
   }
@@ -48,7 +48,7 @@ void PrintResults(TestResults t, const char *test_group_name) {
                               : "\x1b[34m"; // Set color: Blue
   const char *stop_coloration = "\x1b[39m"; // Set color: Default
 
-  printf("%10s: %s%3d / %3d tests passed.%s",
+  printf("%10s: %s%2d / %2d tests passed.%s\n",
          test_group_name,
          coloration,
          t.tests_passed,
@@ -56,7 +56,6 @@ void PrintResults(TestResults t, const char *test_group_name) {
          stop_coloration);
 
   if (error_occurred) {
-    printf("\nTests that failed (maximum of %d are shown):\n", MAX_ERROR_MESSAGES);
     for (int i = 0; i < emi; i++) {
       printf("%s\n", error_msgs[i]);
     }
