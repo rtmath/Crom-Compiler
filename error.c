@@ -14,7 +14,7 @@ void ErrorAndContinue(const char *src_filename, int line_number, const char *msg
 void ErrorAndExit(const char* src_filename, int line_number, const char *msg) {
   ErrorAndContinue(src_filename, line_number, msg);
 
-  exit(100);
+  Exit();
 }
 
 void ErrorAndContinue_Variadic(const char *src_filename, int line_number,
@@ -41,7 +41,7 @@ void ErrorAndExit_Variadic(const char* src_filename, int line_number,
 
   printf("\n");
 
-  exit(100);
+  Exit();
 }
 
 void ErrorAndContinue_VAList(const char *src_filename, int line_number,
@@ -55,9 +55,11 @@ void ErrorAndExit_VAList(const char *src_filename, int line_number,
                        const char *fmt_string, va_list args) {
   ErrorAndContinue_VAList(src_filename, line_number, fmt_string, args);
 
-  exit(100);
+  Exit();
 }
 
 void Exit() {
-  exit(100);
+ // This is not a non-zero error message, in order to prevent Make
+ // from complaining when executing tests,
+  exit(0);
 }
