@@ -3,6 +3,6 @@
 
 #include "common.h"
 
-TestResult TestIntegers();
+void RunAllIntegerTests();
 
 #endif
