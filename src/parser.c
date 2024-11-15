@@ -957,7 +957,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
     REDECLARATION_AT_TOKEN(identifier_token,
                            already_declared.token,
-                           "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                           "EnumIdentifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                            identifier_token.length,
                            identifier_token.position_in_source,
                            already_declared.annotation.declared_on_line);
@@ -966,7 +966,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
   if (Match(EQUALS)) {
     if (!can_assign) {
       ERROR_AT_TOKEN(identifier_token,
-                     "Identifier(): Cannot assign to identifier '%.*s'",
+                     "EnumIdentifier(): Cannot assign to identifier '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
     }

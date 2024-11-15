@@ -205,7 +205,7 @@ static const char* const _DeclarationStateTranslation[] =
 
 static const char *DeclarationStateTranslation(DeclarationState ds) {
   if (ds < 0 || ds >= DECL_ENUM_COUNT) {
-    ERROR_AND_EXIT_FMTMSG("PrintDeclarationState(): '%d' out of range", ds);
+    ERROR_AND_EXIT_FMTMSG("DeclarationStateTranslation(): '%d' out of range", ds);
   }
   return _DeclarationStateTranslation[ds];
 }

@@ -98,7 +98,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     if (BitWidth(target_type) == 32) return d >= FLT_MIN && d <= FLT_MAX;
     if (BitWidth(target_type) == 64) return d >= DBL_MIN && d <= DBL_MAX;
 
-    ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bitwidth '%d'", BitWidth(target_type));
+    ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width '%d'", BitWidth(target_type));
   }
 
   if (!IsSigned(target_type)) {
