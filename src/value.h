@@ -27,7 +27,7 @@ typedef struct Value {
     int64_t     integer;
     double     floating;
     char      character;
-    char*        string;
+    const char*  string;
     bool        boolean;
     void*     structure;
     struct Value* array;
@@ -35,6 +35,12 @@ typedef struct Value {
 } Value;
 
 Value NewValue(ParserAnnotation a, Token t);
+Value NewIntValue(int64_t i);
+Value NewUintValue(uint64_t u);
+Value NewFloatValue(double d);
+Value NewCharValue(char c);
+Value NewStringValue(const char *s);
+Value NewBoolValue(bool b);
 
 Value AddValues(Value v1, Value v2);
 Value SubValues(Value v1, Value v2);

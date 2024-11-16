@@ -92,6 +92,59 @@ Value NewValue(ParserAnnotation a, Token t) {
   return ret_val;
 }
 
+Value NewIntValue(int64_t i) {
+  return (Value){
+    .type = V_INT,
+    .array_type = 0,
+    .array_size = 0,
+    .as.integer = i,
+  };
+}
+
+Value NewUintValue(uint64_t u) {
+  return (Value){
+    .type = V_UINT,
+    .array_type = 0,
+    .array_size = 0,
+    .as.uinteger = u,
+  };
+}
+
+Value NewFloatValue(double d) {
+  return (Value){
+    .type = V_FLOAT,
+    .array_type = 0,
+    .array_size = 0,
+    .as.floating = d,
+  };
+}
+Value NewCharValue(char c) {
+  return (Value){
+    .type = V_CHAR,
+    .array_type = 0,
+    .array_size = 0,
+    .as.character = c,
+  };
+}
+
+Value NewStringValue(const char *s) {
+  return (Value){
+    .type = V_STRING,
+    .array_type = 0,
+    .array_size = 0,
+    .as.string = s,
+  };
+}
+
+Value NewBoolValue(bool b)  {
+  return (Value){
+    .type = V_BOOL,
+    .array_type = 0,
+    .array_size = 0,
+    .as.boolean = b,
+  };
+}
+
 Value AddValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("AddValues(): Type mismatch");
 
@@ -258,21 +311,6 @@ void TruncateValue(Value *value, int bit_width) {
       printf("Unsupported bit width '%d'\n", bit_width);
     } break;
   }
-}
-
-void SetInt(Value *value, int64_t i) {
-  (*value).type = V_INT;
-  (*value).as.integer = i;
-}
-
-void SetUint(Value *value, uint64_t u) {
-  (*value).type = V_UINT;
-  (*value).as.uinteger = u;
-}
-
-void SetBool(Value *value, bool b) {
-  (*value).type = V_BOOL;
-  (*value).as.boolean = b;
 }
 
 void InlinePrintValue(Value v) {

@@ -11,7 +11,9 @@
 /* === Global === */
 static AST_Node *function_definitions[100]; // TODO: Dynamic array?
 static int fdi = 0;
-static Value return_value; // most recent return value from function call
+
+// check_value's purpose is to hoist a value out of the AST for unit tests
+static Value check_value;
 
 /* === Forward Declarations === */
 static void InterpretRecurse(AST_Node *n);
@@ -106,14 +108,14 @@ void Assignment(AST_Node *n) {
 void Unary(AST_Node *n) {
   switch(n->token.type) {
     case LOGICAL_NOT: {
-      SetBool(&n->value, !(LEFT_NODE(n)->value.as.boolean));
+      n->value = NewBoolValue(!(LEFT_NODE(n)->value.as.boolean));
     } break;
     case MINUS: {
       if (n->annotation.is_signed) {
-        SetInt(&n->value, -(LEFT_NODE(n)->value.as.integer));
+        n->value = NewIntValue(-LEFT_NODE(n)->value.as.integer);
         TruncateValue(&n->value, n->annotation.bit_width);
       } else {
-        SetUint(&n->value, -(LEFT_NODE(n)->value.as.integer));
+        n->value = NewUintValue(-(LEFT_NODE(n)->value.as.uinteger));
         TruncateValue(&n->value, n->annotation.bit_width);
       }
     } break;
@@ -191,7 +193,7 @@ void FunctionCall(AST_Node *n) {
   // Evaluate function body
   if (RIGHT_NODE(fn_def) != NULL) {
     InterpretRecurse(RIGHT_NODE(fn_def));
-    n->value = return_value;
+    n->value = check_value;
   }
 
   EndScope();
@@ -266,6 +268,7 @@ static void InterpretRecurse(AST_Node *n) {
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(n);
+      check_value = n->value;
     } break;
     case LITERAL_NODE: {
       Literal(n);
@@ -289,7 +292,7 @@ static void InterpretRecurse(AST_Node *n) {
       FunctionCall(n);
     } break;
     case RETURN_NODE: {
-      return_value = LEFT_NODE(n)->value;
+      check_value = LEFT_NODE(n)->value;
     } break;
     default: break;
   }
@@ -302,4 +305,6 @@ void Interpret(AST_Node *root) {
   if (root->error_code == ERR_UNSET) {
     root->error_code = OK;
   }
+
+  root->value = check_value;
 }
