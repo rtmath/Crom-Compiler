@@ -35,7 +35,12 @@ bool ASSERT(bool predicate, const char *msg, const char *file_name, const char *
 }
 
 void PRINT_ASSERTION_RESULTS(const char *test_group_name, const char *file_name) {
+  if (ht == NULL) return;
+
   TestResults tr = GetResults(ht, file_name);
+
+  if (tr.tests_passed == 0 && tr.tests_failed == 0) return;
+
   PrintResults(tr, test_group_name);
 }
 
