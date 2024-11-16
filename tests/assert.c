@@ -10,25 +10,67 @@ HashTable *ht;
 const char *error_msgs[MAX_ERROR_MESSAGES];
 int emi = 0;
 
-bool ASSERT(bool predicate, const char *msg, const char *file_name, const char *func_name) {
+bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
   if (ht == NULL) ht = NewHashTable();
-  TestResults tr = GetResults(ht, file_name);
 
   char *str = malloc(sizeof(char) * 100);
 
-  if (!predicate) {
-    if (emi < MAX_ERROR_MESSAGES) {
-      snprintf(str, 99, "    %s() assertion failed %s", func_name, msg);
-      error_msgs[emi++] = str;
-    }
+  if (!predicate && emi < MAX_ERROR_MESSAGES) {
+    snprintf(str, 99, "    %s() assertion failed", func_name);
+    error_msgs[emi++] = str;
   }
 
+  TestResults tr = GetResults(ht, file_name);
   if (predicate) {
     tr.tests_passed++;
   } else {
     tr.tests_failed++;
   }
+  SetResults(ht, file_name, tr);
 
+  return predicate;
+}
+
+bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_name) {
+  if (ht == NULL) ht = NewHashTable();
+
+  char *str = malloc(sizeof(char) * 100);
+  bool predicate = false;
+
+  switch(v1.type) {
+    case V_INT: {
+      predicate = v1.as.integer == v2.as.integer;
+      if (!predicate && emi < MAX_ERROR_MESSAGES) {
+        snprintf(str, 99, "    %s() assertion failed, %ld != %ld",
+          func_name, v1.as.integer, v2.as.integer);
+        error_msgs[emi++] = str;
+      }
+    } break;
+    case V_UINT: {
+      predicate = v1.as.uinteger == v2.as.uinteger;
+      if (!predicate && emi < MAX_ERROR_MESSAGES) {
+        snprintf(str, 99, "    %s() assertion failed, %lu != %lu",
+          func_name, v1.as.uinteger, v2.as.uinteger);
+        error_msgs[emi++] = str;
+      }
+    } break;
+    case V_FLOAT: {
+      predicate = v1.as.floating == v2.as.floating;
+      if (!predicate && emi < MAX_ERROR_MESSAGES) {
+        snprintf(str, 99, "    %s() assertion failed, %f != %f",
+          func_name, v1.as.floating, v2.as.floating);
+        error_msgs[emi++] = str;
+      }
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("Value type %d not implemented yet\n", v1.type);
+  }
+
+  TestResults tr = GetResults(ht, file_name);
+  if (predicate) {
+    tr.tests_passed++;
+  } else {
+    tr.tests_failed++;
+  }
   SetResults(ht, file_name, tr);
 
   return predicate;
