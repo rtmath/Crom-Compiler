@@ -299,7 +299,7 @@ void Interpret(AST_Node *root) {
   Scope.locals[Scope.depth] = NewSymbolTable();
 
   InterpretRecurse(root);
-  if (root->exit_code == UNSET) {
-    root->exit_code = OK;
+  if (root->error_code == ERR_UNSET) {
+    root->error_code = OK;
   }
 }

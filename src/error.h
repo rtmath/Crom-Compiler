@@ -6,9 +6,24 @@
 #include "io.h"
 
 typedef enum {
-  UNSET = 0,
-  OK,
-} ExitCode;
+  ERR_UNSET = 0,
+  OK, // No error occurred.
+  ERR_UNDECLARED,
+  ERR_UNDEFINED,
+  ERR_UNINITIALIZED,
+  ERR_REDECLARED,
+  ERR_MISSING_EXPECTATION,
+  ERR_TYPE_DISAGREEMENT,
+  ERR_IMPROPER_DECLARATION,
+  ERR_IMPROPER_ASSIGNMENT,
+  ERR_OVERFLOW,
+  ERR_UNDERFLOW,
+  ERR_TOO_MANY,
+  ERR_TOO_FEW,
+  ERR_UNREACHABLE_CODE,
+  ERR_PEBCAK,
+  ERR_MISC,
+} ErrorCode;
 
 #define ERROR_AND_CONTINUE(msg) ErrorAndContinue(__FILE__, __LINE__, msg)
 #define ERROR_AND_EXIT(msg) ErrorAndExit(__FILE__, __LINE__, msg)
@@ -51,5 +66,7 @@ void ErrorAndContinue_VAList(const char *src_filename, int line_number, const ch
 void ErrorAndExit_VAList(const char *src_filename, int line_number, const char *fmt_string, va_list args);
 
 void Exit();
+
+void SetErrorCode(ErrorCode *dest, ErrorCode code);
 
 #endif

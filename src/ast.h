@@ -59,7 +59,7 @@ typedef enum {
 } NodeType;
 
 typedef struct AST_Node {
-  ExitCode exit_code; // This is really only for the Start node of the AST
+  ErrorCode error_code; // This is really only for the Start node of the AST
   NodeType type;
   Token token;
   ParserAnnotation annotation;

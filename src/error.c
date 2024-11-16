@@ -63,3 +63,9 @@ void Exit() {
  // from complaining when executing tests,
   exit(0);
 }
+
+void SetErrorCode(ErrorCode *dest, ErrorCode code) {
+  // Only set the first encountered error code. This is for testing, where
+  // one expected error may cascade into several others.
+  if (*dest == ERR_UNSET) *dest = code;
+}
