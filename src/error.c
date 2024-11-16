@@ -69,3 +69,26 @@ void SetErrorCode(ErrorCode *dest, ErrorCode code) {
   // one expected error may cascade into several others.
   if (*dest == ERR_UNSET) *dest = code;
 }
+
+const char *ErrorCodeTranslation(ErrorCode code) {
+  switch(code) {
+    case ERR_UNSET:                return "UNSET";
+    case OK:                       return "OK";
+    case ERR_UNDECLARED:           return "UNDECLARED";
+    case ERR_UNDEFINED:            return "UNDEFINED";
+    case ERR_UNINITIALIZED:        return "UNINITIALIZED";
+    case ERR_REDECLARED:           return "REDECLARED";
+    case ERR_UNEXPECTED:           return "UNEXPECTED";
+    case ERR_TYPE_DISAGREEMENT:    return "TYPE DISAGREEMENT";
+    case ERR_IMPROPER_DECLARATION: return "IMPROPER DECLARATION";
+    case ERR_IMPROPER_ASSIGNMENT:  return "IMPROPER ASSIGNMENT";
+    case ERR_OVERFLOW:             return "OVERFLOW";
+    case ERR_UNDERFLOW:            return "UNDERFLOW";
+    case ERR_TOO_MANY:             return "TOO MANY";
+    case ERR_TOO_FEW:              return "TOO FEW";
+    case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
+    case ERR_PEBCAK:               return "PEBCAK";
+    case ERR_MISC:                 return "MISC";
+    default:                       return "Unhandled ErrorCodeTranslation case";
+  }
+}

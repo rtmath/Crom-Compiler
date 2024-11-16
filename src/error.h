@@ -12,7 +12,7 @@ typedef enum {
   ERR_UNDEFINED,
   ERR_UNINITIALIZED,
   ERR_REDECLARED,
-  ERR_MISSING_EXPECTATION,
+  ERR_UNEXPECTED,
   ERR_TYPE_DISAGREEMENT,
   ERR_IMPROPER_DECLARATION,
   ERR_IMPROPER_ASSIGNMENT,
@@ -68,5 +68,6 @@ void ErrorAndExit_VAList(const char *src_filename, int line_number, const char *
 void Exit();
 
 void SetErrorCode(ErrorCode *dest, ErrorCode code);
+const char *ErrorCodeTranslation(ErrorCode code);
 
 #endif
