@@ -111,6 +111,11 @@ void Unary(AST_Node *n) {
       n->value = NewBoolValue(!(LEFT_NODE(n)->value.as.boolean));
     } break;
     case MINUS: {
+      if (n->annotation.actual_type == ACT_FLOAT) {
+        n->value = NewFloatValue(-LEFT_NODE(n)->value.as.floating);
+        break;
+      }
+
       if (n->annotation.is_signed) {
         n->value = NewIntValue(-LEFT_NODE(n)->value.as.integer);
         TruncateValue(&n->value, n->annotation.bit_width);
