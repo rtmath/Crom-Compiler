@@ -1,57 +1,38 @@
 #include "assert.h"
 #include "test_literals.h"
 
-static void Successful1() {
-  const char *source = "i8 a = 1;";
+static void Test_PositiveFloatLiteral() {
+  const char *source = "f32 check = 3.14;";
 
-  AST_Node *compilation = Compile("LiteralTests", source);
-  Interpret(compilation);
+  AST_Node *ast = Compile(__func__, source);
+  Interpret(ast);
 
-  Assert(compilation->exit_code == OK, "");
+  Assert(ast->error_code == OK);
+  AssertEqual(ast->value, NewFloatValue(3.14));
 }
 
-static void Successful2() {
-  const char *source = "i8 b = 2;";
+static void Test_NegativeFloatLiteral() {
+  const char *source = "f32 check = -75.00;";
 
-  AST_Node *compilation = Compile("LiteralTests", source);
-  Interpret(compilation);
+  AST_Node *ast = Compile(__func__, source);
+  Interpret(ast);
 
-  Assert(compilation->exit_code == OK, "");
+  Assert(ast->error_code == OK);
+  AssertEqual(ast->value, NewFloatValue(-74.00));
 }
 
-static void Successful3() {
-  const char *source = "i8 c = 3;";
+static void Test_UnexpectedLeadingDecimalFloatLiteral() {
+  const char *source = ".12345;";
 
-  AST_Node *compilation = Compile("LiteralTests", source);
-  Interpret(compilation);
+  AST_Node *ast = Compile(__func__, source);
 
-  Assert(compilation->exit_code == OK, "");
-}
-
-static void Failure1() {
-  const char *source = "i8 d = 4;";
-
-  AST_Node *compilation = Compile("LiteralTests", source);
-  Interpret(compilation);
-
-  Assert(compilation->exit_code != OK, "");
-}
-
-static void ParsingError() {
-  const char *source = "d = 4;";
-
-  AST_Node *compilation = Compile("LiteralTests", source);
-  Interpret(compilation);
-
-  Assert(compilation->exit_code != OK, "");
+  Assert(ast->error_code == ERR_UNEXPECTED);
 }
 
 void RunAllLiteralTests() {
-  Successful1();
-  ParsingError();
-  Successful2();
-  Failure1();
-  Successful3();
+  Test_PositiveFloatLiteral();
+  Test_NegativeFloatLiteral();
+  Test_UnexpectedLeadingDecimalFloatLiteral();
 
   PrintAssertionResults("Literals");
 }
