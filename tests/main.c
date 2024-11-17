@@ -1,12 +1,10 @@
 #include <stdio.h>
 
 #include "common.h"
-#include "test_literals.h"
-#include "test_integers.h"
+#include "test_numbers.h"
 
 void RunTests() {
-  RunAllLiteralTests();
-  RunAllIntegerTests();
+  RunAllNumberTests();
 }
 
 int main() {

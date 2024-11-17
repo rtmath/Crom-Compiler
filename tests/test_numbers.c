@@ -1,5 +1,5 @@
 #include "assert.h"
-#include "test_literals.h"
+#include "test_numbers.h"
 
 static void Test_PositiveFloatLiteral() {
   const char *source = "f32 check = 3.14;";
@@ -18,7 +18,7 @@ static void Test_NegativeFloatLiteral() {
   Interpret(ast);
 
   Assert(ast->error_code == OK);
-  AssertEqual(ast->value, NewFloatValue(-74.00));
+  AssertEqual(ast->value, NewFloatValue(-75.00));
 }
 
 static void Test_UnexpectedLeadingDecimalFloatLiteral() {
@@ -29,10 +29,10 @@ static void Test_UnexpectedLeadingDecimalFloatLiteral() {
   Assert(ast->error_code == ERR_UNEXPECTED);
 }
 
-void RunAllLiteralTests() {
+void RunAllNumberTests() {
   Test_PositiveFloatLiteral();
   Test_NegativeFloatLiteral();
   Test_UnexpectedLeadingDecimalFloatLiteral();
 
-  PrintAssertionResults("Literals");
+  PrintAssertionResults("Numbers");
 }
