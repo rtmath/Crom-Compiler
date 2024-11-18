@@ -148,8 +148,8 @@ TestResults GetResults(HashTable *ht, const char *key) {
 
   // Not found
   return (TestResults){
-    .tests_passed = 0,
-    .tests_failed = 0,
+    .succeeded = 0,
+    .failed = 0,
   };
 }
 
