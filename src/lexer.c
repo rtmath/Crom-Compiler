@@ -139,12 +139,12 @@ static Token Binary() {
 
   while (Peek() == '0' || Peek() == '1') Advance();
 
-  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Literal");
-  Advance(); // consume the Peek()'d "'"
-
   if (LexemeLength() > (64)) {
     return MakeErrorToken("Binary Literal cannot be more than 64 bits wide");
   }
+
+  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Literal");
+  Advance(); // consume the Peek()'d "'"
 
   Token t = MakeToken(BINARY_LITERAL);
   t.length--; // Shave the "'" from the end of the lexeme
