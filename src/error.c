@@ -64,10 +64,14 @@ void Exit() {
   exit(0);
 }
 
-void SetErrorCode(ErrorCode *dest, ErrorCode code) {
+void SetErrorCodeIfUnset(ErrorCode *dest, ErrorCode code) {
   // Only set the first encountered error code. This is for testing, where
   // one expected error may cascade into several others.
   if (*dest == ERR_UNSET) *dest = code;
+}
+
+void UnsetErrorCode(ErrorCode *dest) {
+  *dest = ERR_UNSET;
 }
 
 const char *ErrorCodeTranslation(ErrorCode code) {
@@ -87,6 +91,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_TOO_MANY:             return "TOO MANY";
     case ERR_TOO_FEW:              return "TOO FEW";
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
+    case ERR_LEXER_ERROR:          return "LEXER ERROR";
     case ERR_PEBCAK:               return "PEBCAK";
     case ERR_MISC:                 return "MISC";
     default:                       return "Unhandled ErrorCodeTranslation case";

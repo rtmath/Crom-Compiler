@@ -47,7 +47,7 @@ void VerifyTypeIs(ActualType type, AST_Node *node) {
                  "VerifyTypeIs(): Type disagreement, expected type '%s', got type '%s'",
                  ActualTypeTranslation(type),
                  ActualTypeTranslation(node->annotation.actual_type));
-  SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+  SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
 }
 
 void ActualizeType(AST_Node *node, ParserAnnotation a) {
@@ -101,7 +101,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     if (BitWidth(target_type) == 64) return d >= DBL_MIN && d <= DBL_MAX;
 
     ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width '%d'", BitWidth(target_type));
-    SetErrorCode(&error_code, ERR_PEBCAK);
+    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
   }
 
   if (!IsSigned(target_type)) {
@@ -114,7 +114,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       case 64: return true;
       default:
         ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
-        SetErrorCode(&error_code, ERR_PEBCAK);
+        SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
         return false;
     }
   }
@@ -130,7 +130,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       case 64: return from_value <= INT64_MAX;
       default:
         ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
-        SetErrorCode(&error_code, ERR_PEBCAK);
+        SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
         return false;
     }
   }
@@ -191,7 +191,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   }
 
   ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Type %d not implemented yet", NodeOstensibleType(node));
-  SetErrorCode(&error_code, ERR_PEBCAK);
+  SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
   return Annotation(OST_UNKNOWN, _, _);
 }
 /* === END HELPERS === */
@@ -207,7 +207,7 @@ static void Assignment(AST_Node *identifier) {
       "Assignment(): '%.*s' is not an array\n",
       identifier->token.length,
       identifier->token.position_in_source);
-    SetErrorCode(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
   }
 
   AST_Node *value = LEFT_NODE(identifier);
@@ -249,7 +249,7 @@ static void Assignment(AST_Node *identifier) {
     identifier->token.position_in_source,
     AnnotationTranslation(identifier->annotation),
     AnnotationTranslation(LEFT_NODE(identifier)->annotation));
-  SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+  SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
 }
 
 static void Identifier(AST_Node *identifier) {
@@ -278,7 +278,7 @@ static void Literal(AST_Node *node) {
     default: {
       ERROR_AND_EXIT_FMTMSG("Literal(): Case '%s' not implemented yet",
                             OstensibleTypeTranslation(node->annotation.ostensible_type));
-      SetErrorCode(&error_code, ERR_PEBCAK);
+      SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
     } break;
   }
 }
@@ -353,7 +353,7 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
           AnnotationTranslation((*current)->nodes[LEFT]->annotation),
           AnnotationTranslation(return_type->annotation)
         );
-        SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+        SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
@@ -384,7 +384,7 @@ static void Function(AST_Node *node) {
             "Function(): Unreachable code in function %.*s",
             node->token.length,
             node->token.position_in_source);
-          SetErrorCode(&error_code, ERR_UNREACHABLE_CODE);
+          SetErrorCodeIfUnset(&error_code, ERR_UNREACHABLE_CODE);
         }
 
         return;
@@ -403,7 +403,7 @@ static void Function(AST_Node *node) {
           node->token.position_in_source,
           AnnotationTranslation((*check)->nodes[LEFT]->annotation),
           AnnotationTranslation(return_type->annotation));
-        SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+        SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
@@ -418,7 +418,7 @@ static void Function(AST_Node *node) {
       "Function(): Missing return statement in non-void function '%.*s'",
       node->token.length,
       node->token.position_in_source);
-    SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 }
 
@@ -437,7 +437,7 @@ static void FunctionCall(AST_Node *node) {
         fn_definition.fn_param_list[i].param_token.length,
         fn_definition.fn_param_list[i].param_token.position_in_source
       );
-      SetErrorCode(&error_code, ERR_TOO_FEW);
+      SetErrorCodeIfUnset(&error_code, ERR_TOO_FEW);
     }
 
     // TypeIsConvertible deals with AST_Nodes but fn_params aren't an AST_Node
@@ -454,7 +454,7 @@ static void FunctionCall(AST_Node *node) {
         node->token.position_in_source,
         OstensibleTypeTranslation(argument->annotation.ostensible_type),
         OstensibleTypeTranslation(wrapped_param->annotation.ostensible_type));
-      SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     }
 
     current = &RIGHT_NODE(*current);
@@ -466,7 +466,7 @@ static void FunctionCall(AST_Node *node) {
       "%.*s(): Too many arguments",
       node->token.length,
       node->token.position_in_source);
-    SetErrorCode(&error_code, ERR_TOO_MANY);
+    SetErrorCodeIfUnset(&error_code, ERR_TOO_MANY);
   }
 
   ActualizeType(node, node->annotation);
@@ -499,7 +499,7 @@ static void UnaryOp(AST_Node *node) {
     ERROR_AT_TOKEN(node->token,
                    "UnaryOp(): Type disagreement: expected INT or FLOAT, got '%s'",
                    ActualTypeTranslation(check_node->annotation.actual_type));
-    SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 }
 
@@ -513,7 +513,7 @@ static void BinaryOp(AST_Node *node) {
       "BinaryOp(): Cannot convert from type '%s' to '%s'\n",
       AnnotationTranslation(RIGHT_NODE(node)->annotation),
       AnnotationTranslation(node->annotation));
-    SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 
   ActualizeType(RIGHT_NODE(node), node->annotation);
@@ -532,7 +532,7 @@ static void InitializerList(AST_Node *node) {
         "InitializerList(): Cannot convert from type '%s' to '%s'\n",
         AnnotationTranslation(LEFT_NODE(*current)->annotation),
         AnnotationTranslation(node->annotation));
-      SetErrorCode(&error_code, ERR_TYPE_DISAGREEMENT);
+      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     }
 
     num_literals_in_list++;
@@ -541,7 +541,7 @@ static void InitializerList(AST_Node *node) {
         LEFT_NODE(*current)->token,
         "InitializerList(): Too many elements in initializer list (array size is %d)",
         node->annotation.array_size);
-      SetErrorCode(&error_code, ERR_TOO_MANY);
+      SetErrorCodeIfUnset(&error_code, ERR_TOO_MANY);
     }
 
     current = &RIGHT_NODE(*current);
@@ -626,7 +626,12 @@ void CheckTypesRecurse(AST_Node *node) {
 }
 
 void CheckTypes(AST_Node *node, SymbolTable *symbol_table) {
+  UnsetErrorCode(&error_code);
+
   SYMBOL_TABLE = symbol_table;
   CheckTypesRecurse(node);
-  SetErrorCode(&node->error_code, error_code);
+
+  if (node->error_code == ERR_UNSET) {
+    SetErrorCodeIfUnset(&node->error_code, error_code);
+  }
 }

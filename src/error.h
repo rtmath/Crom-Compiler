@@ -21,6 +21,7 @@ typedef enum {
   ERR_TOO_MANY,
   ERR_TOO_FEW,
   ERR_UNREACHABLE_CODE,
+  ERR_LEXER_ERROR,
   ERR_PEBCAK,
   ERR_MISC,
 } ErrorCode;
@@ -67,7 +68,9 @@ void ErrorAndExit_VAList(const char *src_filename, int line_number, const char *
 
 void Exit();
 
-void SetErrorCode(ErrorCode *dest, ErrorCode code);
+void SetErrorCodeIfUnset(ErrorCode *dest, ErrorCode code);
+void UnsetErrorCode(ErrorCode *dest);
+
 const char *ErrorCodeTranslation(ErrorCode code);
 
 #endif
