@@ -120,6 +120,16 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       return false;
     }
 
+    int64_t as_int = TokenToInt64(from->token, base);
+    if (as_int < 0) {
+      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      ERROR_AT_TOKEN(
+        from->token,
+        "TypeIsConvertible(): Negative value cannot be assigned to uint",
+        "");
+      return false;
+    }
+
     uint64_t from_value = TokenToUint64(from->token, base);
 
     switch(BitWidth(target_type)) {
@@ -250,15 +260,12 @@ static void Assignment(AST_Node *identifier) {
   }
 
   AST_Node *value = LEFT_NODE(identifier);
-
   if (identifier->type == TERSE_ASSIGNMENT_NODE) {
     // Treat terse assignment node actual type as the identifier's type
     ActualizeType(identifier, value->annotation);
   }
 
-  bool types_are_same = NodeOstensibleType(identifier) == NodeOstensibleType(value) &&
-                        BitWidth(identifier) == BitWidth(value);
-  bool types_are_compatible = types_are_same || TypeIsConvertible(value, identifier);
+  bool types_are_compatible = TypeIsConvertible(value, identifier);
 
   if (types_are_compatible) {
     if (NodeOstensibleType(identifier) == OST_STRING) {
