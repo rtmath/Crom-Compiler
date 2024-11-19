@@ -4,10 +4,61 @@
 #include "test_numbers.h"
 
 /* ==== Signed ==== */
-
 /* === Unsigned === */
+static void Test_U8Limits() {
+  COMPILE("u8 check = 256;") // UINT8_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U16Limits() {
+  COMPILE("u16 check = 65536;") // UINT16_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U32Limits() {
+  COMPILE("u32 check = 4294967296;") // UINT32_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U64Limits() {
+  COMPILE("u64 check = 18446744073709551616;") // UINT64_MAX + 1
+
+  AssertExpectError(ERR_OVERFLOW);
+}
+
+static void Test_CannotStoreNegativeUint() {
+  COMPILE("u8 check = -1;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
 
 /* ====  Hex   ==== */
+static void Test_U8HexLimits() {
+  COMPILE("u8 check = 0x1FF;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U16HexLimits() {
+  COMPILE("u16 check = 0x1FFFF;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U32HexLimits() {
+  COMPILE("u32 check = 0x1FFFFFFFF;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_U64HexLimits() {
+  COMPILE("u64 check = 0x1FFFFFFFFFFFFFFFF;")
+
+  AssertExpectError(ERR_LEXER_ERROR);
+}
 
 /* ==== Binary ==== */
 static void Test_U8BinaryLimits() {
@@ -65,6 +116,12 @@ static void Test_UnexpectedLeadingDecimalFloatLiteral() {
   AssertExpectError(ERR_UNEXPECTED);
 }
 
+static void Test_UnexpectedTrailingDecimalFloatLiteral() {
+  COMPILE("456.;")
+
+  AssertExpectError(ERR_UNEXPECTED);
+}
+
 static void Test_CanStorePositiveFltMax() {
   COMPILE("f32 check = 340282346638528859811704183484516925440.000000;")
 
@@ -102,7 +159,18 @@ static void Test_CannotAssignBigLiteralToF32() {
 void RunAllNumberTests() {
   /* ---- Signed ---- */
   /* --- Unsigned --- */
+  Test_U8Limits();
+  Test_U16Limits();
+  Test_U32Limits();
+  Test_U64Limits();
+  Test_CannotStoreNegativeUint();
+
   /* ----  Hex   ---- */
+  Test_U8HexLimits();
+  Test_U16HexLimits();
+  Test_U32HexLimits();
+  Test_U64HexLimits();
+
   /* ---- Binary ---- */
   Test_U8BinaryLimits();
   Test_U16BinaryLimits();
@@ -114,6 +182,7 @@ void RunAllNumberTests() {
   Test_PositiveFloatLiteral();
   Test_NegativeFloatLiteral();
   Test_UnexpectedLeadingDecimalFloatLiteral();
+  Test_UnexpectedTrailingDecimalFloatLiteral();
   Test_CanStorePositiveFltMax();
   Test_CanStoreNegativeFltMax();
   Test_CanStorePositiveDblMax();
