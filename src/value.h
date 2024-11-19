@@ -16,6 +16,7 @@ typedef enum {
   V_BOOL,
   V_STRUCT,
   V_ARRAY,
+  V_OVERFLOW,
 } ValueType;
 
 typedef struct Value {

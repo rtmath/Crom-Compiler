@@ -96,6 +96,16 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
       : BASE_DECIMAL;
 
   if (NodeOstensibleType(target_type) == OST_FLOAT) {
+    if (DoubleOverflow(from->token)) {
+      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      return false;
+    }
+
+    if (DoubleUnderflow(from->token)) {
+      SetErrorCodeIfUnset(&error_code, ERR_UNDERFLOW);
+      return false;
+    }
+
     double d = TokenToDouble(from->token);
     if (BitWidth(target_type) == 32) return d >= FLT_MIN && d <= FLT_MAX;
     if (BitWidth(target_type) == 64) return d >= DBL_MIN && d <= DBL_MAX;
@@ -105,6 +115,11 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   }
 
   if (!IsSigned(target_type)) {
+    if (Uint64Overflow(from->token, base)) {
+      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      return false;
+    }
+
     uint64_t from_value = TokenToUint64(from->token, base);
 
     switch(BitWidth(target_type)) {
@@ -120,6 +135,11 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   }
 
   if (IsSigned(target_type)) {
+    if (Int64Overflow(from->token, base)) {
+      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      return false;
+    }
+
     int64_t from_value = TokenToInt64(from->token, base);
 
     if (from_value < 0) return false;
@@ -152,6 +172,11 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
+      if (Int64Overflow(node->token, base)) {
+        SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+        return NoAnnotation();
+      }
+
       int64_t value = TokenToInt64(node->token, base);
 
       if (value >= INT8_MIN  && value <= INT8_MAX)  return Annotation(OST_INT,  8, SIGNED);
@@ -160,6 +185,11 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
       if (value >= INT64_MIN && value <= INT64_MAX) return Annotation(OST_INT, 64, SIGNED);
 
     } else {
+      if (Uint64Overflow(node->token, base)) {
+        SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+        return NoAnnotation();
+      }
+
       uint64_t value = TokenToUint64(node->token, base);
 
       if (value <= UINT8_MAX)  return Annotation(OST_INT,  8, UNSIGNED);
@@ -170,6 +200,15 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   }
 
   if (NodeOstensibleType(node) == OST_FLOAT) {
+    if (DoubleOverflow(node->token)) {
+      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      return NoAnnotation();
+    }
+
+    if (DoubleUnderflow(node->token)) {
+      SetErrorCodeIfUnset(&error_code, ERR_UNDERFLOW);
+      return NoAnnotation();
+    }
     double d = TokenToDouble(node->token);
 
     // FLT_MIN and DBL_MIN are the minimum POSITIVE values a float/double
@@ -258,6 +297,19 @@ static void Identifier(AST_Node *identifier) {
 }
 
 static void Literal(AST_Node *node) {
+  // Change annotation to unsigned if literal is longer than INT64_MAX
+  if (node->token.type == INT_LITERAL &&
+      node->token.length >= 19) { // 19 is the length of INT64_MAX
+    if (Uint64Overflow(node->token, 10)) {
+      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      return;
+    }
+
+    if (TokenToUint64(node->token, 10) > (uint64_t)INT64_MAX) {
+      node->annotation.is_signed = false;
+    }
+  }
+
   if (node->token.type == HEX_LITERAL ||
       node->token.type == BINARY_LITERAL) {
       ShrinkAndActualizeType(node);

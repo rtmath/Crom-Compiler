@@ -34,12 +34,22 @@ Value NewValue(ParserAnnotation a, Token t) {
   switch(a.actual_type) {
     case ACT_INT: {
       if (a.is_signed) {
+        if (Int64Overflow(t, base)) {
+          ERROR_AT_TOKEN(t, "I64 Overflow\n", "");
+          return (Value){ .type = V_OVERFLOW, .as.integer = 0 };
+        }
+
         uint64_t integer = TokenToInt64(t, base);
         ret_val.as.integer = integer;
         ret_val.type = V_INT;
 
         return ret_val;
       } else {
+        if (Uint64Overflow(t, base)) {
+          ERROR_AT_TOKEN(t, "U64 Overflow\n", "");
+          return (Value){ .type = V_OVERFLOW, .as.uinteger = 0 };
+        }
+
         uint64_t unsignedint = TokenToUint64(t, base);
         ret_val.as.uinteger = unsignedint;
         ret_val.type = V_UINT;
@@ -49,6 +59,11 @@ Value NewValue(ParserAnnotation a, Token t) {
     } break;
 
     case ACT_FLOAT: {
+      if (DoubleOverflow(t) || DoubleUnderflow(t)) {
+        ERROR_AT_TOKEN(t, "F64 Over/Underflow\n", "");
+        return (Value){ .type = V_OVERFLOW, .as.floating = 0 };
+      }
+
       double d = TokenToDouble(t);
       ret_val.as.floating = d;
       ret_val.type = V_FLOAT;
