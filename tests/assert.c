@@ -62,7 +62,6 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
       // modification; it is NOT intended to verify the results of floating
       // point arithmetic, for example
       predicate = (v1.as.floating == v2.as.floating);
-      Value v3 = NewFloatValue(v1.as.floating - v2.as.floating);
       if (!predicate && emi < MAX_ERROR_MESSAGES) {
         snprintf(str, MAX_ERROR_MSG_SIZE, "      %s() assertion failed, %f != %f",
           func_name, v1.as.floating, v2.as.floating);
