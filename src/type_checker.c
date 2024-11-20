@@ -146,12 +146,11 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 
     int64_t from_value = TokenToInt64(from->token, base);
 
-    if (from_value < 0) return false;
     switch(BitWidth(target_type)) {
-      case  8: return from_value <= INT8_MAX;
-      case 16: return from_value <= INT16_MAX;
-      case 32: return from_value <= INT32_MAX;
-      case 64: return from_value <= INT64_MAX;
+      case  8: return from_value >= INT8_MIN && from_value <= INT8_MAX;
+      case 16: return from_value >= INT16_MIN && from_value <= INT16_MAX;
+      case 32: return from_value >= INT32_MIN && from_value <= INT32_MAX;
+      case 64: return from_value >= INT64_MIN && from_value <= INT64_MAX;
       default:
         ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
         SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
