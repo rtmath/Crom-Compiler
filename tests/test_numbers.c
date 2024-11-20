@@ -4,6 +4,55 @@
 #include "test_numbers.h"
 
 /* ==== Signed ==== */
+static void Test_I8MaxLimits() {
+  COMPILE("i8 check = 128;") // INT8_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I16MaxLimits() {
+  COMPILE("i16 check = 32768;") // INT16_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I32MaxLimits() {
+  COMPILE("i32 check = 2147483648;") // INT32_MAX + 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I64MaxLimits() {
+  COMPILE("i64 check = 9223372036854775808;") // INT64_MAX + 1
+
+  AssertExpectError(ERR_OVERFLOW);
+}
+
+static void Test_I8MinLimits() {
+  COMPILE("i8 check = -129;") // INT8_MIN - 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I16MinLimits() {
+  COMPILE("i16 check = -32769;") // INT16_MIN - 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I32MinLimits() {
+  COMPILE("i32 check = -2147483649;") // INT16_MIN - 1
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_I64MinLimits() {
+  COMPILE("i64 check = -9223372036854775809;") // INT16_MIN - 1
+
+  AssertExpectError(ERR_OVERFLOW);
+}
+
+
 /* === Unsigned === */
 static void Test_U8Limits() {
   COMPILE("u8 check = 256;") // UINT8_MAX + 1
@@ -158,6 +207,16 @@ static void Test_CannotAssignBigLiteralToF32() {
 
 void RunAllNumberTests() {
   /* ---- Signed ---- */
+  Test_I8MaxLimits();
+  Test_I16MaxLimits();
+  Test_I32MaxLimits();
+  Test_I64MaxLimits();
+
+  Test_I8MinLimits();
+  Test_I16MinLimits();
+  Test_I32MinLimits();
+  Test_I64MinLimits();
+
   /* --- Unsigned --- */
   Test_U8Limits();
   Test_U16Limits();
