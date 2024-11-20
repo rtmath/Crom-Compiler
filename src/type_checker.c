@@ -72,12 +72,6 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   if (!types_match && both_types_arent_numbers) return false;
   if (types_match && both_types_arent_numbers) return true;
 
-  if (IsSigned(from) == IsSigned(target_type) &&
-      BitWidth(from) <= BitWidth(target_type) &&
-      BitWidth(from) > 0) {
-    return true;
-  }
-
   if (from->type == IDENTIFIER_NODE) {
     // If the From node is an Identifier, its token
     // will be the identifier name (not a literal value)
@@ -107,8 +101,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     }
 
     double d = TokenToDouble(from->token);
-    if (BitWidth(target_type) == 32) return d >= FLT_MIN && d <= FLT_MAX;
-    if (BitWidth(target_type) == 64) return d >= DBL_MIN && d <= DBL_MAX;
+    if (BitWidth(target_type) == 32) return d >= -FLT_MAX && d <= FLT_MAX;
+    if (BitWidth(target_type) == 64) return d >= -DBL_MAX && d <= DBL_MAX;
 
     ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width '%d'", BitWidth(target_type));
     SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
