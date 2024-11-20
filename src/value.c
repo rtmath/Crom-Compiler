@@ -32,6 +32,9 @@ Value NewValue(ParserAnnotation a, Token t) {
   Value ret_val = { 0 };
 
   switch(a.actual_type) {
+    case ACT_NOT_APPLICABLE: {
+      return ret_val;
+    } break;
     case ACT_INT: {
       if (a.is_signed) {
         if (Int64Overflow(t, base)) {
