@@ -301,7 +301,9 @@ static void Consume(TokenType type, const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+  SetErrorCodeIfUnset(&error_code, (type == SEMICOLON)
+                                     ? ERR_MISSING_SEMICOLON
+                                     : ERR_UNEXPECTED);
   ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);

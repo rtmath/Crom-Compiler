@@ -92,6 +92,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_TOO_FEW:              return "TOO FEW";
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
     case ERR_LEXER_ERROR:          return "LEXER ERROR";
+    case ERR_MISSING_SEMICOLON:    return "MISSING SEMICOLON";
     case ERR_PEBCAK:               return "PEBCAK";
     case ERR_MISC:                 return "MISC";
     default:                       return "Unhandled ErrorCodeTranslation case";
