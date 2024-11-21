@@ -53,7 +53,15 @@ void Literal(AST_Node *n) {
 void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
-  if (stored_symbol.annotation.is_array) {
+  if (stored_symbol.annotation.actual_type == ACT_STRING) {
+    if (MIDDLE_NODE(n) != NULL && MIDDLE_NODE(n)->type == ARRAY_SUBSCRIPT_NODE) {
+      // Extract char from a "str[i]"-type thing
+      int64_t index = TokenToInt64(n->nodes[MIDDLE]->token, 10);
+      n->value = NewCharValue(stored_symbol.value.as.string[index]);
+    } else {
+      n->value = stored_symbol.value;
+    }
+  } else if (stored_symbol.annotation.is_array) {
     int subscript = TokenToInt64(MIDDLE_NODE(n)->token, 10);
     n->value = stored_symbol.value.as.array[subscript];
   } else {
@@ -88,15 +96,17 @@ Value ArrayInitializerList(AST_Node *n) {
 }
 
 void Assignment(AST_Node *n) {
-  Symbol symbol;
+  Symbol symbol = {0};
   if (IsIn(SYMBOL_TABLE(), n->token)) {
     symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
   } else {
     symbol = NewSymbol(n->token, n->annotation, DECL_NONE);
   }
 
-  if (n->annotation.is_array) {
+  if (n->annotation.is_array && n->annotation.actual_type != ACT_STRING) {
     symbol.value = ArrayInitializerList(n);
+  } else if (false /* TODO: Array subscripting */) {
+
   } else {
     symbol.value = LEFT_NODE(n)->value;
   }
