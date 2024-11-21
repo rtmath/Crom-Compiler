@@ -293,6 +293,14 @@ static void Assignment(AST_Node *identifier) {
   }
 
   AST_Node *value = LEFT_NODE(identifier);
+  if ((NodeOstensibleType(identifier) != OST_INT || IsSigned(identifier)) &&
+      (value->token.type == HEX_LITERAL || value->token.type == BINARY_LITERAL)) {
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    ERROR_AT_TOKEN(value->token,
+      "Assignment(): '%s' cannot be assigned to non-Uint types",
+      TokenTypeTranslation(value->token.type));
+  }
+
   if (identifier->type == TERSE_ASSIGNMENT_NODE) {
     // Treat terse assignment node actual type as the identifier's type
     ActualizeType(identifier, value->annotation);
@@ -574,6 +582,16 @@ static void UnaryOp(AST_Node *node) {
   }
 
   if (node->token.type == MINUS) {
+    if (check_node->token.type == HEX_LITERAL ||
+        check_node->token.type == BINARY_LITERAL) {
+      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      ERROR_AT_TOKEN(
+        check_node->token,
+        "'%s' not allowed with unary '-'",
+        TokenTypeTranslation(check_node->token.type));
+      return;
+    }
+
     if (NodeActualType(check_node) == ACT_INT) {
       node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_INT;
@@ -588,10 +606,10 @@ static void UnaryOp(AST_Node *node) {
       return;
     }
 
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(node->token,
                    "UnaryOp(): Type disagreement: expected INT or FLOAT, got '%s'",
                    ActualTypeTranslation(check_node->annotation.actual_type));
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 }
 
