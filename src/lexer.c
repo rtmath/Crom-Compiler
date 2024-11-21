@@ -184,14 +184,13 @@ static Token String() {
   Lexer.start = Lexer.end; // Forget the '"' part of the lexeme
 
   while (Peek() != '"' && !AtEOF()) {
-    if (Peek() == '\n') {
-      return MakeErrorToken("Multi-line strings are not allowed");
-    }
+    if (Peek() == '\0') return MakeErrorToken("Unterminated string");
+    if (Peek() == '\n') return MakeErrorToken("Multi-line strings are not allowed");
 
     Advance();
   }
 
-  if (AtEOF()) return MakeErrorToken("Unterminated string.");
+  if (AtEOF()) return MakeErrorToken("Unterminated string");
 
   Advance();
 
