@@ -37,7 +37,7 @@ static void _InlinePrintAnnotation(const char *s, ParserAnnotation a) {
   }
 
   if (a.actual_type == ACT_STRING || a.ostensible_type == OST_STRING) {
-    printf("CHAR[%d]", a.array_size);
+    printf("STRING[%d]", a.array_size);
     return;
   }
 

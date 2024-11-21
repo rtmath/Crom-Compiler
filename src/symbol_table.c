@@ -240,6 +240,7 @@ Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationState d) {
   Symbol s = {
     .token = t,
     .annotation = a,
+    .value = {0},
     .declaration_state = d,
     .struct_fields = fields,
     .fn_params = fn_params,

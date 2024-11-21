@@ -148,8 +148,8 @@ Value NewCharValue(char c) {
 Value NewStringValue(const char *s) {
   return (Value){
     .type = V_STRING,
-    .array_type = 0,
-    .array_size = 0,
+    .array_type = V_CHAR,
+    .array_size = strlen(s),
     .as.string = s,
   };
 }
@@ -364,7 +364,7 @@ void InlinePrintValue(Value v) {
       printf("]");
     } break;
     default: {
-      printf("PrintValue(): Value type implemented yet.");
+      printf("PrintValue(): Value type '%d' not implemented yet.", v.type);
     } break;
   }
 }
