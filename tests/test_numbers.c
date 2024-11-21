@@ -100,6 +100,13 @@ static void Test_I64Min_Overflow() {
   AssertExpectError(ERR_OVERFLOW);
 }
 
+static void Test_DoubleUnaryMinus_IsPositive() {
+  COMPILE("i64 check = -(-1);");
+
+  AssertNoError();
+  AssertEqual(NewIntValue(1));
+}
+
 /* === Unsigned === */
 static void Test_U8_Limit_OK() {
   COMPILE("u8 check = 255;")
@@ -282,7 +289,7 @@ static void Test_Float_LeadingDecimalLiteral_NotAllowed() {
 static void Test_Float_TrailingDecimalLiteral_NotAllowed() {
   COMPILE("456.;")
 
-  AssertExpectError(ERR_UNEXPECTED);
+  AssertExpectError(ERR_LEXER_ERROR);
 }
 
 static void Test_F32MAX_Limit_OK() {
@@ -346,6 +353,8 @@ void RunAllNumberTests() {
   Test_I16Min_Overflow();
   Test_I32Min_Overflow();
   Test_I64Min_Overflow();
+
+  Test_DoubleUnaryMinus_IsPositive();
 
   /* --- Unsigned --- */
   Test_U8_Limit_OK();
