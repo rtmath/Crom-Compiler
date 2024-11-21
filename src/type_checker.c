@@ -269,7 +269,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   }
 
   if (NodeOstensibleType(node) == OST_STRING) {
-    return ArrayAnnotation(CHAR, node->token.length);
+    return Annotation(OST_STRING, _, _);
   }
 
   ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Type %d not implemented yet", NodeOstensibleType(node));
