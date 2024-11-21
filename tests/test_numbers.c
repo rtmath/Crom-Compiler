@@ -319,6 +319,12 @@ static void Test_F32_Overflow() {
   AssertExpectError(ERR_OVERFLOW);
 }
 
+static void Test_F64_Overflow() {
+  COMPILE("f64 check = 279769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000;")
+
+  AssertExpectError(ERR_OVERFLOW);
+}
+
 void RunAllNumberTests() {
   /* ---- Signed ---- */
   Test_I8Min_Limit_OK();
@@ -351,6 +357,7 @@ void RunAllNumberTests() {
   Test_U16_Overflow();
   Test_U32_Overflow();
   Test_U64_Overflow();
+
   Test_Uint_NegativeLiteral_Overflows();
 
   /* ----  Hex   ---- */
@@ -358,6 +365,7 @@ void RunAllNumberTests() {
   Test_Hex_U16_Overflow();
   Test_Hex_U32_Overflow();
   Test_Hex_U64_Overflow();
+
   Test_Hex_NegativeLiteral_NotAllowed();
   Test_Hex_IntAssignment_NotAllowed();
   Test_Hex_FloatAssignment_NotAllowed();
@@ -372,6 +380,7 @@ void RunAllNumberTests() {
   Test_Binary_U16_Overflow();
   Test_Binary_U32_Overflow();
   Test_Binary_U64_Overflow();
+
   Test_Binary_NegativeLiteral_NotAllowed();
   Test_Binary_LargeZeroLiteralInSmallType_OK();
   Test_Binary_IntAssignment_NotAllowed();
@@ -381,11 +390,14 @@ void RunAllNumberTests() {
   /* ---- Floats ---- */
   Test_Float_LeadingDecimalLiteral_NotAllowed();
   Test_Float_TrailingDecimalLiteral_NotAllowed();
+
   Test_F32MAX_Limit_OK();
   Test_F32MIN_Limit_OK();
   Test_F64MAX_Limit_OK();
   Test_F64MIN_Limit_OK();
+
   Test_F32_Overflow();
+  Test_F64_Overflow();
 
   PrintAssertionResults("Numbers");
 }
