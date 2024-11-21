@@ -13,7 +13,9 @@ typedef struct {
 
 #define COMPILE(source)                      \
   AST_Node *ast = Compile(__func__, source); \
-  Interpret(ast);
+  if (ast->error_code == ERR_UNSET) {        \
+    Interpret(ast);                          \
+  }
 
 #define AssertNoError() ASSERT_EXPECT_ERROR(ast, OK, __FILE__, __func__)
 #define AssertExpectError(error_code) ASSERT_EXPECT_ERROR(ast, error_code, __FILE__, __func__)
