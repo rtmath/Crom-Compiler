@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,16 +12,20 @@ HashTable *ht;
 const char *error_msgs[MAX_ERROR_MESSAGES];
 int emi = 0;
 
-bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
-  if (ht == NULL) ht = NewHashTable();
-
-  char *str = malloc(sizeof(char) * MAX_ERROR_MSG_SIZE);
-
+static void LogError(bool predicate, const char *msg, ...) {
   if (!predicate && emi < MAX_ERROR_MESSAGES) {
-    snprintf(str, MAX_ERROR_MSG_SIZE, "      %s() assertion failed", func_name);
+    char *str = malloc(sizeof(char) * MAX_ERROR_MSG_SIZE);
+
+    va_list args;
+    va_start(args, msg);
+    vsnprintf(str, MAX_ERROR_MSG_SIZE, msg, args);
+    va_end(args);
+
     error_msgs[emi++] = str;
   }
+}
 
+static void LogResults(bool predicate, const char *file_name) {
   TestResults tr = GetResults(ht, file_name);
   if (predicate) {
     tr.succeeded++;
@@ -28,6 +33,13 @@ bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
     tr.failed++;
   }
   SetResults(ht, file_name, tr);
+}
+
+bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
+  if (ht == NULL) ht = NewHashTable();
+
+  LogError(predicate, "      %s() assertion failed", func_name);
+  LogResults(predicate, file_name);
 
   return predicate;
 }
@@ -35,25 +47,24 @@ bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
 bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_name) {
   if (ht == NULL) ht = NewHashTable();
 
-  char *str = malloc(sizeof(char) * MAX_ERROR_MSG_SIZE);
   bool predicate = false;
 
   switch(v1.type) {
     case V_INT: {
       predicate = v1.as.integer == v2.as.integer;
-      if (!predicate && emi < MAX_ERROR_MESSAGES) {
-        snprintf(str, MAX_ERROR_MSG_SIZE, "    %s() assertion failed, %ld != %ld",
-          func_name, v1.as.integer, v2.as.integer);
-        error_msgs[emi++] = str;
-      }
+      LogError(predicate,
+               "    %s() assertion failed, %ld != %ld",
+               func_name,
+               v1.as.integer,
+               v2.as.integer);
     } break;
     case V_UINT: {
       predicate = v1.as.uinteger == v2.as.uinteger;
-      if (!predicate && emi < MAX_ERROR_MESSAGES) {
-        snprintf(str, MAX_ERROR_MSG_SIZE, "      %s() assertion failed, %lu != %lu",
-          func_name, v1.as.uinteger, v2.as.uinteger);
-        error_msgs[emi++] = str;
-      }
+      LogError(predicate,
+               "      %s() assertion failed, %lu != %lu",
+               func_name,
+               v1.as.uinteger,
+               v2.as.uinteger);
     } break;
     case V_FLOAT: {
       // I know floating point equality is perilous. This is intended to
@@ -62,22 +73,24 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
       // modification; it is NOT intended to verify the results of floating
       // point arithmetic, for example
       predicate = (v1.as.floating == v2.as.floating);
-      if (!predicate && emi < MAX_ERROR_MESSAGES) {
-        snprintf(str, MAX_ERROR_MSG_SIZE, "      %s() assertion failed, %f != %f",
-          func_name, v1.as.floating, v2.as.floating);
-        error_msgs[emi++] = str;
-      }
+      LogError(predicate,
+               "      %s() assertion failed, %f != %f",
+               func_name,
+               v1.as.floating,
+               v2.as.floating);
     } break;
-    default: ERROR_AND_EXIT_FMTMSG("Value type %d not implemented yet\n", v1.type);
+    case V_BOOL: {
+      predicate = (v1.as.boolean == v2.as.boolean);
+      LogError(predicate,
+               "      %s() assertion failed, %s != %s",
+               func_name,
+               (v1.as.floating) ? "true" : "false",
+               (v2.as.floating) ? "true" : "false");
+    } break;
+    default: ERROR_AND_EXIT_FMTMSG("[%s:%s] Value type %d not implemented yet\n", file_name, func_name, v1.type);
   }
 
-  TestResults tr = GetResults(ht, file_name);
-  if (predicate) {
-    tr.succeeded++;
-  } else {
-    tr.failed++;
-  }
-  SetResults(ht, file_name, tr);
+  LogResults(predicate, file_name);
 
   return predicate;
 }
@@ -87,20 +100,13 @@ bool ASSERT_EXPECT_ERROR(AST_Node *root, ErrorCode code, const char *file_name, 
 
   bool predicate = root->error_code == code;
 
-  if (!predicate && emi < MAX_ERROR_MESSAGES) {
-    char *str = malloc(sizeof(char) * MAX_ERROR_MSG_SIZE);
-    snprintf(str, MAX_ERROR_MSG_SIZE, "      %s() Expected '%s', got '%s'",
-      func_name, ErrorCodeTranslation(code), ErrorCodeTranslation(root->error_code));
-    error_msgs[emi++] = str;
-  }
+  LogError(predicate,
+           "      %s() Expected '%s', got '%s'",
+           func_name,
+           ErrorCodeTranslation(code),
+           ErrorCodeTranslation(root->error_code));
 
-  TestResults tr = GetResults(ht, file_name);
-  if (predicate) {
-    tr.succeeded++;
-  } else {
-    tr.failed++;
-  }
-  SetResults(ht, file_name, tr);
+  LogResults(predicate, file_name);
 
   return predicate;
 }
