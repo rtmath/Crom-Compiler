@@ -96,6 +96,8 @@ Value NewValue(ParserAnnotation a, Token t) {
       char *s = ExtractString(t);
       ret_val.as.string = s;
       ret_val.type = V_STRING;
+      ret_val.array_type = V_CHAR;
+      ret_val.array_size = strlen(s);
 
       return ret_val;
     } break;
@@ -311,24 +313,26 @@ Value ModValues(Value v1, Value v2) {
   return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
-void TruncateValue(Value *value, int bit_width) {
-  switch (bit_width) {
-    case 8: {
-      (value->as.uinteger) &= 0xFF;
-    } break;
-    case 16: {
-      (value->as.uinteger) &= 0xFFFF;
-    } break;
-    case 32: {
-      (value->as.uinteger) &= 0xFFFFFFFF;
-    } break;
-    case 64: {
-      (value->as.uinteger) &= 0xFFFFFFFFFFFFFFFF;
-    } break;
-    default: {
-      printf("TruncateValue(): Unsupported bit width '%d'\n", bit_width);
-    } break;
-  }
+Value LogicalAND(Value v1, Value v2) {
+  if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
+  if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+
+  return (Value){
+    .type = V_BOOL,
+    .array_type = 0,
+    .as.boolean = v1.as.boolean && v2.as.boolean,
+  };
+}
+
+Value LogicalOR(Value v1, Value v2) {
+  if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
+  if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+
+  return (Value){
+    .type = V_BOOL,
+    .array_type = 0,
+    .as.boolean = v1.as.boolean || v2.as.boolean,
+  };
 }
 
 void InlinePrintValue(Value v) {

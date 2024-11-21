@@ -128,10 +128,8 @@ void Unary(AST_Node *n) {
 
       if (n->annotation.is_signed) {
         n->value = NewIntValue(-LEFT_NODE(n)->value.as.integer);
-        TruncateValue(&n->value, n->annotation.bit_width);
       } else {
         n->value = NewUintValue(-(LEFT_NODE(n)->value.as.uinteger));
-        TruncateValue(&n->value, n->annotation.bit_width);
       }
     } break;
     default: {
@@ -161,6 +159,12 @@ void Binary(AST_Node *n) {
     case MODULO: {
       n->value = ModValues(LEFT_NODE(n)->value,
                            RIGHT_NODE(n)->value);
+    } break;
+    case LOGICAL_AND: {
+      n->value = LogicalAND(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+    } break;
+    case LOGICAL_OR: {
+      n->value = LogicalOR(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
     } break;
 
     default: {
