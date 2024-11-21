@@ -157,6 +157,10 @@ static Token Number() {
 
   while (IsNumber(Peek())) Advance();
 
+  if (Peek() == '.' && !IsNumber(PeekNext())) {
+    return MakeErrorToken("Invalid float literal");
+  }
+
   if (Peek() == '.' && IsNumber(PeekNext())) {
     is_float = true;
     Advance();
