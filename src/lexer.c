@@ -168,7 +168,13 @@ static Token Number() {
 }
 
 static Token Char() {
+  if (Peek() == '\'') return MakeErrorToken("Empty char constant");
+
+  Match('\\');
   Advance(); // consume char value
+  if (Peek() != '\'') {
+    return MakeErrorToken("More than one character in char literal");
+  }
   Advance(); // consume '
 
   return MakeToken(CHAR_LITERAL);
