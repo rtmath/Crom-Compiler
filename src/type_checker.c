@@ -278,6 +278,14 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
 }
 /* === END HELPERS === */
 
+static void String(AST_Node *str) {
+  ParserAnnotation a = str->annotation;
+
+  a.is_array = true;
+  a.array_size = str->token.length;
+  ActualizeType(str, a);
+}
+
 static void Declaration(AST_Node *identifier) {
   ActualizeType(identifier, identifier->annotation);
 }
@@ -341,6 +349,13 @@ static void Assignment(AST_Node *identifier) {
 
 static void Identifier(AST_Node *identifier) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
+
+  if (MIDDLE_NODE(identifier) != NULL &&
+      MIDDLE_NODE(identifier)->type == ARRAY_SUBSCRIPT_NODE &&
+      identifier->annotation.ostensible_type == OST_STRING) {
+    symbol.annotation.ostensible_type = OST_CHAR;
+  }
+
   ActualizeType(identifier, symbol.annotation);
 }
 
@@ -369,9 +384,13 @@ static void Literal(AST_Node *node) {
     case OST_FLOAT:
     case OST_BOOL:
     case OST_CHAR:
-    case OST_STRING:
     {
       ShrinkAndActualizeType(node);
+      return;
+    } break;
+
+    case OST_STRING: {
+      String(node);
       return;
     } break;
 
