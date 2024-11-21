@@ -326,7 +326,7 @@ void TruncateValue(Value *value, int bit_width) {
       (value->as.uinteger) &= 0xFFFFFFFFFFFFFFFF;
     } break;
     default: {
-      printf("Unsupported bit width '%d'\n", bit_width);
+      printf("TruncateValue(): Unsupported bit width '%d'\n", bit_width);
     } break;
   }
 }
