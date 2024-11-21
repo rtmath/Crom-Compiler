@@ -8,10 +8,6 @@
 #include "parser_annotation.h"
 #include "type_checker.h"
 
-#define BASE_DECIMAL 10
-#define BASE_HEX 16
-#define BASE_BINARY 2
-
 static SymbolTable *SYMBOL_TABLE;
 static ErrorCode error_code;
 
@@ -25,6 +21,18 @@ static int BitWidth(AST_Node *node) {
 
 static bool IsSigned(AST_Node *node) {
   return node->annotation.is_signed;
+}
+
+static int GetBase(AST_Node* node) {
+  const int BASE_DECIMAL = 10;
+  const int BASE_HEX = 16;
+  const int BASE_BINARY = 2;
+
+  return (node->token.type == HEX_LITERAL)
+           ? BASE_HEX
+           : (node->token.type == BINARY_LITERAL)
+               ? BASE_BINARY
+               : BASE_DECIMAL;
 }
 
 static OstensibleType NodeOstensibleType(AST_Node *node) {
@@ -61,16 +69,117 @@ void ShrinkAndActualizeType(AST_Node *node) {
   ActualizeType(node, ShrinkToSmallestContainingType(node));
 }
 
+bool Overflow(AST_Node *from, AST_Node *target_type) {
+  SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+
+  // Actualize the ostensible type for the error message
+  ActualizeType(target_type, target_type->annotation);
+  ERROR_AT_TOKEN(from->token,
+                 "Literal value overflows target type '%s'\n",
+                 AnnotationTranslation(target_type->annotation));
+  return false;
+}
+
+bool CanConvertToInt(AST_Node *from, AST_Node *target_type) {
+  const int from_base = GetBase(from);
+
+  if (Int64Overflow(from->token, from_base)) {
+    return Overflow(from, target_type);
+  }
+
+  int64_t from_value = TokenToInt64(from->token, from_base);
+
+  switch(BitWidth(target_type)) {
+    case 8: {
+      if (from_value >= INT8_MIN && from_value <= INT8_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 16: {
+      if (from_value >= INT16_MIN && from_value <= INT16_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 32: {
+      if (from_value >= INT32_MIN && from_value <= INT32_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 64: {
+      if (from_value >= INT64_MIN && from_value <= INT64_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    default:
+      ERROR_AND_EXIT_FMTMSG("CanConverToInt(): Unknown bit width: %d\n", BitWidth(target_type));
+      SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
+      return false;
+  }
+}
+
+bool CanConvertToUint(AST_Node *from, AST_Node *target_type) {
+  const int from_base = GetBase(from);
+
+  if (Uint64Overflow(from->token, from_base)) {
+    return Overflow(from, target_type);
+  }
+
+  if (IsSigned(from)) {
+    int64_t check_negative = TokenToInt64(from->token, from_base);
+    if (check_negative < 0) return Overflow(from, target_type);
+  }
+
+  uint64_t from_value = TokenToUint64(from->token, from_base);
+
+  switch(BitWidth(target_type)) {
+    case 8: {
+      if (from_value <= UINT8_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 16: {
+      if (from_value <= UINT16_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 32: {
+      if (from_value <= UINT32_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 64: {
+      if (from_value <= UINT64_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    default:
+      ERROR_AND_EXIT_FMTMSG("CanConvertToUint(): Unknown bit width: %d\n", BitWidth(target_type));
+      SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
+      return false;
+  }
+}
+
+bool CanConvertToFloat(AST_Node *from, AST_Node *target_type) {
+  if (DoubleOverflow(from->token)) {
+    return Overflow(from, target_type);
+  }
+
+  double from_value = TokenToDouble(from->token);
+
+  switch(BitWidth(target_type)) {
+    case 32: {
+      if (from_value >= -FLT_MAX && from_value <= FLT_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    case 64: {
+      if (from_value >= -DBL_MAX && from_value <= DBL_MAX) return true;
+      return Overflow(from, target_type);
+    } break;
+    default:
+      ERROR_AND_EXIT_FMTMSG("CanConvertToFloat(): Unknown bit width: %d\n", BitWidth(target_type));
+      SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
+      return false;
+  }
+}
+
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   bool types_match = NodeOstensibleType(from) == NodeOstensibleType(target_type);
-  bool both_types_arent_numbers = !(HasNumberOstType(from) && HasNumberOstType(target_type));
+  bool types_are_not_numbers = !(HasNumberOstType(from) && HasNumberOstType(target_type));
 
-  if (from->annotation.is_array &&
-      NodeOstensibleType(from) == OST_CHAR &&
-      NodeOstensibleType(target_type) == OST_STRING) return true;
-
-  if (!types_match && both_types_arent_numbers) return false;
-  if (types_match && both_types_arent_numbers) return true;
+  if (!types_match && types_are_not_numbers) return false;
+  if (types_match && types_are_not_numbers) return true;
 
   if (from->type == IDENTIFIER_NODE) {
     // If the From node is an Identifier, its token
@@ -82,80 +191,16 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     return false;
   }
 
-  const int base =
-    (from->token.type == HEX_LITERAL)
-    ? BASE_HEX
-    : (from->token.type == BINARY_LITERAL)
-      ? BASE_BINARY
-      : BASE_DECIMAL;
-
   if (NodeOstensibleType(target_type) == OST_FLOAT) {
-    if (DoubleOverflow(from->token)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
-      return false;
-    }
-
-    if (DoubleUnderflow(from->token)) {
-      SetErrorCodeIfUnset(&error_code, ERR_UNDERFLOW);
-      return false;
-    }
-
-    double d = TokenToDouble(from->token);
-    if (BitWidth(target_type) == 32) return d >= -FLT_MAX && d <= FLT_MAX;
-    if (BitWidth(target_type) == 64) return d >= -DBL_MAX && d <= DBL_MAX;
-
-    ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width '%d'", BitWidth(target_type));
-    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
+    return CanConvertToFloat(from, target_type);
   }
 
   if (!IsSigned(target_type)) {
-    if (Uint64Overflow(from->token, base)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
-      return false;
-    }
-
-    int64_t as_int = TokenToInt64(from->token, base);
-    if (as_int < 0) {
-      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
-      ERROR_AT_TOKEN(
-        from->token,
-        "TypeIsConvertible(): Negative value cannot be assigned to uint",
-        "");
-      return false;
-    }
-
-    uint64_t from_value = TokenToUint64(from->token, base);
-
-    switch(BitWidth(target_type)) {
-      case  8: return from_value <= UINT8_MAX;
-      case 16: return from_value <= UINT16_MAX;
-      case 32: return from_value <= UINT32_MAX;
-      case 64: return true;
-      default:
-        ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
-        SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
-        return false;
-    }
+    return CanConvertToUint(from, target_type);
   }
 
   if (IsSigned(target_type)) {
-    if (Int64Overflow(from->token, base)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
-      return false;
-    }
-
-    int64_t from_value = TokenToInt64(from->token, base);
-
-    switch(BitWidth(target_type)) {
-      case  8: return from_value >= INT8_MIN && from_value <= INT8_MAX;
-      case 16: return from_value >= INT16_MIN && from_value <= INT16_MAX;
-      case 32: return from_value >= INT32_MIN && from_value <= INT32_MAX;
-      case 64: return from_value >= INT64_MIN && from_value <= INT64_MAX;
-      default:
-        ERROR_AND_EXIT_FMTMSG("TypeIsConvertible(): Unknown bit width: %d\n", BitWidth(target_type));
-        SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
-        return false;
-    }
+    return CanConvertToInt(from, target_type);
   }
 
   return false;
@@ -166,12 +211,7 @@ ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node) {
   const bool UNSIGNED = false;
   const int _ = 0;
 
-  const int base =
-    (node->token.type == HEX_LITERAL)
-    ? BASE_HEX
-    : (node->token.type == BINARY_LITERAL)
-      ? BASE_BINARY
-      : BASE_DECIMAL;
+  const int base = GetBase(node);
 
   if (NodeOstensibleType(node) == OST_INT) {
     if (IsSigned(node)) {
@@ -537,14 +577,14 @@ static void UnaryOp(AST_Node *node) {
     if (NodeActualType(check_node) == ACT_INT) {
       node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_INT;
-      node->annotation.is_signed = true;
+      node->annotation.is_signed = !node->annotation.is_signed;
       return;
     }
 
     if (NodeActualType(check_node) == ACT_FLOAT) {
       node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_FLOAT;
-      node->annotation.is_signed = true;
+      node->annotation.is_signed = !node->annotation.is_signed;
       return;
     }
 
