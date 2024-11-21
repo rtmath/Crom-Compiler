@@ -301,8 +301,8 @@ static void Consume(TokenType type, const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
   SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -331,8 +331,8 @@ static void ConsumeAnyType(const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
   SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -354,8 +354,8 @@ static void ConsumeAnyLiteral(const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
   SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
@@ -381,8 +381,8 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
   va_list args;
   va_start(args, msg);
 
-  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
   SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+  ERROR_AT_TOKEN_VALIST(Parser.next, msg, args);
 
   va_end(args);
 }
