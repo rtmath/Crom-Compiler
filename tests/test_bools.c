@@ -157,7 +157,133 @@ static void Test_Bool_GreaterThan_False_OK() {
   AssertEqual(NewBoolValue(false));
 }
 
-// TODO: Test unconvertible type comparisons
+static void Test_Bool_LessThanEquals_PositiveInts_OK() {
+  COMPILE("bool check = 1 <= 2;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThanEquals_NegativeInts_OK() {
+  COMPILE("bool check = -2 <= -1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThanEquals_MixedSigns_OK() {
+  COMPILE("bool check = -1 <= 1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThanEquals_False_OK() {
+  COMPILE("bool check = 5 <= 3;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_GreaterThanEquals_PositiveInts_OK() {
+  COMPILE("bool check = 2 >= 1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThanEquals_NegativeInts_OK() {
+  COMPILE("bool check = -1 >= -2;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThanEquals_MixedSigns_OK() {
+  COMPILE("bool check = 1 >= -1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThanEquals_False_OK() {
+  COMPILE("bool check = 3 >= 5;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_LT_IncompatibleTypes_NotAllowed() {
+  COMPILE("u64 a = 10;"
+          "i8 b = -127;"
+          "bool check = a < b;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_Bool_GT_IncompatibleTypes_NotAllowed() {
+  COMPILE("u8 a = 10;"
+          "i8 b = -127;"
+          "bool check = a > b;")
+
+  AssertExpectError(ERR_TYPE_DISAGREEMENT);
+}
+
+static void Test_Bool_Equality_FalseAndFalse_True() {
+  COMPILE("bool b = false == false;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_Equality_FalseAndTrue_False() {
+  COMPILE("bool b = false == true;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_Equality_TrueAndFalse_False() {
+  COMPILE("bool b = true == false;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_Equality_TrueAndTrue_True() {
+  COMPILE("bool b = true == true;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_Inequality_FalseAndFalse_False() {
+  COMPILE("bool b = false != false;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_Inequality_FalseAndTrue_True() {
+  COMPILE("bool b = false != true;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_Inequality_TrueAndFalse_True() {
+  COMPILE("bool b = true != false;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_Inequality_TrueAndTrue_False() {
+  COMPILE("bool b = true != true;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
 
 void RunAllBoolTests() {
   /* ------- Literals  ------- */
@@ -190,6 +316,29 @@ void RunAllBoolTests() {
   Test_Bool_GreaterThan_NegativeInts_OK();
   Test_Bool_GreaterThan_MixedSigns_OK();
   Test_Bool_GreaterThan_False_OK();
+
+  Test_Bool_LessThanEquals_PositiveInts_OK();
+  Test_Bool_LessThanEquals_NegativeInts_OK();
+  Test_Bool_LessThanEquals_MixedSigns_OK();
+  Test_Bool_LessThanEquals_False_OK();
+
+  Test_Bool_GreaterThanEquals_PositiveInts_OK();
+  Test_Bool_GreaterThanEquals_NegativeInts_OK();
+  Test_Bool_GreaterThanEquals_MixedSigns_OK();
+  Test_Bool_GreaterThanEquals_False_OK();
+
+  Test_Bool_LT_IncompatibleTypes_NotAllowed();
+  Test_Bool_GT_IncompatibleTypes_NotAllowed();
+
+  Test_Bool_Equality_FalseAndFalse_True();
+  Test_Bool_Equality_FalseAndTrue_False();
+  Test_Bool_Equality_TrueAndFalse_False();
+  Test_Bool_Equality_TrueAndTrue_True();
+
+  Test_Bool_Inequality_FalseAndFalse_False();
+  Test_Bool_Inequality_FalseAndTrue_True();
+  Test_Bool_Inequality_TrueAndFalse_True();
+  Test_Bool_Inequality_TrueAndTrue_False();
 
   PrintAssertionResults("Bools");
 }
