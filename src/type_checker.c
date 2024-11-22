@@ -653,7 +653,9 @@ static void BinaryArithmeticOp(AST_Node *node) {
 static void BinaryLogicalOp(AST_Node *node) {
   switch(node->token.type) {
     case LESS_THAN:
-    case GREATER_THAN: {
+    case GREATER_THAN:
+    case LESS_THAN_EQUALS:
+    case GREATER_THAN_EQUALS: {
       // Check left node individually for incorrect type
       if (NodeOstensibleType(LEFT_NODE(node)) != OST_INT &&
           NodeOstensibleType(LEFT_NODE(node)) != OST_FLOAT) {
@@ -673,7 +675,9 @@ static void BinaryLogicalOp(AST_Node *node) {
                        OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
         return;
       }
-
+    } /* Intentional fallthrough */
+    case LOGICAL_NOT_EQUALS:
+    case EQUALITY: {
       // Ensure both node types match
       if (NodeOstensibleType(LEFT_NODE(node)) !=
           NodeOstensibleType(RIGHT_NODE(node))) {
@@ -723,6 +727,7 @@ static void BinaryLogicalOp(AST_Node *node) {
                        OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
         return;
       }
+
       if (NodeOstensibleType(RIGHT_NODE(node)) != OST_BOOL) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
         ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
@@ -733,6 +738,7 @@ static void BinaryLogicalOp(AST_Node *node) {
 
       ActualizeType(node, node->annotation);
     } break;
+
     default: {
       printf("BinaryLogicalOp(): Not implemented yet\n");
     } break;

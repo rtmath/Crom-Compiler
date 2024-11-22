@@ -168,11 +168,23 @@ void BinaryArithmetic(AST_Node *n) {
 
 void BinaryLogical(AST_Node *n) {
   switch(n->token.type) {
+    case EQUALITY: {
+      n->value = Equality(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+    } break;
     case GREATER_THAN: {
       n->value = GreaterThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
     } break;
     case LESS_THAN: {
       n->value = LessThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+    } break;
+    case GREATER_THAN_EQUALS: {
+      n->value = Not(GreaterThan(RIGHT_NODE(n)->value, LEFT_NODE(n)->value));
+    } break;
+    case LESS_THAN_EQUALS: {
+      n->value = Not(LessThan(RIGHT_NODE(n)->value, LEFT_NODE(n)->value));
+    } break;
+    case LOGICAL_NOT_EQUALS: {
+      n->value = Not(Equality(LEFT_NODE(n)->value, RIGHT_NODE(n)->value));
     } break;
     case LOGICAL_AND: {
       n->value = LogicalAND(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);

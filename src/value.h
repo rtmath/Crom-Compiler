@@ -49,6 +49,8 @@ Value MulValues(Value v1, Value v2);
 Value DivValues(Value v1, Value v2);
 Value ModValues(Value v1, Value v2);
 
+Value Not(Value v);
+Value Equality(Value v1, Value v2);
 Value LogicalOR(Value v1, Value v2);
 Value LogicalAND(Value v1, Value v2);
 Value GreaterThan(Value v1, Value v2);

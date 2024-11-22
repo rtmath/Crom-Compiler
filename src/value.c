@@ -313,6 +313,35 @@ Value ModValues(Value v1, Value v2) {
   return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
+Value Not(Value v) {
+  return NewBoolValue(!v.as.boolean);
+}
+
+Value Equality(Value v1, Value v2) {
+  switch (v1.type) {
+    case V_INT: {
+      return NewBoolValue(v1.as.integer == v2.as.integer);
+    } break;
+    case V_UINT: {
+      return NewBoolValue(v1.as.uinteger == v2.as.uinteger);
+    } break;
+    case V_FLOAT: {
+      return NewBoolValue(v1.as.floating == v2.as.floating);
+    } break;
+    case V_CHAR: {
+      return NewBoolValue(v1.as.character == v2.as.character);
+    } break;
+    case V_BOOL: {
+      return NewBoolValue(v1.as.boolean == v2.as.boolean);
+    } break;
+    default:
+      printf("Equality(): Not implemented yet\n");
+      break;
+  }
+
+  return (Value){0};
+}
+
 Value GreaterThan(Value v1, Value v2) {
   if (v1.type == V_INT) {
     return NewBoolValue(v1.as.integer > v2.as.integer);
