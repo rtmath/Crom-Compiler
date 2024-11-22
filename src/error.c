@@ -90,6 +90,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_UNDERFLOW:            return "UNDERFLOW";
     case ERR_TOO_MANY:             return "TOO MANY";
     case ERR_TOO_FEW:              return "TOO FEW";
+    case ERR_EMPTY_BODY:           return "EMPTY BODY";
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
     case ERR_LEXER_ERROR:          return "LEXER ERROR";
     case ERR_MISSING_SEMICOLON:    return "MISSING SEMICOLON";
