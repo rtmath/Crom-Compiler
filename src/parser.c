@@ -761,18 +761,20 @@ static AST_Node *Binary(bool) {
     case ASTERISK:
     case DIVIDE:
     case MODULO:
+      return NewNodeFromToken(BINARY_ARITHMETIC_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
     case EQUALITY:
     case LOGICAL_AND:
     case LOGICAL_OR:
     case LESS_THAN:
     case GREATER_THAN:
+      return NewNodeFromToken(BINARY_LOGICAL_NODE, NULL, NULL, parse_result, operator_token, AnnotateType(BOOL));
     case BITWISE_XOR:
     case BITWISE_NOT:
     case BITWISE_AND:
     case BITWISE_OR:
     case BITWISE_LEFT_SHIFT:
     case BITWISE_RIGHT_SHIFT:
-      return NewNodeFromToken(BINARY_OP_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(BINARY_BITWISE_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Binary(): Unknown operator '%s'\n",

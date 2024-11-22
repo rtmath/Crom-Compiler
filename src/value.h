@@ -51,7 +51,8 @@ Value ModValues(Value v1, Value v2);
 
 Value LogicalOR(Value v1, Value v2);
 Value LogicalAND(Value v1, Value v2);
-
+Value GreaterThan(Value v1, Value v2);
+Value LessThan(Value v1, Value v2);
 
 void SetInt(Value *value, int64_t i);
 void SetUint(Value *value, uint64_t u);

@@ -313,6 +313,40 @@ Value ModValues(Value v1, Value v2) {
   return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
 }
 
+Value GreaterThan(Value v1, Value v2) {
+  if (v1.type == V_INT) {
+    return NewIntValue(v1.as.integer > v2.as.integer);
+  }
+
+  if (v1.type == V_UINT) {
+    return NewIntValue(v1.as.uinteger > v2.as.uinteger);
+  }
+
+  if (v1.type == V_FLOAT) {
+    return NewIntValue(v1.as.integer > v2.as.integer);
+  }
+
+  ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to GreaterThan()\n", v1.type);
+  return (Value){0};
+}
+
+Value LessThan(Value v1, Value v2) {
+  if (v1.type == V_INT) {
+    return NewIntValue(v1.as.integer < v2.as.integer);
+  }
+
+  if (v1.type == V_UINT) {
+    return NewIntValue(v1.as.uinteger < v2.as.uinteger);
+  }
+
+  if (v1.type == V_FLOAT) {
+    return NewIntValue(v1.as.integer < v2.as.integer);
+  }
+
+  ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to LessThan()\n", v1.type);
+  return (Value){0};
+}
+
 Value LogicalAND(Value v1, Value v2) {
   if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
   if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");

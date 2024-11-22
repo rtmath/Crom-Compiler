@@ -36,7 +36,9 @@ static const char* const _NodeTypeTranslation[] =
   [ASSIGNMENT_NODE] = "Assignment",
   [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
   [UNARY_OP_NODE] = "Unary",
-  [BINARY_OP_NODE] = "Binary",
+  [BINARY_LOGICAL_NODE] = "Binary (Logical)",
+  [BINARY_ARITHMETIC_NODE] = "Binary (Arithmetic)",
+  [BINARY_BITWISE_NODE] = "Binary (Bitwise)",
 
   [PREFIX_INCREMENT_NODE] = "++Increment",
   [PREFIX_DECREMENT_NODE] = "--Decrement",

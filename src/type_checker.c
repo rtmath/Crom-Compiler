@@ -8,6 +8,8 @@
 #include "parser_annotation.h"
 #include "type_checker.h"
 
+#include <stdio.h>
+
 static SymbolTable *SYMBOL_TABLE;
 static ErrorCode error_code;
 
@@ -632,20 +634,80 @@ static void UnaryOp(AST_Node *node) {
   }
 }
 
-static void BinaryOp(AST_Node *node) {
+static void BinaryArithmeticOp(AST_Node *node) {
   node->annotation = LEFT_NODE(node)->annotation;
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 
   if (!TypeIsConvertible(RIGHT_NODE(node), node)) {
     ERROR_AT_TOKEN(
       RIGHT_NODE(node)->token,
-      "BinaryOp(): Cannot convert from type '%s' to '%s'\n",
+      "BinaryArithmeticOp(): Cannot convert from type '%s' to '%s'\n",
       AnnotationTranslation(RIGHT_NODE(node)->annotation),
       AnnotationTranslation(node->annotation));
     SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 
   ActualizeType(RIGHT_NODE(node), node->annotation);
+}
+
+static void BinaryLogicalOp(AST_Node *node) {
+  switch(node->token.type) {
+    case LESS_THAN:
+    case GREATER_THAN: {
+      if (NodeOstensibleType(LEFT_NODE(node)) != OST_INT &&
+          NodeOstensibleType(LEFT_NODE(node)) != OST_FLOAT) {
+        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+                       "Invalid operand type '%s', expected Bool",
+                       OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+        return;
+      }
+      if (NodeOstensibleType(RIGHT_NODE(node)) != OST_INT &&
+          NodeOstensibleType(RIGHT_NODE(node)) != OST_FLOAT) {
+        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+                       "Invalid operand type '%s', expected Bool",
+                       OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+        return;
+      }
+
+      if (NodeOstensibleType(LEFT_NODE(node)) !=
+          NodeOstensibleType(RIGHT_NODE(node))) {
+        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+                       "Operand types don't match", "");
+      }
+
+      ActualizeType(node, node->annotation);
+    } break;
+
+    case LOGICAL_AND:
+    case LOGICAL_OR: {
+      if (NodeOstensibleType(LEFT_NODE(node)) != OST_BOOL) {
+        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+                       "Invalid operand type '%s', expected Bool",
+                       OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+        return;
+      }
+      if (NodeOstensibleType(RIGHT_NODE(node)) != OST_BOOL) {
+        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+                       "Invalid operand type '%s', expected Bool",
+                       OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+        return;
+      }
+
+      ActualizeType(node, node->annotation);
+    } break;
+    default: {
+      printf("BinaryLogicalOp(): Not implemented yet\n");
+    } break;
+  }
+}
+
+static void BinaryBitwiseOp(AST_Node *node) {
+
 }
 
 static void InitializerList(AST_Node *node) {
@@ -701,8 +763,14 @@ void CheckTypesRecurse(AST_Node *node) {
     case UNARY_OP_NODE: {
       UnaryOp(node);
     } break;
-    case BINARY_OP_NODE: {
-      BinaryOp(node);
+    case BINARY_ARITHMETIC_NODE: {
+      BinaryArithmeticOp(node);
+    } break;
+    case BINARY_LOGICAL_NODE: {
+      BinaryLogicalOp(node);
+    } break;
+    case BINARY_BITWISE_NODE: {
+      BinaryBitwiseOp(node);
     } break;
     case IDENTIFIER_NODE:
     case ENUM_IDENTIFIER_NODE: {

@@ -138,7 +138,7 @@ void Unary(AST_Node *n) {
   }
 }
 
-void Binary(AST_Node *n) {
+void BinaryArithmetic(AST_Node *n) {
   switch(n->token.type) {
     case PLUS: {
       n->value = AddValues(LEFT_NODE(n)->value,
@@ -160,15 +160,36 @@ void Binary(AST_Node *n) {
       n->value = ModValues(LEFT_NODE(n)->value,
                            RIGHT_NODE(n)->value);
     } break;
+    default: {
+      printf("BinaryArithmetic(): Not implemented yet\n");
+    } break;
+  }
+}
+
+void BinaryLogical(AST_Node *n) {
+  switch(n->token.type) {
+    case GREATER_THAN: {
+      n->value = GreaterThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+    } break;
+    case LESS_THAN: {
+      n->value = LessThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+    } break;
     case LOGICAL_AND: {
       n->value = LogicalAND(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
     } break;
     case LOGICAL_OR: {
       n->value = LogicalOR(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
     } break;
-
     default: {
-      printf("Assignment(): Not implemented yet\n");
+      printf("BinaryLogical(): Not implemented yet\n");
+    } break;
+  }
+}
+
+void BinaryBitwise(AST_Node *n) {
+  switch(n->token.type) {
+    default: {
+      printf("BinaryBitwise(): Not implemented yet\n");
     } break;
   }
 }
@@ -282,8 +303,14 @@ static void InterpretRecurse(AST_Node *n) {
     case UNARY_OP_NODE: {
       Unary(n);
     } break;
-    case BINARY_OP_NODE: {
-      Binary(n);
+    case BINARY_ARITHMETIC_NODE: {
+      BinaryArithmetic(n);
+    } break;
+    case BINARY_LOGICAL_NODE: {
+      BinaryLogical(n);
+    } break;
+    case BINARY_BITWISE_NODE: {
+      BinaryLogical(n);
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(n);
