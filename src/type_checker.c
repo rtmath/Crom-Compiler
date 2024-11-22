@@ -303,6 +303,13 @@ static void Assignment(AST_Node *identifier) {
   }
 
   AST_Node *value = LEFT_NODE(identifier);
+  if ((identifier->type == ENUM_ASSIGNMENT_NODE) &&
+      NodeOstensibleType(value) != OST_INT) {
+    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    ERROR_AT_TOKEN(value->token,
+                   "Assignment(): Assignment to enum identifier must be of type INT", "");
+  }
+
   if ((NodeOstensibleType(identifier) != OST_INT || IsSigned(identifier)) &&
       (value->token.type == HEX_LITERAL || value->token.type == BINARY_LITERAL)) {
     SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
@@ -822,7 +829,8 @@ void CheckTypesRecurse(AST_Node *node) {
       Declaration(node);
     } break;
     case TERSE_ASSIGNMENT_NODE:
-    case ASSIGNMENT_NODE: {
+    case ASSIGNMENT_NODE:
+    case ENUM_ASSIGNMENT_NODE: {
       Assignment(node);
     } break;
     case PREFIX_INCREMENT_NODE:

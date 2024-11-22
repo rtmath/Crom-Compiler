@@ -209,6 +209,15 @@ static void Advance() {
 
   if (Parser.next.type != ERROR) return;
 
+  // In case the very first token is an error token
+  if (Parser.current.type == UNINITIALIZED) {
+    ERROR_AT_TOKEN(Parser.next,
+                   "Advance(): Error token encountered: '%.*s'",
+                   Parser.next.length,
+                   Parser.next.position_in_source);
+    SetErrorCodeIfUnset(&error_code, ERR_LEXER_ERROR);
+  }
+
   ERROR_AT_TOKEN(Parser.current,
       "Advance(): Error token encountered after token '%s': %.*s",
       TokenTypeTranslation(Parser.current.type),
@@ -1037,19 +1046,21 @@ static AST_Node *EnumIdentifier(bool can_assign) {
     }
 
     Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
-    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
+    return NewNodeFromSymbol(ENUM_ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
   return NewNodeFromToken(ENUM_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
 }
 
 static AST_Node *EnumBlock() {
-  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+  AST_Node *n = NULL;
   AST_Node **current = &n;
 
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %s", TokenTypeTranslation(Parser.current.type));
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    if (n == NULL) n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+
     Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
     bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.next);
 
@@ -1076,6 +1087,12 @@ static AST_Node *EnumBlock() {
   }
 
   Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %s", TokenTypeTranslation(Parser.current.type));
+
+  if (n == NULL) {
+     SetErrorCodeIfUnset(&error_code, ERR_EMPTY_BODY);
+     ERROR_AT_TOKEN(Parser.current,
+                    "EnumBlock(): Enum body cannot be declared", "");
+  }
 
   return n;
 }
@@ -1200,11 +1217,11 @@ static AST_Node *Struct() {
   UnshadowSymbolTable();
 
   if (n == NULL) {
+    SetErrorCodeIfUnset(&error_code, ERR_EMPTY_BODY);
     ERROR_AT_TOKEN(identifier_symbol.token,
                    "Struct(): Struct '%.*s' has empty body",
                    identifier_symbol.token.length,
                    identifier_symbol.token.position_in_source);
-    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
   }
 
   identifier_symbol.declaration_state = DECL_DEFINED;

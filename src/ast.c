@@ -34,6 +34,7 @@ static const char* const _NodeTypeTranslation[] =
   [LITERAL_NODE] = "Literal",
 
   [ASSIGNMENT_NODE] = "Assignment",
+  [ENUM_ASSIGNMENT_NODE] = "Enum Assignment",
   [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
   [UNARY_OP_NODE] = "Unary",
   [BINARY_LOGICAL_NODE] = "Binary (Logical)",
