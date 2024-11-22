@@ -101,6 +101,64 @@ static void Test_Bool_ComplexExpression_OK() {
   AssertEqual(NewBoolValue(true));
 }
 
+static void Test_Bool_LessThan_PositiveInts_OK() {
+  COMPILE("bool check = 1 < 2;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThan_NegativeInts_OK() {
+  COMPILE("bool check = -2 < -1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThan_MixedSigns_OK() {
+  COMPILE("bool check = -1 < 1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_LessThan_False_OK() {
+  COMPILE("bool check = 5 < 3;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+static void Test_Bool_GreaterThan_PositiveInts_OK() {
+  COMPILE("bool check = 2 > 1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThan_NegativeInts_OK() {
+  COMPILE("bool check = -1 > -2;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThan_MixedSigns_OK() {
+  COMPILE("bool check = 1 > -1;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
+static void Test_Bool_GreaterThan_False_OK() {
+  COMPILE("bool check = 3 > 5;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(false));
+}
+
+// TODO: Test unconvertible type comparisons
+
 void RunAllBoolTests() {
   /* ------- Literals  ------- */
   Test_Bool_TrueLiteral_OK();
@@ -122,6 +180,16 @@ void RunAllBoolTests() {
   Test_Bool_OR_TrueAndTrue_True();
 
   Test_Bool_ComplexExpression_OK();
+
+  Test_Bool_LessThan_PositiveInts_OK();
+  Test_Bool_LessThan_NegativeInts_OK();
+  Test_Bool_LessThan_MixedSigns_OK();
+  Test_Bool_LessThan_False_OK();
+
+  Test_Bool_GreaterThan_PositiveInts_OK();
+  Test_Bool_GreaterThan_NegativeInts_OK();
+  Test_Bool_GreaterThan_MixedSigns_OK();
+  Test_Bool_GreaterThan_False_OK();
 
   PrintAssertionResults("Bools");
 }
