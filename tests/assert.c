@@ -50,6 +50,9 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
   bool predicate = false;
 
   switch(v1.type) {
+    case V_NONE: {
+      LogError(true, "    %s(): Value type from AST is NONE\n", func_name);
+    } break;
     case V_INT: {
       predicate = v1.as.integer == v2.as.integer;
       LogError(predicate,
@@ -87,7 +90,7 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
                (v1.as.floating) ? "true" : "false",
                (v2.as.floating) ? "true" : "false");
     } break;
-    default: ERROR_AND_EXIT_FMTMSG("[%s:%s] Value type %d not implemented yet\n", file_name, func_name, v1.type);
+    default: ERROR_AND_EXIT_FMTMSG("[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
   }
 
   LogResults(predicate, file_name);
@@ -99,7 +102,6 @@ bool ASSERT_EXPECT_ERROR(AST_Node *root, ErrorCode code, const char *file_name, 
   if (ht == NULL) ht = NewHashTable();
 
   bool predicate = root->error_code == code;
-
   LogError(predicate,
            "      %s() Expected '%s', got '%s'",
            func_name,
