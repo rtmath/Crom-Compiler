@@ -314,11 +314,11 @@ Token ScanToken() {
     case '?': return MakeToken(QUESTION_MARK);
     case '<': {
       if (Match('<')) return MakeToken(Match('=') ? BITWISE_LEFT_SHIFT_EQUALS : BITWISE_LEFT_SHIFT);
-      return MakeToken(LESS_THAN);
+      return MakeToken(Match('=') ? LESS_THAN_EQUALS: LESS_THAN);
     }
     case '>': {
       if (Match('>')) return MakeToken(Match('=') ? BITWISE_RIGHT_SHIFT_EQUALS : BITWISE_RIGHT_SHIFT);
-      return MakeToken(GREATER_THAN);
+      return MakeToken(Match('=') ? GREATER_THAN_EQUALS : GREATER_THAN);
     }
     case '=': return MakeToken(Match('=') ? EQUALITY : EQUALS);
     case '\'': return Char();

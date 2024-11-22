@@ -117,12 +117,15 @@ static ParseRule Rules[] = {
   [LPAREN]         = { Parens,              NULL,      NO_PRECEDENCE },
   [LBRACKET]       = {   NULL, ArraySubscripting, ARRAY_SUBSCRIPTING },
 
-  [EQUALITY]       = {  NULL, Binary, LOGICAL },
-  [LOGICAL_NOT]    = { Unary,   NULL, LOGICAL },
-  [LOGICAL_AND]    = {  NULL, Binary, LOGICAL },
-  [LOGICAL_OR]     = {  NULL, Binary, LOGICAL },
-  [LESS_THAN]      = {  NULL, Binary, LOGICAL },
-  [GREATER_THAN]   = {  NULL, Binary, LOGICAL },
+  [EQUALITY]            = {  NULL, Binary, LOGICAL },
+  [LOGICAL_NOT]         = { Unary,   NULL, LOGICAL },
+  [LOGICAL_AND]         = {  NULL, Binary, LOGICAL },
+  [LOGICAL_OR]          = {  NULL, Binary, LOGICAL },
+  [LOGICAL_NOT_EQUALS]  = {  NULL, Binary, LOGICAL },
+  [LESS_THAN]           = {  NULL, Binary, LOGICAL },
+  [GREATER_THAN]        = {  NULL, Binary, LOGICAL },
+  [LESS_THAN_EQUALS]    = {  NULL, Binary, LOGICAL },
+  [GREATER_THAN_EQUALS] = {  NULL, Binary, LOGICAL },
 
   [PLUS]           = {   NULL, Binary,   TERM },
   [MINUS]          = {  Unary, Binary,   TERM },
@@ -765,8 +768,11 @@ static AST_Node *Binary(bool) {
     case EQUALITY:
     case LOGICAL_AND:
     case LOGICAL_OR:
+    case LOGICAL_NOT_EQUALS:
     case LESS_THAN:
     case GREATER_THAN:
+    case LESS_THAN_EQUALS:
+    case GREATER_THAN_EQUALS:
       return NewNodeFromToken(BINARY_LOGICAL_NODE, NULL, NULL, parse_result, operator_token, AnnotateType(BOOL));
     case BITWISE_XOR:
     case BITWISE_NOT:
