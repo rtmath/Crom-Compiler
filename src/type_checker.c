@@ -654,6 +654,7 @@ static void BinaryLogicalOp(AST_Node *node) {
   switch(node->token.type) {
     case LESS_THAN:
     case GREATER_THAN: {
+      // Check left node individually for incorrect type
       if (NodeOstensibleType(LEFT_NODE(node)) != OST_INT &&
           NodeOstensibleType(LEFT_NODE(node)) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
@@ -662,6 +663,8 @@ static void BinaryLogicalOp(AST_Node *node) {
                        OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
         return;
       }
+
+      // Check right node individually for incorrect type
       if (NodeOstensibleType(RIGHT_NODE(node)) != OST_INT &&
           NodeOstensibleType(RIGHT_NODE(node)) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
@@ -671,11 +674,41 @@ static void BinaryLogicalOp(AST_Node *node) {
         return;
       }
 
+      // Ensure both node types match
       if (NodeOstensibleType(LEFT_NODE(node)) !=
           NodeOstensibleType(RIGHT_NODE(node))) {
-        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
         ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
                        "Operand types don't match", "");
+        return;
+      }
+
+      // If left node is unsigned, check if right node can be converted
+      if (IsSigned(LEFT_NODE(node)) && !IsSigned(RIGHT_NODE(node))) {
+        if (TypeIsConvertible(RIGHT_NODE(node), LEFT_NODE(node))) {
+          ActualizeType(RIGHT_NODE(node), LEFT_NODE(node)->annotation);
+        } else {
+          SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+          ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+                         "Type '%s' is not convertible to other operand type '%s'",
+                         OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type),
+                         OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+          return;
+        }
+      }
+
+      // If right node is unsigned, check if left node can be converted
+      if (!IsSigned(LEFT_NODE(node)) && IsSigned(RIGHT_NODE(node))) {
+        if (TypeIsConvertible(LEFT_NODE(node), RIGHT_NODE(node))) {
+          ActualizeType(LEFT_NODE(node), RIGHT_NODE(node)->annotation);
+        } else {
+          SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+          ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+                         "Type '%s' is not convertible to other operand type '%s'",
+                         OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type),
+                         OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+          return;
+        }
       }
 
       ActualizeType(node, node->annotation);
