@@ -315,15 +315,15 @@ Value ModValues(Value v1, Value v2) {
 
 Value GreaterThan(Value v1, Value v2) {
   if (v1.type == V_INT) {
-    return NewIntValue(v1.as.integer > v2.as.integer);
+    return NewBoolValue(v1.as.integer > v2.as.integer);
   }
 
   if (v1.type == V_UINT) {
-    return NewIntValue(v1.as.uinteger > v2.as.uinteger);
+    return NewBoolValue(v1.as.uinteger > v2.as.uinteger);
   }
 
   if (v1.type == V_FLOAT) {
-    return NewIntValue(v1.as.integer > v2.as.integer);
+    return NewBoolValue(v1.as.floating > v2.as.floating);
   }
 
   ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to GreaterThan()\n", v1.type);
@@ -332,15 +332,15 @@ Value GreaterThan(Value v1, Value v2) {
 
 Value LessThan(Value v1, Value v2) {
   if (v1.type == V_INT) {
-    return NewIntValue(v1.as.integer < v2.as.integer);
+    return NewBoolValue(v1.as.integer < v2.as.integer);
   }
 
   if (v1.type == V_UINT) {
-    return NewIntValue(v1.as.uinteger < v2.as.uinteger);
+    return NewBoolValue(v1.as.uinteger < v2.as.uinteger);
   }
 
   if (v1.type == V_FLOAT) {
-    return NewIntValue(v1.as.integer < v2.as.integer);
+    return NewBoolValue(v1.as.floating < v2.as.floating);
   }
 
   ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to LessThan()\n", v1.type);
