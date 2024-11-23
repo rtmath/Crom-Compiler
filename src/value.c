@@ -42,11 +42,8 @@ Value NewValue(ParserAnnotation a, Token t) {
           return (Value){ .type = V_OVERFLOW, .as.integer = 0 };
         }
 
-        uint64_t integer = TokenToInt64(t, base);
-        ret_val.as.integer = integer;
-        ret_val.type = V_INT;
-
-        return ret_val;
+        int64_t integer = TokenToInt64(t, base);
+        return NewIntValue(integer);
       } else {
         if (Uint64Overflow(t, base)) {
           ERROR_AT_TOKEN(t, "U64 Overflow\n", "");
@@ -54,10 +51,7 @@ Value NewValue(ParserAnnotation a, Token t) {
         }
 
         uint64_t unsignedint = TokenToUint64(t, base);
-        ret_val.as.uinteger = unsignedint;
-        ret_val.type = V_UINT;
-
-        return ret_val;
+        return NewUintValue(unsignedint);
       }
     } break;
 
@@ -68,38 +62,28 @@ Value NewValue(ParserAnnotation a, Token t) {
       }
 
       double d = TokenToDouble(t);
-      ret_val.as.floating = d;
-      ret_val.type = V_FLOAT;
-
-      return ret_val;
+      return NewFloatValue(d);
     } break;
 
     case ACT_BOOL: {
       char *s = ExtractString(t);
-      ret_val.as.boolean = (strcmp(s, "true") == 0) ? true : false;
-      ret_val.type = V_BOOL;
-      free(s);
+      Value b_return = NewBoolValue((strcmp(s, "true") == 0) ? true : false);
 
-      return ret_val;
+      free(s);
+      return b_return;
     } break;
 
     case ACT_CHAR: {
       char *s = ExtractString(t);
-      ret_val.as.character = s[0];
-      ret_val.type = V_CHAR;
+      Value c_return = NewCharValue(s[0]);
       free(s);
 
-      return ret_val;
+      return c_return;
     } break;
 
     case ACT_STRING: {
       char *s = ExtractString(t);
-      ret_val.as.string = s;
-      ret_val.type = V_STRING;
-      ret_val.array_type = V_CHAR;
-      ret_val.array_size = strlen(s);
-
-      return ret_val;
+      return NewStringValue(s);
     } break;
 
     default: {
@@ -169,148 +153,64 @@ Value AddValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("AddValues(): Type mismatch");
 
   switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer + v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger + v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating + v2.as.floating
-      };
-    } break;
+    case V_INT: return NewIntValue(v1.as.integer + v2.as.integer);
+    case V_UINT: return NewUintValue(v1.as.uinteger + v2.as.uinteger);
+    case V_FLOAT: return NewFloatValue(v1.as.floating + v2.as.floating);
     default: ERROR_AND_EXIT_FMTMSG("AddValues(): Invalid type %d", v1.type);
   }
 
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+  return (Value){0};
 }
 
 Value SubValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("SubValues(): Type mismatch");
 
   switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer - v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger - v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating - v2.as.floating
-      };
-    } break;
+    case V_INT: return NewIntValue(v1.as.integer - v2.as.integer);
+    case V_UINT: return NewUintValue(v1.as.uinteger - v2.as.uinteger);
+    case V_FLOAT: return NewFloatValue(v1.as.floating - v2.as.floating);
     default: ERROR_AND_EXIT_FMTMSG("SubValues(): Invalid type %d", v1.type);
   }
 
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+  return (Value){0};
 }
 
 Value MulValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("MulValues(): Type mismatch");
 
   switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer * v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger * v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating * v2.as.floating
-      };
-    } break;
+    case V_INT: return NewIntValue(v1.as.integer * v2.as.integer);
+    case V_UINT: return NewUintValue(v1.as.uinteger * v2.as.uinteger);
+    case V_FLOAT: return NewFloatValue(v1.as.floating * v2.as.floating);
     default: ERROR_AND_EXIT_FMTMSG("MulValues(): Invalid type %d", v1.type);
   }
 
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+  return (Value){0};
 }
 
 Value DivValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("DivValues(): Type mismatch");
 
   switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer / v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger / v2.as.uinteger
-      };
-    } break;
-    case V_FLOAT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.floating = v1.as.floating / v2.as.floating
-      };
-    } break;
+    case V_INT: return NewIntValue(v1.as.integer / v2.as.integer);
+    case V_UINT: return NewUintValue(v1.as.uinteger / v2.as.uinteger);
+    case V_FLOAT: return NewFloatValue(v1.as.floating / v2.as.floating);
     default: ERROR_AND_EXIT_FMTMSG("DivValues(): Invalid type %d", v1.type);
   }
 
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+  return (Value){0};
 }
 
 Value ModValues(Value v1, Value v2) {
   if (v1.type != v2.type) ERROR_AND_EXIT("ModValues(): Type mismatch");
 
   switch(v1.type) {
-    case V_INT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.integer = v1.as.integer % v2.as.integer
-      };
-    } break;
-    case V_UINT: {
-      return (Value){
-        .type = V_INT,
-        .array_type = V_NONE,
-        .as.uinteger = v1.as.uinteger % v2.as.uinteger
-      };
-    } break;
+    case V_INT: return NewIntValue(v1.as.integer % v2.as.integer);
+    case V_UINT: return NewUintValue(v1.as.uinteger % v2.as.uinteger);
     default: ERROR_AND_EXIT_FMTMSG("ModValues(): Invalid type %d", v1.type);
   }
 
-  return (Value){ .type = 0, .array_type = 0, .as.integer = 0 };
+  return (Value){0};
 }
 
 Value Not(Value v) {
@@ -319,60 +219,36 @@ Value Not(Value v) {
 
 Value Equality(Value v1, Value v2) {
   switch (v1.type) {
-    case V_INT: {
-      return NewBoolValue(v1.as.integer == v2.as.integer);
-    } break;
-    case V_UINT: {
-      return NewBoolValue(v1.as.uinteger == v2.as.uinteger);
-    } break;
-    case V_FLOAT: {
-      return NewBoolValue(v1.as.floating == v2.as.floating);
-    } break;
-    case V_CHAR: {
-      return NewBoolValue(v1.as.character == v2.as.character);
-    } break;
-    case V_BOOL: {
-      return NewBoolValue(v1.as.boolean == v2.as.boolean);
-    } break;
-    default:
-      printf("Equality(): Not implemented yet\n");
-      break;
+    case V_INT: return NewBoolValue(v1.as.integer == v2.as.integer);
+    case V_UINT: return NewBoolValue(v1.as.uinteger == v2.as.uinteger);
+    case V_FLOAT: return NewBoolValue(v1.as.floating == v2.as.floating);
+    case V_CHAR: return NewBoolValue(v1.as.character == v2.as.character);
+    case V_BOOL: return NewBoolValue(v1.as.boolean == v2.as.boolean);
+    default: printf("Equality(): Not implemented yet\n");
   }
 
   return (Value){0};
 }
 
 Value GreaterThan(Value v1, Value v2) {
-  if (v1.type == V_INT) {
-    return NewBoolValue(v1.as.integer > v2.as.integer);
+  switch(v1.type) {
+    case V_INT: return NewBoolValue(v1.as.integer > v2.as.integer);
+    case V_UINT: return NewBoolValue(v1.as.uinteger > v2.as.uinteger);
+    case V_FLOAT: return NewBoolValue(v1.as.floating > v2.as.floating);
+    default: ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to GreaterThan()\n", v1.type);
   }
 
-  if (v1.type == V_UINT) {
-    return NewBoolValue(v1.as.uinteger > v2.as.uinteger);
-  }
-
-  if (v1.type == V_FLOAT) {
-    return NewBoolValue(v1.as.floating > v2.as.floating);
-  }
-
-  ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to GreaterThan()\n", v1.type);
   return (Value){0};
 }
 
 Value LessThan(Value v1, Value v2) {
-  if (v1.type == V_INT) {
-    return NewBoolValue(v1.as.integer < v2.as.integer);
+  switch(v1.type) {
+    case V_INT: return NewBoolValue(v1.as.integer < v2.as.integer);
+    case V_UINT: return NewBoolValue(v1.as.uinteger < v2.as.uinteger);
+    case V_FLOAT: return NewBoolValue(v1.as.floating < v2.as.floating);
+    default: ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to LessThan()\n", v1.type);
   }
 
-  if (v1.type == V_UINT) {
-    return NewBoolValue(v1.as.uinteger < v2.as.uinteger);
-  }
-
-  if (v1.type == V_FLOAT) {
-    return NewBoolValue(v1.as.floating < v2.as.floating);
-  }
-
-  ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to LessThan()\n", v1.type);
   return (Value){0};
 }
 
@@ -380,22 +256,14 @@ Value LogicalAND(Value v1, Value v2) {
   if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
   if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
 
-  return (Value){
-    .type = V_BOOL,
-    .array_type = 0,
-    .as.boolean = v1.as.boolean && v2.as.boolean,
-  };
+  return NewBoolValue(v1.as.boolean && v2.as.boolean);
 }
 
 Value LogicalOR(Value v1, Value v2) {
   if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
   if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
 
-  return (Value){
-    .type = V_BOOL,
-    .array_type = 0,
-    .as.boolean = v1.as.boolean || v2.as.boolean,
-  };
+  return NewBoolValue(v1.as.boolean || v2.as.boolean);
 }
 
 void InlinePrintValue(Value v) {
