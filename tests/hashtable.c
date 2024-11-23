@@ -39,8 +39,9 @@ static int GetHash(const char *s, int num_buckets, int num_collisions) {
   #define HT_PRIME_1 151
   #define HT_PRIME_2 163
 
-  const int hash_a = Hash(s, HT_PRIME_1, num_buckets);
-  const int hash_b = Hash(s, HT_PRIME_2, num_buckets);
+  int hash_a = Hash(s, HT_PRIME_1, num_buckets);
+  int hash_b = Hash(s, HT_PRIME_2, num_buckets);
+  if (hash_b % num_buckets == 0) hash_b = 1;
 
   /* (hash_b + 1) is used so that if hash_a collided at num_collisions = 0,
    * the (num_collisions * hash_b) expression won't potentially evaluate to

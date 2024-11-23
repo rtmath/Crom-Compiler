@@ -44,14 +44,11 @@ static int GetHash(const char *s, int num_buckets, int num_collisions) {
   #define HT_PRIME_1 151
   #define HT_PRIME_2 163
 
-  const int hash_a = Hash(s, HT_PRIME_1, num_buckets);
-  const int hash_b = Hash(s, HT_PRIME_2, num_buckets);
+  int hash_a = Hash(s, HT_PRIME_1, num_buckets);
+  int hash_b = Hash(s, HT_PRIME_2, num_buckets);
+  if (hash_b % num_buckets == 0) hash_b = 1;
 
-  /* (hash_b + 1) is used so that if hash_a collided at num_collisions = 0,
-   * the (num_collisions * hash_b) expression won't potentially evaluate to
-   * 0 when num_collisions >= 1. if that expression did evaluate to 0, this
-   * function would essentially just return hash_a over and over (colliding infinitely) */
-  return (hash_a + (num_collisions * (hash_b + 1))) % num_buckets;
+  return (hash_a + (num_collisions * (hash_b))) % num_buckets;
 
   #undef HT_PRIME_1
   #undef HT_PRIME_2
