@@ -146,6 +146,15 @@ static void Test_EnumDeclaration_SameEnumNames_NotAllowed() {
   AssertExpectError(ERR_REDECLARED);
 }
 
+static void Test_EnumDeclaration_AssignmentToEnumIdentifier_NotAllowed() {
+  COMPILE("enum Animals {"
+          "  Cat,        "
+          "  Dog = Cat,  "
+          "};            ")
+
+  AssertExpectError(ERR_IMPROPER_ASSIGNMENT);
+}
+
 static void Test_EnumDeclaration_IdenticalEnumIdentifiers_InSameEnum_NotAllowed() {
   COMPILE("enum Foo {"
           "  Check,  "
@@ -179,24 +188,52 @@ static void Test_EnumDeclaration_AssignmentToOtherEnum_NotAllowed() {
   AssertExpectError(ERR_IMPROPER_ASSIGNMENT);
 }
 
-static void Test_Enum_IncrementalImplicitValues() {
-  COMPILE("enum Numbers {"
-          "  Zero,       "
-          "  One,        "
-          "  Two,        "
-          "};            "
-          "              "
-          "i8 i = Two;   "
+static void Test_EnumDeclaration_OptionalSemicolon_OK() {
+  COMPILE("enum Check { "
+          "  Foo,       "
+          "}            ")
+
+  AssertNoError();
+}
+
+static void Test_Enum_IncrementalImplicitValues_OK() {
+  COMPILE("enum Numbers { "
+          "  Zero,        "
+          "  One,         "
+          "  Two,         "
+          "};             "
+          "               "
+          "i8 check = Two;"
   )
 
   AssertNoError();
   AssertEqual(NewIntValue(2));
 }
 
-// Test that Enum name cannot be used in assignment
-//
-// Test implicit incremental values when there is a random assignment in
-// the middle
+static void Test_Enum_IncrementalImplicitValues_IncrementsFromAssignedValue_OK() {
+  COMPILE("enum Numbers { "
+          "  Zero,        "
+          "  NegFive = -5 "
+          "  Two,         "
+          "};             "
+          "               "
+          "i8 check = Two;"
+  )
+
+  AssertNoError();
+  AssertEqual(NewIntValue(-4));
+}
+
+static void Test_Enum_EnumNameAsValue_NotAllowed() {
+  COMPILE("enum Animals {     "
+          "  Cat,             "
+          "  Dog,             "
+          "};                 "
+          "                   "
+          "i8 check = Animals;")
+
+  AssertExpectError(ERR_IMPROPER_ASSIGNMENT);
+}
 
 void RunAllEnumTests() {
   Test_Enum_EmptyDeclaration_NotAllowed();
@@ -209,11 +246,16 @@ void RunAllEnumTests() {
   Test_EnumDeclaration_IdentifierAssignment_NotAllowed();
   Test_EnumDeclaration_NegativeIntAssignment_OK();
   Test_EnumDeclaration_IdentifiersWithSameValue_OK();
+  Test_EnumDeclaration_AssignmentToEnumIdentifier_NotAllowed();
   Test_EnumDeclaration_SameEnumNames_NotAllowed();
   Test_EnumDeclaration_IdenticalEnumIdentifiers_InSameEnum_NotAllowed();
   Test_EnumDeclaration_IdenticalEnumIdentifiers_InSeparateEnum_NotAllowed();
   Test_EnumDeclaration_AssignmentToOtherEnum_NotAllowed();
-  Test_Enum_IncrementalImplicitValues();
+  Test_EnumDeclaration_OptionalSemicolon_OK();
+
+  Test_Enum_IncrementalImplicitValues_OK();
+  Test_Enum_IncrementalImplicitValues_IncrementsFromAssignedValue_OK();
+  Test_Enum_EnumNameAsValue_NotAllowed();
 
   PrintAssertionResults("Enum");
 }
