@@ -297,7 +297,7 @@ Token ScanToken() {
     case '*': return MakeToken(Match('=') ? TIMES_EQUALS: ASTERISK);
     case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
     case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
-    case '~': return MakeToken(Match('=') ? BITWISE_NOT_EQUALS : BITWISE_NOT);
+    case '~': return MakeToken(BITWISE_NOT);
     case '`': return SkipToEOF();
     case '^': return MakeToken(Match('=') ? BITWISE_XOR_EQUALS : BITWISE_XOR);
     case '&': return MakeToken(Match('=')

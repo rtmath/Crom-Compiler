@@ -286,7 +286,6 @@ static bool NextTokenIsTerseAssignment() {
     case BITWISE_XOR_EQUALS:
     case BITWISE_AND_EQUALS:
     case BITWISE_OR_EQUALS:
-    case BITWISE_NOT_EQUALS:
     case BITWISE_LEFT_SHIFT_EQUALS:
     case BITWISE_RIGHT_SHIFT_EQUALS:
     {
@@ -384,7 +383,6 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
       NextTokenIs(BITWISE_XOR_EQUALS)         ||
       NextTokenIs(BITWISE_AND_EQUALS)         ||
       NextTokenIs(BITWISE_OR_EQUALS)          ||
-      NextTokenIs(BITWISE_NOT_EQUALS)         ||
       NextTokenIs(BITWISE_LEFT_SHIFT_EQUALS)  ||
       NextTokenIs(BITWISE_RIGHT_SHIFT_EQUALS))
   {
@@ -818,7 +816,6 @@ static AST_Node *TerseAssignment(bool) {
     case BITWISE_XOR_EQUALS:
     case BITWISE_AND_EQUALS:
     case BITWISE_OR_EQUALS:
-    case BITWISE_NOT_EQUALS:
     case BITWISE_LEFT_SHIFT_EQUALS:
     case BITWISE_RIGHT_SHIFT_EQUALS:
       return NewNodeFromToken(TERSE_ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
