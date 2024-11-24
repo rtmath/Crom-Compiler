@@ -361,6 +361,13 @@ static void Assignment(AST_Node *identifier) {
     return;
   }
 
+  if (NodeActualType(value) == ACT_ENUM) {
+    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    ERROR_AT_TOKEN(identifier->token,
+                   "Assignment(): Can't use Enum name as an identifier", "");
+    return;
+  }
+
   // Actualize the ostensible type for the error message
   identifier->annotation.actual_type = (ActualType)NodeOstensibleType(identifier);
   ERROR_AT_TOKEN(identifier->token,
@@ -827,12 +834,16 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
 
     ShrinkAndActualizeType(list_entry);
     SetValue(SYMBOL_TABLE, list_entry->token, LEFT_NODE(list_entry)->value);
+
+    implicit_value = (LEFT_NODE(list_entry)->value.as.integer + 1);
   }
 
   if (list_entry->type == ENUM_LIST_ENTRY_NODE) {
-    list_entry->value = NewIntValue(implicit_value++);
+    list_entry->value = NewIntValue(implicit_value);
     ShrinkAndActualizeType(list_entry);
     SetValue(SYMBOL_TABLE, list_entry->token, list_entry->value);
+
+    implicit_value++;
   }
 
   EnumListRecurse(RIGHT_NODE(node), implicit_value);
