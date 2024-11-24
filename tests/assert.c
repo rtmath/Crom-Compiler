@@ -50,7 +50,7 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
   bool predicate = false;
   switch(v1.type) {
     case V_NONE: {
-      LogError(false, "    %s(): Value type from AST is NONE\n", func_name);
+      LogError(false, "      %s(): Value type from AST is NONE\n", func_name);
     } break;
     case V_INT: {
       predicate = v1.as.integer == v2.as.integer;
