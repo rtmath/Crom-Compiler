@@ -57,6 +57,8 @@ Symbol RetrieveFrom(SymbolTable *st, Token t);
 bool IsIn(SymbolTable *st, Token t);
 void RegisterFnParam(SymbolTable *st, Symbol function_name, Symbol param);
 
+void SetValue(SymbolTable *st, Token t, Value v);
+
 void PrintSymbol(Symbol s);
 
 #endif

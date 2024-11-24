@@ -290,6 +290,17 @@ void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
   AddTo(st, function);
 }
 
+void SetValue(SymbolTable *st, Token t, Value v) {
+  Symbol s = RetrieveFrom(st, t);
+  if (s.token.type == ERROR) {
+    printf("SetValue(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    return;
+  };
+
+  s.value = v;
+  AddTo(st, s);
+}
+
 void PrintSymbol(Symbol s) {
   printf("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
