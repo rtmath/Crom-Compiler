@@ -193,13 +193,25 @@ void BinaryLogical(AST_Node *n) {
       n->value = LogicalOR(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
     } break;
     default: {
-      printf("BinaryLogical(): Not implemented yet\n");
+      printf("BinaryLogical(): %s not implemented yet\n", TokenTypeTranslation(n->token.type));
     } break;
   }
 }
 
 void BinaryBitwise(AST_Node *n) {
   switch(n->token.type) {
+    case BITWISE_XOR: {
+      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger ^
+                              RIGHT_NODE(n)->value.as.uinteger);
+    } break;
+    case BITWISE_OR: {
+      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger |
+                              RIGHT_NODE(n)->value.as.uinteger);
+    } break;
+    case BITWISE_AND: {
+      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger &
+                              RIGHT_NODE(n)->value.as.uinteger);
+    } break;
     default: {
       printf("BinaryBitwise(): Not implemented yet\n");
     } break;
@@ -322,7 +334,7 @@ static void InterpretRecurse(AST_Node *n) {
       BinaryLogical(n);
     } break;
     case BINARY_BITWISE_NODE: {
-      BinaryLogical(n);
+      BinaryBitwise(n);
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(n);

@@ -698,7 +698,7 @@ static void BinaryLogicalOp(AST_Node *node) {
           NodeOstensibleType(LEFT_NODE(node)) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
         ERROR_AT_TOKEN(LEFT_NODE(node)->token,
-                       "Invalid operand type '%s', expected Bool",
+                       "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
         return;
       }
@@ -708,7 +708,7 @@ static void BinaryLogicalOp(AST_Node *node) {
           NodeOstensibleType(RIGHT_NODE(node)) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
         ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
-                       "Invalid operand type '%s', expected Bool",
+                       "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
         return;
       }
@@ -720,7 +720,7 @@ static void BinaryLogicalOp(AST_Node *node) {
           NodeOstensibleType(RIGHT_NODE(node))) {
         SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
         ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
-                       "Operand types don't match", "");
+                       "BinaryLogicalOP(): Operand types don't match", "");
         return;
       }
 
@@ -731,7 +731,7 @@ static void BinaryLogicalOp(AST_Node *node) {
         } else {
           SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
           ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
-                         "Type '%s' is not convertible to other operand type '%s'",
+                         "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
                          OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type),
                          OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
           return;
@@ -745,7 +745,7 @@ static void BinaryLogicalOp(AST_Node *node) {
         } else {
           SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
           ERROR_AT_TOKEN(LEFT_NODE(node)->token,
-                         "Type '%s' is not convertible to other operand type '%s'",
+                         "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
                          OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type),
                          OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
           return;
@@ -760,7 +760,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (NodeOstensibleType(LEFT_NODE(node)) != OST_BOOL) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
         ERROR_AT_TOKEN(LEFT_NODE(node)->token,
-                       "Invalid operand type '%s', expected Bool",
+                       "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
         return;
       }
@@ -768,7 +768,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (NodeOstensibleType(RIGHT_NODE(node)) != OST_BOOL) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
         ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
-                       "Invalid operand type '%s', expected Bool",
+                       "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
         return;
       }
@@ -783,7 +783,28 @@ static void BinaryLogicalOp(AST_Node *node) {
 }
 
 static void BinaryBitwiseOp(AST_Node *node) {
+  AST_Node *left_value = LEFT_NODE(node);
+  AST_Node *right_value = RIGHT_NODE(node);
 
+  // Check left node individually for incorrect type
+  if (NodeOstensibleType(left_value) != OST_INT || IsSigned(left_value)) {
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    ERROR_AT_TOKEN(left_value->token,
+                   "BinaryBitwiseOP(): Invalid operand type '%s', expected Uint",
+                   OstensibleTypeTranslation(left_value->annotation.ostensible_type));
+    return;
+  }
+
+  // Check right node individually for incorrect type
+  if (NodeOstensibleType(right_value) != OST_INT || IsSigned(right_value)) {
+    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    ERROR_AT_TOKEN(right_value->token,
+                   "BinaryBitwiseOP(): Invalid operand type '%s', expected Bool",
+                   OstensibleTypeTranslation(right_value->annotation.ostensible_type));
+    return;
+  }
+
+  ActualizeType(node, node->annotation);
 }
 
 static void InitializerList(AST_Node *node) {

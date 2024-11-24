@@ -789,7 +789,7 @@ static AST_Node *Binary(bool) {
     case BITWISE_OR:
     case BITWISE_LEFT_SHIFT:
     case BITWISE_RIGHT_SHIFT:
-      return NewNodeFromToken(BINARY_BITWISE_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(BINARY_BITWISE_NODE, NULL, NULL, parse_result, operator_token, AnnotateType(U64));
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Binary(): Unknown operator '%s'\n",
