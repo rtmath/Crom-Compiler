@@ -257,5 +257,5 @@ void RunAllEnumTests() {
   Test_Enum_IncrementalImplicitValues_IncrementsFromAssignedValue_OK();
   Test_Enum_EnumNameAsValue_NotAllowed();
 
-  PrintAssertionResults("Enum");
+  PrintAssertionResults("Enums");
 }

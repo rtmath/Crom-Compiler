@@ -395,7 +395,6 @@ void RunAllNumberTests() {
   Test_Binary_IntAssignment_NotAllowed();
   Test_Binary_FloatAssignment_NotAllowed();
 
-
   /* ---- Floats ---- */
   Test_Float_LeadingDecimalLiteral_NotAllowed();
   Test_Float_TrailingDecimalLiteral_NotAllowed();
