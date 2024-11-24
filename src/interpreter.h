@@ -2,7 +2,8 @@
 #define INTERPRETER_H
 
 #include "ast.h"
+#include "symbol_table.h"
 
-void Interpret(AST_Node *root);
+void Interpret(AST_Node *root, SymbolTable *st);
 
 #endif

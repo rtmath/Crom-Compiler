@@ -356,8 +356,8 @@ static void InterpretRecurse(AST_Node *n) {
   }
 }
 
-void Interpret(AST_Node *root) {
-  Scope.locals[Scope.depth] = NewSymbolTable();
+void Interpret(AST_Node *root, SymbolTable *st) {
+  Scope.locals[Scope.depth] = st;
 
   InterpretRecurse(root);
   if (root->error_code == ERR_UNSET) {
