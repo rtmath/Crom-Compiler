@@ -1011,14 +1011,14 @@ static AST_Node *ArraySubscripting(bool) {
   return return_value;
 }
 
-static AST_Node *EnumIdentifier(bool can_assign) {
+static AST_Node *EnumListEntry(bool can_assign) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
   bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.current);
   Token identifier_token = Parser.current;
 
   if (!is_in_symbol_table) {
     ERROR_AT_TOKEN(identifier_token,
-                   "EnumIdentifier(): Line %d: Undeclared identifier '%.*s'",
+                   "EnumListEntry(): Line %d: Undeclared identifier '%.*s'",
                    identifier_token.on_line,
                    identifier_token.length,
                    identifier_token.position_in_source);
@@ -1029,7 +1029,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
     Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
     REDECLARATION_AT_TOKEN(identifier_token,
                            already_declared.token,
-                           "EnumIdentifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                           "EnumListEntry(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                            identifier_token.length,
                            identifier_token.position_in_source,
                            already_declared.annotation.declared_on_line);
@@ -1039,7 +1039,7 @@ static AST_Node *EnumIdentifier(bool can_assign) {
   if (Match(EQUALS)) {
     if (!can_assign) {
       ERROR_AT_TOKEN(identifier_token,
-                     "EnumIdentifier(): Cannot assign to identifier '%.*s'",
+                     "EnumListEntry(): Cannot assign to identifier '%.*s'",
                      identifier_token.length,
                      identifier_token.position_in_source);
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
@@ -1049,17 +1049,17 @@ static AST_Node *EnumIdentifier(bool can_assign) {
     return NewNodeFromSymbol(ENUM_ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
-  return NewNodeFromToken(ENUM_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
+  return NewNodeFromToken(ENUM_LIST_ENTRY_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
 }
 
-static AST_Node *EnumBlock() {
-  AST_Node *n = NULL;
-  AST_Node **current = &n;
+static void EnumBlock(AST_Node **enum_name) {
+  AST_Node **current = enum_name;
 
   Consume(LCURLY, "EnumBlock(): Expected '{' after ENUM declaration, got %s", TokenTypeTranslation(Parser.current.type));
 
+  bool empty_body = true;
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    if (n == NULL) n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    empty_body = false;
 
     Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
     bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.next);
@@ -1078,7 +1078,7 @@ static AST_Node *EnumBlock() {
             TokenTypeTranslation(Parser.next.type));
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
-    LEFT_NODE(*current) = EnumIdentifier(CAN_ASSIGN);
+    LEFT_NODE(*current) = EnumListEntry(CAN_ASSIGN);
     RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
     current = &RIGHT_NODE(*current);
@@ -1088,13 +1088,13 @@ static AST_Node *EnumBlock() {
 
   Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %s", TokenTypeTranslation(Parser.current.type));
 
-  if (n == NULL) {
+  if (empty_body) {
      SetErrorCodeIfUnset(&error_code, ERR_EMPTY_BODY);
      ERROR_AT_TOKEN(Parser.current,
-                    "EnumBlock(): Enum body cannot be declared", "");
+                    "EnumBlock(): Enum body cannot be empty", "");
   }
 
-  return n;
+  Match(SEMICOLON); // Optional semicolon
 }
 
 static AST_Node *Enum(bool) {
@@ -1119,7 +1119,9 @@ static AST_Node *Enum(bool) {
   AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_UNINITIALIZED));
 
   AST_Node *enum_name = Identifier(false);
-  LEFT_NODE(enum_name) = EnumBlock();
+  enum_name->type = ENUM_IDENTIFIER_NODE;
+
+  EnumBlock(&enum_name);
 
   AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_DEFINED));
   return enum_name;

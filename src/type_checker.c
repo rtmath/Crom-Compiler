@@ -15,6 +15,7 @@ static ErrorCode error_code;
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
 ParserAnnotation ShrinkToSmallestContainingType(AST_Node *node);
+static void CheckTypesRecurse(AST_Node *node);
 
 /* === HELPERS === */
 static int BitWidth(AST_Node *node) {
@@ -69,6 +70,15 @@ void ActualizeType(AST_Node *node, ParserAnnotation a) {
 
 void ShrinkAndActualizeType(AST_Node *node) {
   ActualizeType(node, ShrinkToSmallestContainingType(node));
+
+  if (node->type == ENUM_LIST_ENTRY_NODE)
+  {
+    Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
+    int preserve_dol = s.annotation.declared_on_line;
+    s.annotation = node->annotation;
+    s.annotation.declared_on_line = preserve_dol;
+    AddTo(SYMBOL_TABLE, s);
+  }
 }
 
 bool Overflow(AST_Node *from, AST_Node *target_type) {
@@ -184,12 +194,12 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   if (types_match && types_are_not_numbers) return true;
 
   if (from->type == IDENTIFIER_NODE) {
-    // If the From node is an Identifier, its token
-    // will be the identifier name (not a literal value)
-    // so the TokenTo*() functions won't work properly.
-    //
-    // Ergo, range validation is not performed on identifiers
-    // if their type is not obviously convertible.
+    if (types_match == true &&
+        BitWidth(from) == BitWidth(target_type) &&
+        IsSigned(from) == IsSigned(target_type)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -304,7 +314,8 @@ static void Assignment(AST_Node *identifier) {
 
   AST_Node *value = LEFT_NODE(identifier);
   if ((identifier->type == ENUM_ASSIGNMENT_NODE) &&
-      NodeOstensibleType(value) != OST_INT) {
+      ((NodeOstensibleType(value) != OST_INT) ||
+       (value->type == IDENTIFIER_NODE))) {
     SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
     ERROR_AT_TOKEN(value->token,
                    "Assignment(): Assignment to enum identifier must be of type INT", "");
@@ -340,6 +351,11 @@ static void Assignment(AST_Node *identifier) {
     ActualizeType(value, identifier->annotation);
     if (assignment_to_array_slot) {
       value->annotation.is_array = false;
+    }
+
+    if (value->type == IDENTIFIER_NODE) {
+      Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
+      identifier->value = s.value;
     }
 
     return;
@@ -385,6 +401,7 @@ static void Literal(AST_Node *node) {
   if (node->token.type == HEX_LITERAL ||
       node->token.type == BINARY_LITERAL) {
       ShrinkAndActualizeType(node);
+      node->value = NewValue(node->annotation, node->token);
     return;
   }
 
@@ -395,11 +412,13 @@ static void Literal(AST_Node *node) {
     case OST_CHAR:
     {
       ShrinkAndActualizeType(node);
+      node->value = NewValue(node->annotation, node->token);
       return;
     } break;
 
     case OST_STRING: {
       String(node);
+      node->value = NewValue(node->annotation, node->token);
       return;
     } break;
 
@@ -624,6 +643,8 @@ static void UnaryOp(AST_Node *node) {
       node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_INT;
       node->annotation.is_signed = !node->annotation.is_signed;
+
+      node->value = NewIntValue(-LEFT_NODE(node)->value.as.integer);
       return;
     }
 
@@ -631,6 +652,8 @@ static void UnaryOp(AST_Node *node) {
       node->annotation = LEFT_NODE(node)->annotation;
       node->annotation.actual_type = ACT_FLOAT;
       node->annotation.is_signed = !node->annotation.is_signed;
+
+      node->value = NewIntValue(-LEFT_NODE(node)->value.as.floating);
       return;
     }
 
@@ -787,11 +810,49 @@ static void InitializerList(AST_Node *node) {
   ActualizeType(node, LEFT_NODE(node)->annotation);
 }
 
-void CheckTypesRecurse(AST_Node *node) {
+static void EnumListRecurse(AST_Node *node, int implicit_value) {
+  AST_Node *list_entry = LEFT_NODE(node);
+
+  if (list_entry == NULL) return;
+
+  if (list_entry->type == ENUM_ASSIGNMENT_NODE) {
+    CheckTypesRecurse(list_entry);
+    AST_Node *value = LEFT_NODE(list_entry);
+    if ((NodeOstensibleType(value) != OST_INT) ||
+        (value->type == IDENTIFIER_NODE)) {
+      SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+      ERROR_AT_TOKEN(value->token,
+                     "Assignment(): Assignment to enum identifier must be of type INT", "");
+    }
+
+    ShrinkAndActualizeType(list_entry);
+    SetValue(SYMBOL_TABLE, list_entry->token, LEFT_NODE(list_entry)->value);
+  }
+
+  if (list_entry->type == ENUM_LIST_ENTRY_NODE) {
+    list_entry->value = NewIntValue(implicit_value++);
+    ShrinkAndActualizeType(list_entry);
+    SetValue(SYMBOL_TABLE, list_entry->token, list_entry->value);
+  }
+
+  EnumListRecurse(RIGHT_NODE(node), implicit_value);
+}
+
+static void HandleEnum(AST_Node *node) {
+  EnumListRecurse(node, 0);
+  ActualizeType(node, node->annotation);
+}
+
+static void CheckTypesRecurse(AST_Node *node) {
   SymbolTable *remember_st = SYMBOL_TABLE;
   if (node->type == FUNCTION_NODE) {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
     SYMBOL_TABLE = s.fn_params;
+  }
+
+  if (node->type == ENUM_IDENTIFIER_NODE) {
+    HandleEnum(node);
+    return;
   }
 
   if (LEFT_NODE(node)   != NULL) CheckTypesRecurse(LEFT_NODE(node));
@@ -818,8 +879,7 @@ void CheckTypesRecurse(AST_Node *node) {
     case BINARY_BITWISE_NODE: {
       BinaryBitwiseOp(node);
     } break;
-    case IDENTIFIER_NODE:
-    case ENUM_IDENTIFIER_NODE: {
+    case IDENTIFIER_NODE: {
       Identifier(node);
     } break;
     case ARRAY_SUBSCRIPT_NODE: {
@@ -829,8 +889,7 @@ void CheckTypesRecurse(AST_Node *node) {
       Declaration(node);
     } break;
     case TERSE_ASSIGNMENT_NODE:
-    case ASSIGNMENT_NODE:
-    case ENUM_ASSIGNMENT_NODE: {
+    case ASSIGNMENT_NODE: {
       Assignment(node);
     } break;
     case PREFIX_INCREMENT_NODE:

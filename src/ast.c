@@ -13,6 +13,7 @@ static const char* const _NodeTypeTranslation[] =
   [IDENTIFIER_NODE] = "Identifier",
   [STRUCT_FIELD_IDENTIFIER_NODE] = "Struct Field Identifier",
   [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
+  [ENUM_LIST_ENTRY_NODE] = "Enum List Entry",
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
   [ARRAY_INITIALIZER_LIST_NODE] = "Array Initializer List",
 

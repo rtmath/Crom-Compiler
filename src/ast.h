@@ -24,7 +24,8 @@ typedef enum {
   DECLARATION_NODE,
   IDENTIFIER_NODE,
   STRUCT_FIELD_IDENTIFIER_NODE,
-  ENUM_IDENTIFIER_NODE,
+  ENUM_IDENTIFIER_NODE, // the Enum name (enum Weekday { ... })
+  ENUM_LIST_ENTRY_NODE, // the individual Enum values (Monday, etc)
   ARRAY_SUBSCRIPT_NODE,
   ARRAY_INITIALIZER_LIST_NODE,
 
