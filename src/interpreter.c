@@ -117,6 +117,30 @@ void Assignment(AST_Node *n) {
 
 void Unary(AST_Node *n) {
   switch(n->token.type) {
+    case BITWISE_NOT: {
+      uint64_t value = LEFT_NODE(n)->value.as.uinteger;
+
+      switch(LEFT_NODE(n)->annotation.bit_width) {
+        case 8: {
+          uint8_t truncated = (~value);
+          n->value = NewUintValue(truncated);
+        } break;
+        case 16: {
+          uint16_t truncated = (~value);
+          n->value = NewUintValue(truncated);
+        } break;
+        case 32: {
+          uint32_t truncated = (~value);
+          n->value = NewUintValue(truncated);
+        } break;
+        case 64: {
+          uint64_t truncated = (~value);
+          n->value = NewUintValue(truncated);
+        } break;
+        default: return;
+      }
+
+    } break;
     case LOGICAL_NOT: {
       n->value = NewBoolValue(!(LEFT_NODE(n)->value.as.boolean));
     } break;
@@ -210,6 +234,14 @@ void BinaryBitwise(AST_Node *n) {
     } break;
     case BITWISE_AND: {
       n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger &
+                              RIGHT_NODE(n)->value.as.uinteger);
+    } break;
+    case BITWISE_LEFT_SHIFT: {
+      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger <<
+                              RIGHT_NODE(n)->value.as.uinteger);
+    } break;
+    case BITWISE_RIGHT_SHIFT: {
+      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger >>
                               RIGHT_NODE(n)->value.as.uinteger);
     } break;
     default: {

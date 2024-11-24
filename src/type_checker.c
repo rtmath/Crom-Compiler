@@ -628,10 +628,23 @@ static void FunctionCall(AST_Node *node) {
 
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = LEFT_NODE(node);
+
   if (node->token.type == LOGICAL_NOT) {
     VerifyTypeIs(ACT_BOOL, check_node);
     node->annotation = LEFT_NODE(node)->annotation;
     node->annotation.actual_type = ACT_BOOL;
+    return;
+  }
+
+  if (node->token.type == BITWISE_NOT) {
+    VerifyTypeIs(ACT_INT, check_node);
+    if (check_node->annotation.is_signed) {
+      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      ERROR_AT_TOKEN(check_node->token,
+                     "Operand must be of type Uint", "");
+    }
+    node->annotation = LEFT_NODE(node)->annotation;
+    node->annotation.actual_type = ACT_INT;
     return;
   }
 

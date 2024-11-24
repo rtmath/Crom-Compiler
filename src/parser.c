@@ -723,6 +723,7 @@ static AST_Node *Unary(bool) {
 
       return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     } break;
+
     case MINUS_MINUS: {
       if (token_after_operator.type != IDENTIFIER) {
         ERROR_AT_TOKEN(token_after_operator,
@@ -742,6 +743,8 @@ static AST_Node *Unary(bool) {
 
       return NewNodeFromToken(PREFIX_DECREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
     } break;
+
+    case BITWISE_NOT:
     case LOGICAL_NOT:
     case MINUS:
       return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
