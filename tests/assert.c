@@ -5,7 +5,7 @@
 #include "assert.h"
 #include "hashtable.h"
 
-#define MAX_ERROR_MESSAGES 20
+#define MAX_ERROR_MESSAGES 50
 #define MAX_ERROR_MSG_SIZE 200
 
 HashTable *ht;
@@ -48,10 +48,9 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
   if (ht == NULL) ht = NewHashTable();
 
   bool predicate = false;
-
   switch(v1.type) {
     case V_NONE: {
-      LogError(true, "    %s(): Value type from AST is NONE\n", func_name);
+      LogError(false, "    %s(): Value type from AST is NONE\n", func_name);
     } break;
     case V_INT: {
       predicate = v1.as.integer == v2.as.integer;
@@ -90,7 +89,10 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
                (v1.as.floating) ? "true" : "false",
                (v2.as.floating) ? "true" : "false");
     } break;
-    default: ERROR_AND_EXIT_FMTMSG("[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
+    default: {
+      LogError(false, "[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
+      ERROR_AND_EXIT_FMTMSG("[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
+    } break;
   }
 
   LogResults(predicate, file_name);

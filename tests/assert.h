@@ -11,10 +11,11 @@ typedef struct {
   int failed;
 } TestResults;
 
-#define COMPILE(source)                      \
-  AST_Node *ast = Compile(__func__, source); \
-  if (ast->error_code == ERR_UNSET) {        \
-    Interpret(ast);                          \
+#define COMPILE(source)                          \
+  SymbolTable *st = NewSymbolTable();            \
+  AST_Node *ast = Compile(__func__, source, st); \
+  if (ast->error_code == ERR_UNSET) {            \
+    Interpret(ast, st);                          \
   }
 
 #define AssertNoError() ASSERT_EXPECT_ERROR(ast, OK, __FILE__, __func__)
