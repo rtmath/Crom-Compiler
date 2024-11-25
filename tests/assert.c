@@ -7,6 +7,7 @@
 
 #define MAX_ERROR_MESSAGES 50
 #define MAX_ERROR_MSG_SIZE 200
+#define MSG_SPACER "               "
 
 HashTable *ht;
 const char *error_msgs[MAX_ERROR_MESSAGES];
@@ -38,7 +39,7 @@ static void LogResults(bool predicate, const char *file_name) {
 bool ASSERT(bool predicate, const char *file_name, const char *func_name) {
   if (ht == NULL) ht = NewHashTable();
 
-  LogError(predicate, "      %s() assertion failed", func_name);
+  LogError(predicate, MSG_SPACER "%s() assertion failed", func_name);
   LogResults(predicate, file_name);
 
   return predicate;
@@ -50,12 +51,12 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
   bool predicate = false;
   switch(v1.type) {
     case V_NONE: {
-      LogError(false, "      %s(): Value type from AST is NONE\n", func_name);
+      LogError(false, MSG_SPACER "%s(): Value type from AST is NONE\n", func_name);
     } break;
     case V_INT: {
       predicate = v1.as.integer == v2.as.integer;
       LogError(predicate,
-               "    %s() assertion failed, %ld != %ld",
+               MSG_SPACER "%s() assertion failed, %ld != %ld",
                func_name,
                v1.as.integer,
                v2.as.integer);
@@ -63,7 +64,7 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
     case V_UINT: {
       predicate = v1.as.uinteger == v2.as.uinteger;
       LogError(predicate,
-               "      %s() assertion failed, %lu != %lu",
+               MSG_SPACER "%s() assertion failed, %lu != %lu",
                func_name,
                v1.as.uinteger,
                v2.as.uinteger);
@@ -76,7 +77,7 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
       // point arithmetic, for example
       predicate = (v1.as.floating == v2.as.floating);
       LogError(predicate,
-               "      %s() assertion failed, %f != %f",
+               MSG_SPACER "%s() assertion failed, %f != %f",
                func_name,
                v1.as.floating,
                v2.as.floating);
@@ -84,7 +85,7 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
     case V_BOOL: {
       predicate = (v1.as.boolean == v2.as.boolean);
       LogError(predicate,
-               "      %s() assertion failed, %s != %s",
+               MSG_SPACER "%s() assertion failed, %s != %s",
                func_name,
                (v1.as.floating) ? "true" : "false",
                (v2.as.floating) ? "true" : "false");
@@ -105,7 +106,7 @@ bool ASSERT_EXPECT_ERROR(AST_Node *root, ErrorCode code, const char *file_name, 
 
   bool predicate = root->error_code == code;
   LogError(predicate,
-           "      %s() Expected '%s', got '%s'",
+           MSG_SPACER "%s() Expected '%s', got '%s'",
            func_name,
            ErrorCodeTranslation(code),
            ErrorCodeTranslation(root->error_code));
@@ -134,7 +135,7 @@ void PrintResults(TestResults t, const char *test_group_name) {
                               : "\x1b[34m"; // Set color: Blue
   const char *stop_coloration = "\x1b[39m"; // Set color: Default
 
-  printf("%10s: %s%2d / %2d assertions succeeded.%s\n",
+  printf("%17s: %s%3d / %3d assertions succeeded.%s\n",
          test_group_name,
          coloration,
          t.succeeded,
