@@ -115,6 +115,43 @@ void Assignment(AST_Node *n) {
   n->value = symbol.value;
 }
 
+void TerseAssignment(AST_Node *n) {
+  AST_Node *identifier = LEFT_NODE(n);
+  AST_Node *value = RIGHT_NODE(n);
+
+  switch(n->token.type) {
+    case PLUS_EQUALS: {
+      n->value = AddValues(identifier->value, value->value);
+    } break;
+    case MINUS_EQUALS: {
+      n->value = SubValues(identifier->value, value->value);
+    } break;
+    case TIMES_EQUALS: {
+      n->value = MulValues(identifier->value, value->value);
+    } break;
+    case DIVIDE_EQUALS: {
+      n->value = DivValues(identifier->value, value->value);
+    } break;
+    case MODULO_EQUALS: {
+      n->value = ModValues(identifier->value, value->value);
+    } break;
+
+    case BITWISE_OR_EQUALS: {
+      n->value = NewUintValue(identifier->value.as.uinteger | value->value.as.uinteger);
+    } break;
+    case BITWISE_AND_EQUALS: {
+      n->value = NewUintValue(identifier->value.as.uinteger & value->value.as.uinteger);
+    } break;
+    case BITWISE_XOR_EQUALS: {
+      n->value = NewUintValue(identifier->value.as.uinteger ^ value->value.as.uinteger);
+    } break;
+
+    default: printf("TerseAssignment(): Not implemented yet\n");
+  }
+
+  SetValue(SYMBOL_TABLE(), identifier->token, n->value);
+}
+
 void Unary(AST_Node *n) {
   switch(n->token.type) {
     case BITWISE_NOT: {
@@ -370,6 +407,10 @@ static void InterpretRecurse(AST_Node *n) {
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(n);
+      check_value = n->value;
+    } break;
+    case TERSE_ASSIGNMENT_NODE: {
+      TerseAssignment(n);
       check_value = n->value;
     } break;
     case LITERAL_NODE: {

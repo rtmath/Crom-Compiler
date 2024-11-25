@@ -150,8 +150,6 @@ Value NewBoolValue(bool b)  {
 }
 
 Value AddValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("AddValues(): Type mismatch");
-
   switch(v1.type) {
     case V_INT: return NewIntValue(v1.as.integer + v2.as.integer);
     case V_UINT: return NewUintValue(v1.as.uinteger + v2.as.uinteger);
@@ -163,8 +161,6 @@ Value AddValues(Value v1, Value v2) {
 }
 
 Value SubValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("SubValues(): Type mismatch");
-
   switch(v1.type) {
     case V_INT: return NewIntValue(v1.as.integer - v2.as.integer);
     case V_UINT: return NewUintValue(v1.as.uinteger - v2.as.uinteger);
@@ -176,8 +172,6 @@ Value SubValues(Value v1, Value v2) {
 }
 
 Value MulValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("MulValues(): Type mismatch");
-
   switch(v1.type) {
     case V_INT: return NewIntValue(v1.as.integer * v2.as.integer);
     case V_UINT: return NewUintValue(v1.as.uinteger * v2.as.uinteger);
@@ -189,8 +183,6 @@ Value MulValues(Value v1, Value v2) {
 }
 
 Value DivValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("DivValues(): Type mismatch");
-
   switch(v1.type) {
     case V_INT: return NewIntValue(v1.as.integer / v2.as.integer);
     case V_UINT: return NewUintValue(v1.as.uinteger / v2.as.uinteger);
@@ -202,8 +194,6 @@ Value DivValues(Value v1, Value v2) {
 }
 
 Value ModValues(Value v1, Value v2) {
-  if (v1.type != v2.type) ERROR_AND_EXIT("ModValues(): Type mismatch");
-
   switch(v1.type) {
     case V_INT: return NewIntValue(v1.as.integer % v2.as.integer);
     case V_UINT: return NewUintValue(v1.as.uinteger % v2.as.uinteger);
