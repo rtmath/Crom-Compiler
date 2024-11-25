@@ -35,6 +35,13 @@ static void Test_Bool_NOTTrue_False() {
   AssertEqual(NewBoolValue(false));
 }
 
+static void Test_Bool_NOTNOTTrue_True() {
+  COMPILE("bool check = !!true;")
+
+  AssertNoError();
+  AssertEqual(NewBoolValue(true));
+}
+
 static void Test_Bool_AND_FalseAndFalse_False() {
   COMPILE("bool check = false && false;")
 
@@ -294,6 +301,7 @@ void RunAllBoolTests() {
   /* --- Logical Operators --- */
   Test_Bool_NOTFalse_True();
   Test_Bool_NOTTrue_False();
+  Test_Bool_NOTNOTTrue_True();
 
   Test_Bool_AND_FalseAndFalse_False();
   Test_Bool_AND_TrueAndFalse_False();
