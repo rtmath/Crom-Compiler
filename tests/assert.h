@@ -2,6 +2,7 @@
 #define ASSERT_H
 
 #include <stdbool.h>
+#include <stddef.h> // for NULL
 
 #include "common.h"
 #include "../src/value.h"
@@ -12,8 +13,8 @@ typedef struct {
 } TestResults;
 
 #define COMPILE(source)                          \
-  SymbolTable *st = NewSymbolTable();            \
-  AST_Node *ast = Compile(__func__, source, st); \
+  SymbolTable *st = NULL;                        \
+  AST_Node *ast = Compile(__func__, source, &st); \
   if (ast->error_code == ERR_UNSET) {            \
     Interpret(ast, st);                          \
   }

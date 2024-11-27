@@ -12,7 +12,7 @@ int main(void) {
   ReadFile(filename, &contents);
 
   SymbolTable *st = NewSymbolTable();
-  AST_Node *compiled_code = Compile(filename, contents, st);
+  AST_Node *compiled_code = Compile(filename, contents, &st);
 
   Interpret(compiled_code, st);
   PrintAST(compiled_code);

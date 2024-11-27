@@ -7,12 +7,12 @@
 #include "symbol_table.h"
 #include "type_checker.h"
 
-AST_Node *Compile(const char *filename, const char *source, SymbolTable *st) {
+AST_Node *Compile(const char *filename, const char *source, SymbolTable **st) {
   InitLexer(filename, source);
-  InitParser(&st);
+  InitParser(st);
   AST_Node *ast = ParserBuildAST();
 
-  CheckTypes(ast, st);
+  CheckTypes(ast, *st);
 
   return ast;
 }
