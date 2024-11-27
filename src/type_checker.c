@@ -888,6 +888,24 @@ static void HandleEnum(AST_Node *node) {
   ActualizeType(node, node->annotation);
 }
 
+static void StructMemberAccess(AST_Node *struct_identifier) {
+  if (LEFT_NODE(struct_identifier) == NULL) {
+    return;
+  }
+  AST_Node *member = LEFT_NODE(struct_identifier);
+
+  if (member == NULL ||
+      member->type != STRUCT_MEMBER_IDENTIFIER_NODE) {
+    return;
+  }
+
+  Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE, struct_identifier->token);
+  Symbol identifier_symbol = RetrieveFrom(struct_symbol.struct_fields, member->token);
+
+  ActualizeType(member, identifier_symbol.annotation);
+  ActualizeType(struct_identifier, member->annotation);
+}
+
 static void CheckTypesRecurse(AST_Node *node) {
   SymbolTable *remember_st = SYMBOL_TABLE;
   if (node->type == FUNCTION_NODE) {
@@ -930,6 +948,7 @@ static void CheckTypesRecurse(AST_Node *node) {
     case ARRAY_SUBSCRIPT_NODE: {
       ShrinkAndActualizeType(node);
     } break;
+    case STRUCT_DECLARATION_NODE:
     case DECLARATION_NODE: {
       Declaration(node);
     } break;
@@ -957,8 +976,8 @@ static void CheckTypesRecurse(AST_Node *node) {
     case RETURN_NODE: {
       Return(node);
     } break;
-    case STRUCT_FIELD_IDENTIFIER_NODE: {
-      ActualizeType(node, node->annotation);
+    case STRUCT_IDENTIFIER_NODE: {
+      StructMemberAccess(node);
     } break;
     case ARRAY_INITIALIZER_LIST_NODE: {
       InitializerList(node);

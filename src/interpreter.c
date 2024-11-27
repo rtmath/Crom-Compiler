@@ -332,6 +332,39 @@ void FunctionCall(AST_Node *n) {
   EndScope();
 }
 
+void StructDeclaration(AST_Node *struct_identifier) {
+  AST_Node **current = &LEFT_NODE(struct_identifier);
+  while (*current != NULL) {
+    if (LEFT_NODE(*current) == NULL) {
+      current = &RIGHT_NODE(*current);
+      continue;
+    }
+
+    Literal(LEFT_NODE(*current));
+
+    // TODO: Make a helper function for storing struct members
+    Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), struct_identifier->token);
+    Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, (*current)->token);
+    struct_member.value = LEFT_NODE(*current)->value;
+    AddTo(parent_struct.struct_fields, struct_member);
+
+    current = &RIGHT_NODE(*current);
+  }
+}
+
+void StructMemberAccess(AST_Node *struct_identifier) {
+  if (RIGHT_NODE(struct_identifier) == NULL) {
+    if (LEFT_NODE(struct_identifier) == NULL) {
+      return;
+    }
+    return;
+  }
+
+  Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), RIGHT_NODE(struct_identifier)->token);
+  Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, struct_identifier->token);
+  struct_identifier->value = struct_member.value;
+}
+
 void PrefixIncrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
   if (s.annotation.is_signed) {
@@ -393,6 +426,13 @@ static void InterpretRecurse(AST_Node *n) {
   if (RIGHT_NODE(n)  != NULL) InterpretRecurse(RIGHT_NODE(n));
 
   switch(n->type) {
+    case STRUCT_DECLARATION_NODE: {
+      StructDeclaration(n);
+    } break;
+    case STRUCT_MEMBER_IDENTIFIER_NODE: {
+      StructMemberAccess(n);
+      check_value = n->value;
+    } break;
     case UNARY_OP_NODE: {
       Unary(n);
     } break;

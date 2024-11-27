@@ -16,7 +16,7 @@ ErrorCode error_code = ERR_UNSET;
 
 /* Forward Declarations */
 static SymbolTable *SYMBOL_TABLE();
-static AST_Node *StructField(Token struct_name);
+static AST_Node *StructMemberAccess(Token struct_name);
 static AST_Node *FunctionDeclaration(Symbol symbol);
 static AST_Node *FunctionCall(Token identifier);
 static AST_Node *InitializerList(ParserAnnotation expected_type);
@@ -469,6 +469,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *Type(bool) {
+
   Token type_token = Parser.current;
   bool is_array = false;
   long array_size = 0;
@@ -668,7 +669,7 @@ static AST_Node *Identifier(bool can_assign) {
   }
 
   if (symbol.annotation.ostensible_type == OST_STRUCT && Match(PERIOD)) {
-    return StructField(identifier_token);
+    return StructMemberAccess(identifier_token);
   }
 
   // Retrieve symbol from the table to use its declaration type and
@@ -1073,8 +1074,7 @@ static void EnumBlock(AST_Node **enum_name) {
       SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
     }
 
-    Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER after Type '%s', got '%s' instead.",
-            TokenTypeTranslation(Parser.current.type),
+    Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER, got '%s' instead.",
             TokenTypeTranslation(Parser.next.type));
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
@@ -1093,8 +1093,6 @@ static void EnumBlock(AST_Node **enum_name) {
      ERROR_AT_TOKEN(Parser.current,
                     "EnumBlock(): Enum body cannot be empty", "");
   }
-
-  Match(SEMICOLON); // Optional semicolon
 }
 
 static AST_Node *Enum(bool) {
@@ -1127,26 +1125,26 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
-static AST_Node *StructField(Token struct_name) {
+static AST_Node *StructMemberAccess(Token struct_name) {
   AST_Node *expr = NULL;
   AST_Node *array_index = NULL;
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_name);
   if (struct_symbol.declaration_state != DECL_DEFINED) {
     ERROR_AT_TOKEN(
       Parser.next,
-      "StructField(): Can't use field from undefined struct", "");
+      "StructMemberAccess(): Can't use member from undefined struct", "");
     SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
   }
 
   BeginScope();
   ShadowSymbolTable(struct_symbol.struct_fields);
 
-  Consume(IDENTIFIER, "StructField(): Expected identifier", "");
+  Consume(IDENTIFIER, "StructMemberAccess(): Expected identifier", "");
   Token field_name = Parser.current;
   if (!IsIn(SYMBOL_TABLE(), field_name)) {
     ERROR_AT_TOKEN(
       field_name,
-      "StructField(): Struct '%.*s' has no field '%.*s'",
+      "StructMemberAccess(): Struct '%.*s' has no member '%.*s'",
       struct_name.length, struct_name.position_in_source,
       field_name.length, field_name.position_in_source);
     SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
@@ -1167,7 +1165,7 @@ static AST_Node *StructField(Token struct_name) {
   if (field_symbol.declaration_state != DECL_DEFINED) {
     ERROR_AT_TOKEN(
       field_name,
-      "StructField(): Field '%.*s' has not been defined",
+      "StructMemberAccess(): Member '%.*s' has not been defined",
       field_name.length,
       field_name.position_in_source);
     SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
@@ -1176,7 +1174,117 @@ static AST_Node *StructField(Token struct_name) {
   UnshadowSymbolTable();
   EndScope();
 
-  return NewNodeFromToken(STRUCT_FIELD_IDENTIFIER_NODE, expr, array_index, NULL, field_name, field_symbol.annotation);
+  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoAnnotation());
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.annotation);
+}
+
+static AST_Node *StructMemberDeclaration(bool can_assign) {
+  Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
+  bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.current);
+  Token identifier_token = Parser.current;
+
+  if (!is_in_symbol_table) {
+    ERROR_AT_TOKEN(identifier_token,
+                   "StructMemberDeclaration(): Line %d: Undeclared identifier '%.*s'",
+                   identifier_token.on_line,
+                   identifier_token.length,
+                   identifier_token.position_in_source);
+    SetErrorCodeIfUnset(&error_code, ERR_UNDECLARED);
+  }
+
+  if (symbol.declaration_state == DECL_NONE && can_assign) {
+    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
+    REDECLARATION_AT_TOKEN(identifier_token,
+                           already_declared.token,
+                           "StructMemberDeclaration(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
+                           identifier_token.length,
+                           identifier_token.position_in_source,
+                           already_declared.annotation.declared_on_line);
+    SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
+  }
+
+  if (Match(EQUALS)) {
+    if (!can_assign) {
+      ERROR_AT_TOKEN(identifier_token,
+                     "StructMemberDeclaration(): Cannot assign to identifier '%.*s'",
+                     identifier_token.length,
+                     identifier_token.position_in_source);
+      SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    }
+
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
+    return NewNodeFromSymbol(STRUCT_MEMBER_IDENTIFIER_NODE, Expression(_), NULL, NULL, stored_symbol);
+  }
+
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
+}
+
+static void StructBody(AST_Node **struct_identifier) {
+  AST_Node **current = struct_identifier;
+
+  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  bool empty_body = true;
+  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
+    empty_body = false;
+
+    ConsumeAnyType("StructBody(): Expected type in struct member declaration.", "");
+    Token type_token = Parser.current;
+
+    if (type_token.type == VOID) {
+      SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
+      ERROR_AT_TOKEN(
+        Parser.current,
+        "StructBody(): Cannot declare a struct member VOID", "");
+    }
+
+    bool is_array = false;
+    if (Match(LBRACKET)) {
+      Consume(RBRACKET, "StructBody(): Expected ']' after '['");
+      is_array = true;
+    }
+
+    Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
+    bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.next);
+
+    if (is_in_symbol_table) {
+      SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
+      ERROR_AT_TOKEN(Parser.next,
+                     "StructBody(): Struct identifier '%.*s' already exists",
+                     Parser.next.length,
+                     Parser.next.position_in_source,
+                     symbol.annotation.declared_on_line);
+    }
+
+    Consume(IDENTIFIER,
+            "StructBody(): Expected IDENTIFIER, got '%s' instead",
+            TokenTypeTranslation(Parser.next.type));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(),
+                                 NewSymbol(Parser.current,
+                                           (is_array)
+                                             ? ArrayAnnotation(type_token.type, 0)
+                                             : AnnotateType(type_token.type),
+                                           DECL_DECLARED));
+
+    LEFT_NODE(*current) = StructMemberDeclaration(CAN_ASSIGN);
+    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+
+    current = &RIGHT_NODE(*current);
+
+    Consume(SEMICOLON, "StructBody(): Expected semicolon after struct member declaration", "");
+  }
+
+  Consume(RCURLY, "StructBody(): Expected '}' after STRUCT block, got '%s' instead",
+          TokenTypeTranslation(Parser.next.type));
+
+  if (empty_body) {
+    SetErrorCodeIfUnset(&error_code, ERR_EMPTY_BODY);
+    ERROR_AT_TOKEN(Parser.current,
+                   "StructBody(): Empty struct body not allowed",
+                   Parser.current.length,
+                   Parser.current.position_in_source);
+  }
 }
 
 static AST_Node *Struct() {
@@ -1198,38 +1306,15 @@ static AST_Node *Struct() {
 
   ShadowSymbolTable(identifier_symbol.struct_fields);
 
-  Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
-          TokenTypeTranslation(Parser.next.type));
-
-  AST_Node *n = NULL;
-  AST_Node **current = &n;
-
-  while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    if (n == NULL) n = NewNodeFromSymbol(STRUCT_FIELD_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_symbol);
-
-    LEFT_NODE(*current) = Statement(_);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
-
-    current = &RIGHT_NODE(*current);
-  }
-
-  Consume(RCURLY, "Struct(): Expected '}' after STRUCT block, got '%s' instead",
-          TokenTypeTranslation(Parser.next.type));
+  AST_Node *struct_identifier = NewNodeFromSymbol(STRUCT_DECLARATION_NODE, NULL, NULL, NULL, identifier_symbol);
+  StructBody(&struct_identifier);
 
   UnshadowSymbolTable();
-
-  if (n == NULL) {
-    SetErrorCodeIfUnset(&error_code, ERR_EMPTY_BODY);
-    ERROR_AT_TOKEN(identifier_symbol.token,
-                   "Struct(): Struct '%.*s' has empty body",
-                   identifier_symbol.token.length,
-                   identifier_symbol.token.position_in_source);
-  }
 
   identifier_symbol.declaration_state = DECL_DEFINED;
   AddTo(SYMBOL_TABLE(), identifier_symbol);
 
-  return n;
+  return struct_identifier;
 }
 
 static AST_Node *InitializerList(ParserAnnotation expected_type) {
@@ -1437,6 +1522,7 @@ AST_Node *ParserBuildAST() {
 
   while (!Match(TOKEN_EOF)) {
     AST_Node *parse_result = Statement(_);
+
     if (parse_result == NULL) {
       SetErrorCodeIfUnset(&error_code, ERR_MISC);
       ERROR_AND_EXIT("ParserBuildAST(): AST could not be created");
