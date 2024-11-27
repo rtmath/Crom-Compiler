@@ -6,6 +6,7 @@
 #include "test_enums.h"
 #include "test_numbers.h"
 #include "test_strings.h"
+#include "test_structs.h"
 #include "test_terse_assignments.h"
 
 void RunTests() {
@@ -14,6 +15,7 @@ void RunTests() {
   RunAllEnumTests();
   RunAllNumberTests();
   RunAllStringTests();
+  RunAllStructTests();
   RunAllTerseAssignmentTests();
 }
 
