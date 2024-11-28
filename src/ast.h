@@ -10,14 +10,6 @@
 #include "type.h"
 #include "value.h"
 
-#define LEFT 0
-#define RIGHT 1
-#define MIDDLE 2
-
-#define LEFT_NODE(n) ((n)->nodes[LEFT])
-#define RIGHT_NODE(n) ((n)->nodes[RIGHT])
-#define MIDDLE_NODE(n) ((n)->nodes[MIDDLE])
-
 typedef enum {
   UNTYPED_NODE,
   START_NODE,
@@ -72,7 +64,9 @@ typedef struct AST_Node {
   ParserAnnotation annotation;
   Value value;
 
-  struct AST_Node *nodes[3];
+  struct AST_Node *left;
+  struct AST_Node *middle;
+  struct AST_Node *right;
 } AST_Node;
 
 AST_Node *NewNode(NodeType type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation annotation);

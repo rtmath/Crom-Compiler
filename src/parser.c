@@ -457,9 +457,9 @@ static AST_Node *Parse(int PrecedenceLevel) {
     AST_Node *infix_node = infix_rule(can_assign);
 
     if (return_node == NULL) {
-      LEFT_NODE(infix_node) = prefix_node;
+      infix_node->left = prefix_node;
     } else {
-      LEFT_NODE(infix_node) = return_node;
+      infix_node->left = return_node;
       return_node = infix_node;
     }
 
@@ -665,7 +665,7 @@ static AST_Node *Identifier(bool can_assign) {
     }
 
     AST_Node *terse_assignment = TerseAssignment(_);
-    LEFT_NODE(terse_assignment) = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
+    terse_assignment->left = NewNodeFromSymbol(IDENTIFIER_NODE, NULL, NULL, NULL, symbol);
     return terse_assignment;
   }
 
@@ -835,10 +835,10 @@ static AST_Node *Block(bool) {
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    LEFT_NODE(*current) = Statement(_);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->left = Statement(_);
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
   }
 
   Consume(RCURLY, "Block(): Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
@@ -929,9 +929,9 @@ static AST_Node *ForStmt(bool) {
   AST_Node *body = Block(_);
   AST_Node **find_last_body_statement = &body;
 
-  while (RIGHT_NODE(*find_last_body_statement) != NULL) find_last_body_statement = &RIGHT_NODE(*find_last_body_statement);
+  while ((*find_last_body_statement)->right != NULL) find_last_body_statement = &(*find_last_body_statement)->right;
 
-  LEFT_NODE(*find_last_body_statement) = after_loop;
+  (*find_last_body_statement)->left = after_loop;
 
   AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
   return NewNode(FOR_NODE, initialization, NULL, while_node, NoAnnotation());
@@ -1079,10 +1079,10 @@ static void EnumBlock(AST_Node **enum_name) {
             TokenTypeTranslation(Parser.next.type));
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
 
-    LEFT_NODE(*current) = EnumListEntry(CAN_ASSIGN);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->left = EnumListEntry(CAN_ASSIGN);
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
 
     Match(COMMA);
   }
@@ -1269,10 +1269,10 @@ static void StructBody(AST_Node **struct_identifier) {
                         : AnnotateType(type_token.type),
                     DECL_DECLARED));
 
-    LEFT_NODE(*current) = StructMemberDeclaration(CAN_ASSIGN);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->left = StructMemberDeclaration(CAN_ASSIGN);
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
 
     Consume(SEMICOLON, "StructBody(): Expected semicolon after struct member declaration", "");
   }
@@ -1326,10 +1326,10 @@ static AST_Node *InitializerList(ParserAnnotation expected_type) {
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     if (n == NULL) n = NewNode(ARRAY_INITIALIZER_LIST_NODE, NULL, NULL, NULL, expected_type);
 
-    LEFT_NODE(*current) = Expression(_);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->left = Expression(_);
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
 
     Match(COMMA);
   }
@@ -1394,9 +1394,9 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
     (*current)->token = identifier_token;
 
     if (Match(COMMA) || !NextTokenIs(RPAREN)) {
-      LEFT_NODE(*current) = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
+      (*current)->left = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
 
-      current = &LEFT_NODE(*current);
+      current = &(*current)->left;
     }
   }
 
@@ -1425,10 +1425,10 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   ShadowSymbolTable(fn_params);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    LEFT_NODE(*current) = Statement(_);
-    RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->left = Statement(_);
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
   }
 
 
@@ -1437,8 +1437,8 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   EndScope();
   UnshadowSymbolTable();
 
-  if (LEFT_NODE(body) == NULL) { // Insert a Void Return if there's no function body
-    LEFT_NODE(body) = NewNode(RETURN_NODE, NULL, NULL, NULL, AnnotateType(VOID));
+  if (body->left == NULL) { // Insert a Void Return if there's no function body
+    body->left = NewNode(RETURN_NODE, NULL, NULL, NULL, AnnotateType(VOID));
   }
 
   return body;
@@ -1501,8 +1501,8 @@ static AST_Node *FunctionCall(Token function_name) {
     if (Match(COMMA)) {
       if (NextTokenIs(RPAREN)) { break; }
 
-      RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
-      current = &RIGHT_NODE(*current);
+      (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+      current = &(*current)->right;
     }
   }
 
@@ -1532,10 +1532,10 @@ AST_Node *ParserBuildAST() {
 
     AST_Node *next_statement = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
 
-    LEFT_NODE(*current_node) = parse_result;
-    RIGHT_NODE(*current_node) = next_statement;
+    (*current_node)->left = parse_result;
+    (*current_node)->right = next_statement;
 
-    current_node = &RIGHT_NODE(*current_node);
+    current_node = &(*current_node)->right;
   }
 
   SetErrorCodeIfUnset(&root->error_code, error_code);

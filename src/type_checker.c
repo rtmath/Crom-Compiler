@@ -303,7 +303,7 @@ static void Declaration(AST_Node *identifier) {
 }
 
 static void Assignment(AST_Node *identifier) {
-  if (!identifier->annotation.is_array && MIDDLE_NODE(identifier) != NULL) {
+  if (!identifier->annotation.is_array && identifier->middle != NULL) {
     ERROR_AT_TOKEN(
       identifier->token,
       "Assignment(): '%.*s' is not an array\n",
@@ -312,7 +312,7 @@ static void Assignment(AST_Node *identifier) {
     SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
   }
 
-  AST_Node *value = LEFT_NODE(identifier);
+  AST_Node *value = identifier->left;
   if (NodeIs_EnumAssignment(identifier) &&
       ((NodeOstensibleType(value) != OST_INT) ||
        NodeIs_Identifier(value))) {
@@ -375,15 +375,15 @@ static void Assignment(AST_Node *identifier) {
     identifier->token.length,
     identifier->token.position_in_source,
     AnnotationTranslation(identifier->annotation),
-    AnnotationTranslation(LEFT_NODE(identifier)->annotation));
+    AnnotationTranslation(identifier->left->annotation));
   SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
 }
 
 static void Identifier(AST_Node *identifier) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
 
-  if (!NodeIs_NULL(MIDDLE_NODE(identifier)) &&
-      NodeIs_ArraySubscript(MIDDLE_NODE(identifier)) &&
+  if (!NodeIs_NULL(identifier->middle) &&
+      NodeIs_ArraySubscript(identifier->middle) &&
       identifier->annotation.ostensible_type == OST_STRING) {
     symbol.annotation.ostensible_type = OST_CHAR;
   }
@@ -440,7 +440,7 @@ static void Literal(AST_Node *node) {
 static void IncrementOrDecrement(AST_Node *node) {
   (NodeIs_PrefixIncrement(node) ||
    NodeIs_PrefixDecrement(node))
-  ? ActualizeType(node, LEFT_NODE(node)->annotation)
+  ? ActualizeType(node, node->left->annotation)
   : ActualizeType(node, node->annotation);
 }
 
@@ -450,91 +450,91 @@ static void Return(AST_Node* node) {
     return;
   }
 
-  ActualizeType(node, LEFT_NODE(node)->annotation);
+  ActualizeType(node, node->left->annotation);
 }
 
 static bool IsDeadEnd(AST_Node *node) {
   return (node == NULL) ||
-         (NodeIs_Chain(node)             &&
-          NodeIs_NULL(LEFT_NODE(node))   &&
-          NodeIs_NULL(MIDDLE_NODE(node)) &&
-          NodeIs_NULL(RIGHT_NODE(node)));
+         (NodeIs_Chain(node)        &&
+          NodeIs_NULL(node->left)   &&
+          NodeIs_NULL(node->middle) &&
+          NodeIs_NULL(node->right));
 }
 
 static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   AST_Node **current = &node;
 
   do {
-    if (!NodeIs_NULL(LEFT_NODE(*current))) {
-      switch(LEFT_NODE(*current)->node_type) {
+    if (!NodeIs_NULL((*current)->left)) {
+      switch((*current)->left->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE: {
-          TypeCheckNestedReturns(LEFT_NODE(*current), return_type);
+          TypeCheckNestedReturns((*current)->left, return_type);
         } break;
         default: break;
       }
     }
 
-    if (!NodeIs_NULL(MIDDLE_NODE(*current))) {
-      switch(MIDDLE_NODE(*current)->node_type) {
+    if (!NodeIs_NULL((*current)->middle)) {
+      switch((*current)->middle->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE:
         case CHAIN_NODE: {
-          TypeCheckNestedReturns(MIDDLE_NODE(*current), return_type);
+          TypeCheckNestedReturns((*current)->middle, return_type);
         } break;
         default: break;
       }
     }
 
-    if (!NodeIs_NULL(RIGHT_NODE(*current))) {
-      switch(RIGHT_NODE(*current)->node_type) {
+    if (!NodeIs_NULL((*current)->right)) {
+      switch((*current)->right->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE: {
-          TypeCheckNestedReturns(RIGHT_NODE(*current), return_type);
+          TypeCheckNestedReturns((*current)->right, return_type);
         } break;
         default: break;
       }
     }
 
-    if (NodeIs_Return(LEFT_NODE(*current))) {
-      if (!TypeIsConvertible(LEFT_NODE(*current)->nodes[LEFT], return_type)) {
+    if (NodeIs_Return((*current)->left)) {
+      if (!TypeIsConvertible((*current)->left->left, return_type)) {
         ERROR_AT_TOKEN(
-          LEFT_NODE(*current)->nodes[LEFT]->token,
+          (*current)->left->left->token,
           "TypeCheckNestedReturns(): Can't convert type from %s to %s",
-          AnnotationTranslation((*current)->nodes[LEFT]->annotation),
+          AnnotationTranslation((*current)->left->annotation),
           AnnotationTranslation(return_type->annotation)
         );
         SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
 
   } while(!IsDeadEnd(*current));
 }
 
 static void Function(AST_Node *node) {
-  AST_Node *return_type = LEFT_NODE(node);
-  AST_Node *body = RIGHT_NODE(node);
+  AST_Node *return_type = node->left;
+  AST_Node *body = node->right;
   AST_Node **check = &body;
 
   do {
-    if (NodeIs_If(LEFT_NODE(*check)) ||
-        NodeIs_While(LEFT_NODE(*check)) ||
-        NodeIs_For(LEFT_NODE(*check))) {
-      TypeCheckNestedReturns(LEFT_NODE(*check), return_type);
+    if (NodeIs_If((*check)->left)    ||
+        NodeIs_While((*check)->left) ||
+        NodeIs_For((*check)->left)) {
+      TypeCheckNestedReturns((*check)->left, return_type);
     }
 
-    if (NodeIs_Return(LEFT_NODE(*check))) {
-      if (TypeIsConvertible(LEFT_NODE(*check), return_type)) {
+    if (NodeIs_Return((*check)->left)) {
+      if (TypeIsConvertible((*check)->left, return_type)) {
         ActualizeType(node, node->annotation);
 
-        if (!IsDeadEnd(RIGHT_NODE(*check))) {
+        if (!IsDeadEnd((*check)->right)) {
           ERROR_AT_TOKEN(
-            RIGHT_NODE(*check)->nodes[LEFT]->token,
+            (*check)->right->left->token,
             "Function(): Unreachable code in function %.*s",
             node->token.length,
             node->token.position_in_source);
@@ -542,7 +542,7 @@ static void Function(AST_Node *node) {
         }
 
         return;
-      } else if (NodeActualType(LEFT_NODE(*check)) == ACT_VOID) {
+      } else if (NodeActualType((*check)->left) == ACT_VOID) {
         /* Do nothing
          *
          * This case occurs when a non-void function has no return in the body.
@@ -551,17 +551,17 @@ static void Function(AST_Node *node) {
          * trigger appropriately after the do-while loop finishes. */
       } else {
         ERROR_AT_TOKEN(
-          LEFT_NODE(*check)->nodes[LEFT]->token,
+          (*check)->left->left->token,
           "Function(): in function '%.*s': Return type '%s' is not convertible to '%s'",
           node->token.length,
           node->token.position_in_source,
-          AnnotationTranslation((*check)->nodes[LEFT]->annotation),
+          AnnotationTranslation((*check)->left->annotation),
           AnnotationTranslation(return_type->annotation));
         SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
-    check = &RIGHT_NODE(*check);
+    check = &(*check)->right;
   } while (!IsDeadEnd(*check));
 
   if (NodeActualType(return_type) == ACT_VOID) {
@@ -577,7 +577,7 @@ static void Function(AST_Node *node) {
 }
 
 static void FunctionCall(AST_Node *node) {
-  AST_Node **current = &MIDDLE_NODE(node);
+  AST_Node **current = &(node)->middle;
   Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE, node->token);
 
   for (int i = 0; i < fn_definition.fn_param_count; i++) {
@@ -611,7 +611,7 @@ static void FunctionCall(AST_Node *node) {
       SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     }
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
   }
 
   if ((*current) != NULL) {
@@ -627,11 +627,11 @@ static void FunctionCall(AST_Node *node) {
 }
 
 static void UnaryOp(AST_Node *node) {
-  AST_Node *check_node = LEFT_NODE(node);
+  AST_Node *check_node = (node)->left;
 
   if (node->token.type == LOGICAL_NOT) {
     VerifyTypeIs(ACT_BOOL, check_node);
-    node->annotation = LEFT_NODE(node)->annotation;
+    node->annotation = node->left->annotation;
     node->annotation.actual_type = ACT_BOOL;
     return;
   }
@@ -643,7 +643,7 @@ static void UnaryOp(AST_Node *node) {
       ERROR_AT_TOKEN(check_node->token,
                      "Operand must be of type Uint", "");
     }
-    node->annotation = LEFT_NODE(node)->annotation;
+    node->annotation = node->left->annotation;
     node->annotation.actual_type = ACT_INT;
     return;
   }
@@ -660,20 +660,20 @@ static void UnaryOp(AST_Node *node) {
     }
 
     if (NodeActualType(check_node) == ACT_INT) {
-      node->annotation = LEFT_NODE(node)->annotation;
+      node->annotation = node->left->annotation;
       node->annotation.actual_type = ACT_INT;
       node->annotation.is_signed = !node->annotation.is_signed;
 
-      node->value = NewIntValue(-LEFT_NODE(node)->value.as.integer);
+      node->value = NewIntValue(-(node->left->value.as.integer));
       return;
     }
 
     if (NodeActualType(check_node) == ACT_FLOAT) {
-      node->annotation = LEFT_NODE(node)->annotation;
+      node->annotation = node->left->annotation;
       node->annotation.actual_type = ACT_FLOAT;
       node->annotation.is_signed = !node->annotation.is_signed;
 
-      node->value = NewIntValue(-LEFT_NODE(node)->value.as.floating);
+      node->value = NewIntValue(-(node->left->value.as.floating));
       return;
     }
 
@@ -685,19 +685,19 @@ static void UnaryOp(AST_Node *node) {
 }
 
 static void BinaryArithmeticOp(AST_Node *node) {
-  node->annotation = LEFT_NODE(node)->annotation;
+  node->annotation = node->left->annotation;
   node->annotation.actual_type = (ActualType)NodeOstensibleType(node);
 
-  if (!TypeIsConvertible(RIGHT_NODE(node), node)) {
+  if (!TypeIsConvertible(node->right, node)) {
     ERROR_AT_TOKEN(
-      RIGHT_NODE(node)->token,
+      node->right->token,
       "BinaryArithmeticOp(): Cannot convert from type '%s' to '%s'\n",
-      AnnotationTranslation(RIGHT_NODE(node)->annotation),
+      AnnotationTranslation(node->right->annotation),
       AnnotationTranslation(node->annotation));
     SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 
-  ActualizeType(RIGHT_NODE(node), node->annotation);
+  ActualizeType(node->right, node->annotation);
 }
 
 static void BinaryLogicalOp(AST_Node *node) {
@@ -707,60 +707,60 @@ static void BinaryLogicalOp(AST_Node *node) {
     case LESS_THAN_EQUALS:
     case GREATER_THAN_EQUALS: {
       // Check left node individually for incorrect type
-      if (NodeOstensibleType(LEFT_NODE(node)) != OST_INT &&
-          NodeOstensibleType(LEFT_NODE(node)) != OST_FLOAT) {
+      if (NodeOstensibleType(node->left) != OST_INT &&
+          NodeOstensibleType(node->left) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
-        ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+        ERROR_AT_TOKEN(node->left->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
-                       OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+                       OstensibleTypeTranslation(node->left->annotation.ostensible_type));
         return;
       }
 
       // Check right node individually for incorrect type
-      if (NodeOstensibleType(RIGHT_NODE(node)) != OST_INT &&
-          NodeOstensibleType(RIGHT_NODE(node)) != OST_FLOAT) {
+      if (NodeOstensibleType(node->right) != OST_INT &&
+          NodeOstensibleType(node->right) != OST_FLOAT) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
-        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+        ERROR_AT_TOKEN(node->right->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
-                       OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+                       OstensibleTypeTranslation(node->right->annotation.ostensible_type));
         return;
       }
     } /* Intentional fallthrough */
     case LOGICAL_NOT_EQUALS:
     case EQUALITY: {
       // Ensure both node types match
-      if (NodeOstensibleType(LEFT_NODE(node)) !=
-          NodeOstensibleType(RIGHT_NODE(node))) {
+      if (NodeOstensibleType(node->left) !=
+          NodeOstensibleType(node->right)) {
         SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
-        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+        ERROR_AT_TOKEN(node->right->token,
                        "BinaryLogicalOP(): Operand types don't match", "");
         return;
       }
 
       // If left node is unsigned, check if right node can be converted
-      if (IsSigned(LEFT_NODE(node)) && !IsSigned(RIGHT_NODE(node))) {
-        if (TypeIsConvertible(RIGHT_NODE(node), LEFT_NODE(node))) {
-          ActualizeType(RIGHT_NODE(node), LEFT_NODE(node)->annotation);
+      if (IsSigned(node->left) && !IsSigned(node->right)) {
+        if (TypeIsConvertible(node->right, node->left)) {
+          ActualizeType(node->right, node->left->annotation);
         } else {
           SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
-          ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+          ERROR_AT_TOKEN(node->right->token,
                          "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
-                         OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type),
-                         OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+                         OstensibleTypeTranslation(node->right->annotation.ostensible_type),
+                         OstensibleTypeTranslation(node->left->annotation.ostensible_type));
           return;
         }
       }
 
       // If right node is unsigned, check if left node can be converted
-      if (!IsSigned(LEFT_NODE(node)) && IsSigned(RIGHT_NODE(node))) {
-        if (TypeIsConvertible(LEFT_NODE(node), RIGHT_NODE(node))) {
-          ActualizeType(LEFT_NODE(node), RIGHT_NODE(node)->annotation);
+      if (!IsSigned(node->left) && IsSigned(node->right)) {
+        if (TypeIsConvertible(node->left, node->right)) {
+          ActualizeType(node->left, node->right->annotation);
         } else {
           SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
-          ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+          ERROR_AT_TOKEN(node->left->token,
                          "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
-                         OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type),
-                         OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+                         OstensibleTypeTranslation(node->left->annotation.ostensible_type),
+                         OstensibleTypeTranslation(node->right->annotation.ostensible_type));
           return;
         }
       }
@@ -770,19 +770,19 @@ static void BinaryLogicalOp(AST_Node *node) {
 
     case LOGICAL_AND:
     case LOGICAL_OR: {
-      if (NodeOstensibleType(LEFT_NODE(node)) != OST_BOOL) {
+      if (NodeOstensibleType(node->left) != OST_BOOL) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
-        ERROR_AT_TOKEN(LEFT_NODE(node)->token,
+        ERROR_AT_TOKEN(node->left->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
-                       OstensibleTypeTranslation(LEFT_NODE(node)->annotation.ostensible_type));
+                       OstensibleTypeTranslation(node->left->annotation.ostensible_type));
         return;
       }
 
-      if (NodeOstensibleType(RIGHT_NODE(node)) != OST_BOOL) {
+      if (NodeOstensibleType(node->right) != OST_BOOL) {
         SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
-        ERROR_AT_TOKEN(RIGHT_NODE(node)->token,
+        ERROR_AT_TOKEN(node->right->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
-                       OstensibleTypeTranslation(RIGHT_NODE(node)->annotation.ostensible_type));
+                       OstensibleTypeTranslation(node->right->annotation.ostensible_type));
         return;
       }
 
@@ -796,8 +796,8 @@ static void BinaryLogicalOp(AST_Node *node) {
 }
 
 static void BinaryBitwiseOp(AST_Node *node) {
-  AST_Node *left_value = LEFT_NODE(node);
-  AST_Node *right_value = RIGHT_NODE(node);
+  AST_Node *left_value = node->left;
+  AST_Node *right_value = node->right;
 
   // Check left node individually for incorrect type
   if (NodeOstensibleType(left_value) != OST_INT || IsSigned(left_value)) {
@@ -825,13 +825,13 @@ static void InitializerList(AST_Node *node) {
 
   int num_literals_in_list = 0;
   do {
-    if (!TypeIsConvertible(LEFT_NODE(*current), node)) {
+    if (!TypeIsConvertible((*current)->left, node)) {
       // Actualize the ostensible type for the error message
       ActualizeType(node, node->annotation);
       ERROR_AT_TOKEN(
-        LEFT_NODE(*current)->token,
+        (*current)->left->token,
         "InitializerList(): Cannot convert from type '%s' to '%s'\n",
-        AnnotationTranslation(LEFT_NODE(*current)->annotation),
+        AnnotationTranslation((*current)->left->annotation),
         AnnotationTranslation(node->annotation));
       SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     }
@@ -839,26 +839,26 @@ static void InitializerList(AST_Node *node) {
     num_literals_in_list++;
     if (num_literals_in_list > node->annotation.array_size) {
       ERROR_AT_TOKEN(
-        LEFT_NODE(*current)->token,
+        (*current)->left->token,
         "InitializerList(): Too many elements in initializer list (array size is %d)",
         node->annotation.array_size);
       SetErrorCodeIfUnset(&error_code, ERR_TOO_MANY);
     }
 
-    current = &RIGHT_NODE(*current);
-  } while (*current != NULL && LEFT_NODE(*current) != NULL);
+    current = &(*current)->right;
+  } while (*current != NULL && (*current)->left != NULL);
 
-  ActualizeType(node, LEFT_NODE(node)->annotation);
+  ActualizeType(node, (node)->left->annotation);
 }
 
 static void EnumListRecurse(AST_Node *node, int implicit_value) {
-  AST_Node *list_entry = LEFT_NODE(node);
+  AST_Node *list_entry = (node)->left;
 
   if (list_entry == NULL) return;
 
   if (NodeIs_EnumAssignment(list_entry)) {
     CheckTypesRecurse(list_entry);
-    AST_Node *value = LEFT_NODE(list_entry);
+    AST_Node *value = (list_entry)->left;
     if ((NodeOstensibleType(value) != OST_INT) ||
         NodeIs_Identifier(value)) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
@@ -867,9 +867,9 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
     }
 
     ShrinkAndActualizeType(list_entry);
-    SetValue(SYMBOL_TABLE, list_entry->token, LEFT_NODE(list_entry)->value);
+    SetValue(SYMBOL_TABLE, list_entry->token, list_entry->left->value);
 
-    implicit_value = (LEFT_NODE(list_entry)->value.as.integer + 1);
+    implicit_value = (list_entry->left->value.as.integer + 1);
   }
 
   if (NodeIs_EnumEntry(list_entry)) {
@@ -880,7 +880,7 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
     implicit_value++;
   }
 
-  EnumListRecurse(RIGHT_NODE(node), implicit_value);
+  EnumListRecurse(node->right, implicit_value);
 }
 
 static void HandleEnum(AST_Node *node) {
@@ -889,14 +889,12 @@ static void HandleEnum(AST_Node *node) {
 }
 
 static void StructMemberAccess(AST_Node *struct_identifier) {
-  if (LEFT_NODE(struct_identifier) == NULL) {
+  if (struct_identifier->left == NULL) {
     return;
   }
-  AST_Node *member = LEFT_NODE(struct_identifier);
+  AST_Node *member = struct_identifier->left;
 
-  if (member == NULL || NodeIs_StructMember(member)) {
-    return;
-  }
+  if (member == NULL || NodeIs_StructMember(member)) return;
 
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE, struct_identifier->token);
   Symbol identifier_symbol = RetrieveFrom(struct_symbol.struct_fields, member->token);
@@ -917,9 +915,9 @@ static void CheckTypesRecurse(AST_Node *node) {
     return;
   }
 
-  if (LEFT_NODE(node)   != NULL) CheckTypesRecurse(LEFT_NODE(node));
-  if (MIDDLE_NODE(node) != NULL) CheckTypesRecurse(MIDDLE_NODE(node));
-  if (RIGHT_NODE(node)  != NULL) CheckTypesRecurse(RIGHT_NODE(node));
+  if (node->left   != NULL) CheckTypesRecurse(node->left);
+  if (node->middle != NULL) CheckTypesRecurse(node->middle);
+  if (node->right  != NULL) CheckTypesRecurse(node->right);
 
   if (NodeIs_Function(node)) {
     SYMBOL_TABLE = remember_st;

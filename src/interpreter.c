@@ -54,15 +54,15 @@ void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
   if (stored_symbol.annotation.actual_type == ACT_STRING) {
-    if (!NodeIs_NULL(MIDDLE_NODE(n)) && NodeIs_ArraySubscript(MIDDLE_NODE(n))) {
+    if (!NodeIs_NULL(n->middle) && NodeIs_ArraySubscript(n->middle)) {
       // Extract char from a "str[i]"-type thing
-      int64_t index = TokenToInt64(n->nodes[MIDDLE]->token, 10);
+      int64_t index = TokenToInt64(n->middle->token, 10);
       n->value = NewCharValue(stored_symbol.value.as.string[index]);
     } else {
       n->value = stored_symbol.value;
     }
   } else if (stored_symbol.annotation.is_array) {
-    int subscript = TokenToInt64(MIDDLE_NODE(n)->token, 10);
+    int subscript = TokenToInt64(n->middle->token, 10);
     n->value = stored_symbol.value.as.array[subscript];
   } else {
     n->value = stored_symbol.value;
@@ -70,22 +70,22 @@ void Identifier(AST_Node *n) {
 }
 
 Value ArrayInitializerList(AST_Node *n) {
-  AST_Node **current = &LEFT_NODE(n);
+  AST_Node **current = &n->left;
   Value *data = calloc(n->annotation.array_size, sizeof(Value));
   int i = 0;
 
   do {
-    if (NodeIs_Identifier(LEFT_NODE(*current))) {
-      Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(*current)->token);
+    if (NodeIs_Identifier((*current)->left)) {
+      Symbol s = RetrieveFrom(SYMBOL_TABLE(), (*current)->left->token);
       data[i] = s.value;
     } else {
-      data[i] = NewValue(LEFT_NODE(*current)->annotation,
-                         LEFT_NODE(*current)->token);
+      data[i] = NewValue((*current)->left->annotation,
+                         (*current)->left->token);
     }
 
     i++;
-    current = &RIGHT_NODE(*current);
-  } while (*current != NULL && LEFT_NODE(*current) != NULL);
+    current = &(*current)->right;
+  } while (*current != NULL && (*current)->left != NULL);
 
   return (Value){
     .type = V_ARRAY,
@@ -108,7 +108,7 @@ void Assignment(AST_Node *n) {
   } else if (false /* TODO: Array subscripting */) {
 
   } else {
-    symbol.value = LEFT_NODE(n)->value;
+    symbol.value = n->left->value;
   }
 
   AddTo(SYMBOL_TABLE(), symbol);
@@ -116,8 +116,8 @@ void Assignment(AST_Node *n) {
 }
 
 void TerseAssignment(AST_Node *n) {
-  AST_Node *identifier = LEFT_NODE(n);
-  AST_Node *value = RIGHT_NODE(n);
+  AST_Node *identifier = n->left;
+  AST_Node *value = n->right;
 
   switch(n->token.type) {
     case PLUS_EQUALS: {
@@ -155,9 +155,9 @@ void TerseAssignment(AST_Node *n) {
 void Unary(AST_Node *n) {
   switch(n->token.type) {
     case BITWISE_NOT: {
-      uint64_t value = LEFT_NODE(n)->value.as.uinteger;
+      uint64_t value = n->left->value.as.uinteger;
 
-      switch(LEFT_NODE(n)->annotation.bit_width) {
+      switch(n->left->annotation.bit_width) {
         case 8: {
           uint8_t truncated = (~value);
           n->value = NewUintValue(truncated);
@@ -179,18 +179,18 @@ void Unary(AST_Node *n) {
 
     } break;
     case LOGICAL_NOT: {
-      n->value = NewBoolValue(!(LEFT_NODE(n)->value.as.boolean));
+      n->value = NewBoolValue(!(n->left->value.as.boolean));
     } break;
     case MINUS: {
       if (n->annotation.actual_type == ACT_FLOAT) {
-        n->value = NewFloatValue(-LEFT_NODE(n)->value.as.floating);
+        n->value = NewFloatValue(-(n->left->value.as.floating));
         break;
       }
 
       if (n->annotation.is_signed) {
-        n->value = NewIntValue(-LEFT_NODE(n)->value.as.integer);
+        n->value = NewIntValue(-(n->left->value.as.integer));
       } else {
-        n->value = NewUintValue(-(LEFT_NODE(n)->value.as.uinteger));
+        n->value = NewUintValue(-(n->left->value.as.uinteger));
       }
     } break;
     default: {
@@ -202,24 +202,24 @@ void Unary(AST_Node *n) {
 void BinaryArithmetic(AST_Node *n) {
   switch(n->token.type) {
     case PLUS: {
-      n->value = AddValues(LEFT_NODE(n)->value,
-                           RIGHT_NODE(n)->value);
+      n->value = AddValues(n->left->value,
+                           n->right->value);
     } break;
     case MINUS: {
-      n->value = SubValues(LEFT_NODE(n)->value,
-                           RIGHT_NODE(n)->value);
+      n->value = SubValues(n->left->value,
+                           n->right->value);
     } break;
     case ASTERISK: {
-      n->value = MulValues(LEFT_NODE(n)->value,
-                           RIGHT_NODE(n)->value);
+      n->value = MulValues(n->left->value,
+                           n->right->value);
     } break;
     case DIVIDE: {
-      n->value = DivValues(LEFT_NODE(n)->value,
-                           RIGHT_NODE(n)->value);
+      n->value = DivValues(n->left->value,
+                           n->right->value);
     } break;
     case MODULO: {
-      n->value = ModValues(LEFT_NODE(n)->value,
-                           RIGHT_NODE(n)->value);
+      n->value = ModValues(n->left->value,
+                           n->right->value);
     } break;
     default: {
       printf("BinaryArithmetic(): Not implemented yet\n");
@@ -230,28 +230,28 @@ void BinaryArithmetic(AST_Node *n) {
 void BinaryLogical(AST_Node *n) {
   switch(n->token.type) {
     case EQUALITY: {
-      n->value = Equality(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+      n->value = Equality(n->left->value, n->right->value);
     } break;
     case GREATER_THAN: {
-      n->value = GreaterThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+      n->value = GreaterThan(n->left->value, n->right->value);
     } break;
     case LESS_THAN: {
-      n->value = LessThan(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+      n->value = LessThan(n->left->value, n->right->value);
     } break;
     case GREATER_THAN_EQUALS: {
-      n->value = Not(GreaterThan(RIGHT_NODE(n)->value, LEFT_NODE(n)->value));
+      n->value = Not(GreaterThan(n->right->value, n->left->value));
     } break;
     case LESS_THAN_EQUALS: {
-      n->value = Not(LessThan(RIGHT_NODE(n)->value, LEFT_NODE(n)->value));
+      n->value = Not(LessThan(n->right->value, n->left->value));
     } break;
     case LOGICAL_NOT_EQUALS: {
-      n->value = Not(Equality(LEFT_NODE(n)->value, RIGHT_NODE(n)->value));
+      n->value = Not(Equality(n->left->value, n->right->value));
     } break;
     case LOGICAL_AND: {
-      n->value = LogicalAND(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+      n->value = LogicalAND(n->left->value, n->right->value);
     } break;
     case LOGICAL_OR: {
-      n->value = LogicalOR(LEFT_NODE(n)->value, RIGHT_NODE(n)->value);
+      n->value = LogicalOR(n->left->value, n->right->value);
     } break;
     default: {
       printf("BinaryLogical(): %s not implemented yet\n", TokenTypeTranslation(n->token.type));
@@ -262,24 +262,24 @@ void BinaryLogical(AST_Node *n) {
 void BinaryBitwise(AST_Node *n) {
   switch(n->token.type) {
     case BITWISE_XOR: {
-      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger ^
-                              RIGHT_NODE(n)->value.as.uinteger);
+      n->value = NewUintValue(n->left->value.as.uinteger ^
+                              n->right->value.as.uinteger);
     } break;
     case BITWISE_OR: {
-      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger |
-                              RIGHT_NODE(n)->value.as.uinteger);
+      n->value = NewUintValue(n->left->value.as.uinteger |
+                              n->right->value.as.uinteger);
     } break;
     case BITWISE_AND: {
-      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger &
-                              RIGHT_NODE(n)->value.as.uinteger);
+      n->value = NewUintValue(n->left->value.as.uinteger &
+                              n->right->value.as.uinteger);
     } break;
     case BITWISE_LEFT_SHIFT: {
-      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger <<
-                              RIGHT_NODE(n)->value.as.uinteger);
+      n->value = NewUintValue(n->left->value.as.uinteger <<
+                              n->right->value.as.uinteger);
     } break;
     case BITWISE_RIGHT_SHIFT: {
-      n->value = NewUintValue( LEFT_NODE(n)->value.as.uinteger >>
-                              RIGHT_NODE(n)->value.as.uinteger);
+      n->value = NewUintValue(n->left->value.as.uinteger >>
+                              n->right->value.as.uinteger);
     } break;
     default: {
       printf("BinaryBitwise(): Not implemented yet\n");
@@ -309,8 +309,8 @@ void FunctionCall(AST_Node *n) {
   BeginScope();
 
   // Create variables for all args
-  AST_Node *params = MIDDLE_NODE(fn_def);
-  AST_Node *args   = MIDDLE_NODE(n);
+  AST_Node *params = fn_def->middle;
+  AST_Node *args   = n->middle;
   while (args != NULL) {
     Symbol s = AddTo(SYMBOL_TABLE(),
                      NewSymbol(params->token,
@@ -319,13 +319,13 @@ void FunctionCall(AST_Node *n) {
     s.value = NewValue(args->annotation, args->token);
     AddTo(SYMBOL_TABLE(), s);
 
-    params = LEFT_NODE(params);
-    args   = RIGHT_NODE(args);
+    params = params->left;
+    args   = args->right;
   }
 
   // Evaluate function body
-  if (RIGHT_NODE(fn_def) != NULL) {
-    InterpretRecurse(RIGHT_NODE(fn_def));
+  if (fn_def->right != NULL) {
+    InterpretRecurse(fn_def->right);
     n->value = check_value;
   }
 
@@ -333,40 +333,40 @@ void FunctionCall(AST_Node *n) {
 }
 
 void StructDeclaration(AST_Node *struct_identifier) {
-  AST_Node **current = &LEFT_NODE(struct_identifier);
+  AST_Node **current = &struct_identifier->left;
   while (*current != NULL) {
-    if (LEFT_NODE(*current) == NULL) {
-      current = &RIGHT_NODE(*current);
+    if ((*current)->left == NULL) {
+      current = &(*current)->right;
       continue;
     }
 
-    Literal(LEFT_NODE(*current));
+    Literal((*current)->left);
 
     // TODO: Make a helper function for storing struct members
     Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), struct_identifier->token);
     Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, (*current)->token);
-    struct_member.value = LEFT_NODE(*current)->value;
+    struct_member.value = (*current)->left->value;
     AddTo(parent_struct.struct_fields, struct_member);
 
-    current = &RIGHT_NODE(*current);
+    current = &(*current)->right;
   }
 }
 
 void StructMemberAccess(AST_Node *struct_identifier) {
-  if (RIGHT_NODE(struct_identifier) == NULL) {
-    if (LEFT_NODE(struct_identifier) == NULL) {
+  if (struct_identifier->right == NULL) {
+    if (struct_identifier->left == NULL) {
       return;
     }
     return;
   }
 
-  Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), RIGHT_NODE(struct_identifier)->token);
+  Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), struct_identifier->right->token);
   Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, struct_identifier->token);
   struct_identifier->value = struct_member.value;
 }
 
 void PrefixIncrement(AST_Node *n) {
-  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   if (s.annotation.is_signed) {
     s.value.as.integer++;
   } else {
@@ -391,7 +391,7 @@ void PostfixIncrement(AST_Node *n) {
 }
 
 void PrefixDecrement(AST_Node *n) {
-  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   if (s.annotation.is_signed) {
     s.value.as.integer--;
   } else {
@@ -403,7 +403,7 @@ void PrefixDecrement(AST_Node *n) {
 }
 
 void PostfixDecrement(AST_Node *n) {
-  Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(n)->token);
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   n->value = s.value;
 
   if (s.annotation.is_signed) {
@@ -421,9 +421,9 @@ static void InterpretRecurse(AST_Node *n) {
     return;
   }
 
-  if (!NodeIs_NULL(LEFT_NODE(n)))   InterpretRecurse(LEFT_NODE(n));
-  if (!NodeIs_NULL(MIDDLE_NODE(n))) InterpretRecurse(MIDDLE_NODE(n));
-  if (!NodeIs_NULL(RIGHT_NODE(n)))  InterpretRecurse(RIGHT_NODE(n));
+  if (!NodeIs_NULL(n->left))   InterpretRecurse(n->left);
+  if (!NodeIs_NULL(n->middle)) InterpretRecurse(n->middle);
+  if (!NodeIs_NULL(n->right))  InterpretRecurse(n->right);
 
   switch(n->node_type) {
     case STRUCT_DECLARATION_NODE: {
@@ -475,7 +475,7 @@ static void InterpretRecurse(AST_Node *n) {
       FunctionCall(n);
     } break;
     case RETURN_NODE: {
-      check_value = LEFT_NODE(n)->value;
+      check_value = n->left->value;
     } break;
     default: break;
   }
