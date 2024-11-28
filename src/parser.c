@@ -1260,12 +1260,13 @@ static void StructBody(AST_Node **struct_identifier) {
     Consume(IDENTIFIER,
             "StructBody(): Expected IDENTIFIER, got '%s' instead",
             TokenTypeTranslation(Parser.next.type));
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(),
-                                 NewSymbol(Parser.current,
-                                           (is_array)
-                                             ? ArrayAnnotation(type_token.type, 0)
-                                             : AnnotateType(type_token.type),
-                                           DECL_DECLARED));
+
+    AddTo(SYMBOL_TABLE(),
+          NewSymbol(Parser.current,
+                      (is_array)
+                        ? ArrayAnnotation(type_token.type, 0)
+                        : AnnotateType(type_token.type),
+                    DECL_DECLARED));
 
     LEFT_NODE(*current) = StructMemberDeclaration(CAN_ASSIGN);
     RIGHT_NODE(*current) = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
