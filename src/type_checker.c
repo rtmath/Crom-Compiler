@@ -71,7 +71,7 @@ void ActualizeType(AST_Node *node, ParserAnnotation a) {
 void ShrinkAndActualizeType(AST_Node *node) {
   ActualizeType(node, ShrinkToSmallestContainingType(node));
 
-  if (node->type == ENUM_LIST_ENTRY_NODE)
+  if (NodeIs_EnumEntry(node))
   {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
     int preserve_dol = s.annotation.declared_on_line;
@@ -193,7 +193,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   if (!types_match && types_are_not_numbers) return false;
   if (types_match && types_are_not_numbers) return true;
 
-  if (from->type == IDENTIFIER_NODE) {
+  if (NodeIs_Identifier(from)) {
     if (types_match == true &&
         BitWidth(from) == BitWidth(target_type) &&
         IsSigned(from) == IsSigned(target_type)) {
@@ -313,9 +313,9 @@ static void Assignment(AST_Node *identifier) {
   }
 
   AST_Node *value = LEFT_NODE(identifier);
-  if ((identifier->type == ENUM_ASSIGNMENT_NODE) &&
+  if (NodeIs_EnumAssignment(identifier) &&
       ((NodeOstensibleType(value) != OST_INT) ||
-       (value->type == IDENTIFIER_NODE))) {
+       NodeIs_Identifier(value))) {
     SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
     ERROR_AT_TOKEN(value->token,
                    "Assignment(): Assignment to enum identifier must be of type INT", "");
@@ -329,7 +329,7 @@ static void Assignment(AST_Node *identifier) {
       TokenTypeTranslation(value->token.type));
   }
 
-  if (identifier->type == TERSE_ASSIGNMENT_NODE) {
+  if (NodeIs_TerseAssignment(identifier)) {
     // Treat terse assignment node actual type as the identifier's type
     ActualizeType(identifier, value->annotation);
   }
@@ -353,7 +353,7 @@ static void Assignment(AST_Node *identifier) {
       value->annotation.is_array = false;
     }
 
-    if (value->type == IDENTIFIER_NODE) {
+    if (NodeIs_Identifier(value)) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
       identifier->value = s.value;
     }
@@ -382,8 +382,8 @@ static void Assignment(AST_Node *identifier) {
 static void Identifier(AST_Node *identifier) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
 
-  if (MIDDLE_NODE(identifier) != NULL &&
-      MIDDLE_NODE(identifier)->type == ARRAY_SUBSCRIPT_NODE &&
+  if (!NodeIs_NULL(MIDDLE_NODE(identifier)) &&
+      NodeIs_ArraySubscript(MIDDLE_NODE(identifier)) &&
       identifier->annotation.ostensible_type == OST_STRING) {
     symbol.annotation.ostensible_type = OST_CHAR;
   }
@@ -438,8 +438,8 @@ static void Literal(AST_Node *node) {
 }
 
 static void IncrementOrDecrement(AST_Node *node) {
-  (node->type == PREFIX_INCREMENT_NODE ||
-   node->type == PREFIX_DECREMENT_NODE)
+  (NodeIs_PrefixIncrement(node) ||
+   NodeIs_PrefixDecrement(node))
   ? ActualizeType(node, LEFT_NODE(node)->annotation)
   : ActualizeType(node, node->annotation);
 }
@@ -455,18 +455,18 @@ static void Return(AST_Node* node) {
 
 static bool IsDeadEnd(AST_Node *node) {
   return (node == NULL) ||
-         (node->type == CHAIN_NODE    &&
-          LEFT_NODE(node)   == NULL &&
-          MIDDLE_NODE(node) == NULL &&
-          RIGHT_NODE(node)  == NULL);
+         (NodeIs_Chain(node)             &&
+          NodeIs_NULL(LEFT_NODE(node))   &&
+          NodeIs_NULL(MIDDLE_NODE(node)) &&
+          NodeIs_NULL(RIGHT_NODE(node)));
 }
 
 static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   AST_Node **current = &node;
 
   do {
-    if (LEFT_NODE(*current) != NULL) {
-      switch(LEFT_NODE(*current)->type) {
+    if (!NodeIs_NULL(LEFT_NODE(*current))) {
+      switch(LEFT_NODE(*current)->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE: {
@@ -476,8 +476,8 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
       }
     }
 
-    if (MIDDLE_NODE(*current) != NULL) {
-      switch(MIDDLE_NODE(*current)->type) {
+    if (!NodeIs_NULL(MIDDLE_NODE(*current))) {
+      switch(MIDDLE_NODE(*current)->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE:
@@ -488,8 +488,8 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
       }
     }
 
-    if (RIGHT_NODE(*current) != NULL) {
-      switch(RIGHT_NODE(*current)->type) {
+    if (!NodeIs_NULL(RIGHT_NODE(*current))) {
+      switch(RIGHT_NODE(*current)->node_type) {
         case IF_NODE:
         case WHILE_NODE:
         case FOR_NODE: {
@@ -499,7 +499,7 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
       }
     }
 
-    if (LEFT_NODE(*current)->type == RETURN_NODE) {
+    if (NodeIs_Return(LEFT_NODE(*current))) {
       if (!TypeIsConvertible(LEFT_NODE(*current)->nodes[LEFT], return_type)) {
         ERROR_AT_TOKEN(
           LEFT_NODE(*current)->nodes[LEFT]->token,
@@ -522,13 +522,13 @@ static void Function(AST_Node *node) {
   AST_Node **check = &body;
 
   do {
-    if (LEFT_NODE(*check)->type == IF_NODE ||
-        LEFT_NODE(*check)->type == WHILE_NODE ||
-        LEFT_NODE(*check)->type == FOR_NODE) {
+    if (NodeIs_If(LEFT_NODE(*check)) ||
+        NodeIs_While(LEFT_NODE(*check)) ||
+        NodeIs_For(LEFT_NODE(*check))) {
       TypeCheckNestedReturns(LEFT_NODE(*check), return_type);
     }
 
-    if (LEFT_NODE(*check)->type == RETURN_NODE) {
+    if (NodeIs_Return(LEFT_NODE(*check))) {
       if (TypeIsConvertible(LEFT_NODE(*check), return_type)) {
         ActualizeType(node, node->annotation);
 
@@ -595,7 +595,7 @@ static void FunctionCall(AST_Node *node) {
     }
 
     // TypeIsConvertible deals with AST_Nodes but fn_params aren't an AST_Node
-    AST_Node *wrapped_param = NewNodeFromToken(UNTYPED, NULL, NULL, NULL,
+    AST_Node *wrapped_param = NewNodeFromToken(UNTYPED_NODE, NULL, NULL, NULL,
       fn_definition.fn_param_list[i].param_token,
       fn_definition.fn_param_list[i].annotation
     );
@@ -856,11 +856,11 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
 
   if (list_entry == NULL) return;
 
-  if (list_entry->type == ENUM_ASSIGNMENT_NODE) {
+  if (NodeIs_EnumAssignment(list_entry)) {
     CheckTypesRecurse(list_entry);
     AST_Node *value = LEFT_NODE(list_entry);
     if ((NodeOstensibleType(value) != OST_INT) ||
-        (value->type == IDENTIFIER_NODE)) {
+        NodeIs_Identifier(value)) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
       ERROR_AT_TOKEN(value->token,
                      "Assignment(): Assignment to enum identifier must be of type INT", "");
@@ -872,7 +872,7 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
     implicit_value = (LEFT_NODE(list_entry)->value.as.integer + 1);
   }
 
-  if (list_entry->type == ENUM_LIST_ENTRY_NODE) {
+  if (NodeIs_EnumEntry(list_entry)) {
     list_entry->value = NewIntValue(implicit_value);
     ShrinkAndActualizeType(list_entry);
     SetValue(SYMBOL_TABLE, list_entry->token, list_entry->value);
@@ -894,8 +894,7 @@ static void StructMemberAccess(AST_Node *struct_identifier) {
   }
   AST_Node *member = LEFT_NODE(struct_identifier);
 
-  if (member == NULL ||
-      member->type != STRUCT_MEMBER_IDENTIFIER_NODE) {
+  if (member == NULL || NodeIs_StructMember(member)) {
     return;
   }
 
@@ -908,12 +907,12 @@ static void StructMemberAccess(AST_Node *struct_identifier) {
 
 static void CheckTypesRecurse(AST_Node *node) {
   SymbolTable *remember_st = SYMBOL_TABLE;
-  if (node->type == FUNCTION_NODE) {
+  if (NodeIs_Function(node)) {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
     SYMBOL_TABLE = s.fn_params;
   }
 
-  if (node->type == ENUM_IDENTIFIER_NODE) {
+  if (NodeIs_EnumIdentifier(node)) {
     HandleEnum(node);
     return;
   }
@@ -922,11 +921,11 @@ static void CheckTypesRecurse(AST_Node *node) {
   if (MIDDLE_NODE(node) != NULL) CheckTypesRecurse(MIDDLE_NODE(node));
   if (RIGHT_NODE(node)  != NULL) CheckTypesRecurse(RIGHT_NODE(node));
 
-  if (node->type == FUNCTION_NODE) {
+  if (NodeIs_Function(node)) {
     SYMBOL_TABLE = remember_st;
   }
 
-  switch(node->type) {
+  switch(node->node_type) {
     case LITERAL_NODE: {
       Literal(node);
     } break;
@@ -986,8 +985,8 @@ static void CheckTypesRecurse(AST_Node *node) {
     } break;
   }
 
-  if (node->type != START_NODE &&
-      node->type != CHAIN_NODE) {
+  if (!NodeIs_Start(node) &&
+      !NodeIs_Chain(node)) {
     //PrintNode(node);
   }
 }

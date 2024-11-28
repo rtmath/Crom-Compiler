@@ -54,7 +54,7 @@ void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
   if (stored_symbol.annotation.actual_type == ACT_STRING) {
-    if (MIDDLE_NODE(n) != NULL && MIDDLE_NODE(n)->type == ARRAY_SUBSCRIPT_NODE) {
+    if (!NodeIs_NULL(MIDDLE_NODE(n)) && NodeIs_ArraySubscript(MIDDLE_NODE(n))) {
       // Extract char from a "str[i]"-type thing
       int64_t index = TokenToInt64(n->nodes[MIDDLE]->token, 10);
       n->value = NewCharValue(stored_symbol.value.as.string[index]);
@@ -75,7 +75,7 @@ Value ArrayInitializerList(AST_Node *n) {
   int i = 0;
 
   do {
-    if (LEFT_NODE(*current)->type == IDENTIFIER_NODE) {
+    if (NodeIs_Identifier(LEFT_NODE(*current))) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE(), LEFT_NODE(*current)->token);
       data[i] = s.value;
     } else {
@@ -416,16 +416,16 @@ void PostfixDecrement(AST_Node *n) {
 }
 
 static void InterpretRecurse(AST_Node *n) {
-  if (n->type == FUNCTION_NODE) {
+  if (NodeIs_Function(n)) {
     function_definitions[fdi++] = n;
     return;
   }
 
-  if (LEFT_NODE(n)   != NULL) InterpretRecurse(LEFT_NODE(n));
-  if (MIDDLE_NODE(n) != NULL) InterpretRecurse(MIDDLE_NODE(n));
-  if (RIGHT_NODE(n)  != NULL) InterpretRecurse(RIGHT_NODE(n));
+  if (!NodeIs_NULL(LEFT_NODE(n)))   InterpretRecurse(LEFT_NODE(n));
+  if (!NodeIs_NULL(MIDDLE_NODE(n))) InterpretRecurse(MIDDLE_NODE(n));
+  if (!NodeIs_NULL(RIGHT_NODE(n)))  InterpretRecurse(RIGHT_NODE(n));
 
-  switch(n->type) {
+  switch(n->node_type) {
     case STRUCT_DECLARATION_NODE: {
       StructDeclaration(n);
     } break;

@@ -53,7 +53,7 @@ typedef struct {
 #define _ false
 #define CAN_ASSIGN true
 
-static AST_Node *Type(bool unused);
+static AST_Node *TypeSpecifier(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Unary(bool unused);
 static AST_Node *Binary(bool unused);
@@ -75,25 +75,26 @@ static AST_Node *Literal(bool unused);
 
 static ParseRule Rules[] = {
   // Type Keywords
-  [I8]             = {   Type,   NULL, NO_PRECEDENCE },
-  [I16]            = {   Type,   NULL, NO_PRECEDENCE },
-  [I32]            = {   Type,   NULL, NO_PRECEDENCE },
-  [I64]            = {   Type,   NULL, NO_PRECEDENCE },
+  [I8]             = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [I16]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [I32]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [I64]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
 
-  [U8]             = {   Type,   NULL, NO_PRECEDENCE },
-  [U16]            = {   Type,   NULL, NO_PRECEDENCE },
-  [U32]            = {   Type,   NULL, NO_PRECEDENCE },
-  [U64]            = {   Type,   NULL, NO_PRECEDENCE },
+  [U8]             = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [U16]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [U32]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [U64]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
 
-  [F32]            = {   Type,   NULL, NO_PRECEDENCE },
-  [F64]            = {   Type,   NULL, NO_PRECEDENCE },
+  [F32]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [F64]            = { TypeSpecifier, NULL, NO_PRECEDENCE },
 
-  [CHAR]           = {   Type,   NULL, NO_PRECEDENCE },
-  [STRING]         = {   Type,   NULL, NO_PRECEDENCE },
+  [CHAR]           = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [STRING]         = { TypeSpecifier, NULL, NO_PRECEDENCE },
 
-  [BOOL]           = {   Type,   NULL, NO_PRECEDENCE },
-  [VOID]           = {   Type,   NULL, NO_PRECEDENCE },
-  [ENUM]           = {   Enum,   NULL, NO_PRECEDENCE },
+  [BOOL]           = { TypeSpecifier, NULL, NO_PRECEDENCE },
+  [VOID]           = { TypeSpecifier, NULL, NO_PRECEDENCE },
+
+  [ENUM]           = { Enum,     NULL, NO_PRECEDENCE },
   [STRUCT]         = { Struct,   NULL, NO_PRECEDENCE },
 
   [BREAK]          = { Break,    NULL, NO_PRECEDENCE },
@@ -433,7 +434,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
       "Parse(): Unexpected token '%.*s'",
       Parser.current.length,
       Parser.current.position_in_source);
-    return NewNode(UNTYPED, NULL, NULL, NULL, NoAnnotation());
+    return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoAnnotation());
   }
 
   bool can_assign = PrecedenceLevel <= ASSIGNMENT;
@@ -450,7 +451,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
         "Parse(): Unexpected token '%.*s'",
         Parser.current.length,
         Parser.current.position_in_source);
-      return NewNode(UNTYPED, NULL, NULL, NULL, NoAnnotation());
+      return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoAnnotation());
     }
 
     AST_Node *infix_node = infix_rule(can_assign);
@@ -468,7 +469,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
   return (return_node == NULL) ? prefix_node : return_node;
 }
 
-static AST_Node *Type(bool) {
+static AST_Node *TypeSpecifier(bool) {
 
   Token type_token = Parser.current;
   bool is_array = false;
@@ -478,16 +479,16 @@ static AST_Node *Type(bool) {
     if (Match(INT_LITERAL)) {
       array_size = strtol(Parser.current.position_in_source, NULL, 10);
       if (array_size == LONG_MIN) {
-        ERROR_AND_EXIT("Type(): strtol underflowed");
+        ERROR_AND_EXIT("TypeSpecifier(): strtol underflowed");
         SetErrorCodeIfUnset(&error_code, ERR_UNDERFLOW);
       }
       if (array_size == LONG_MAX) {
-        ERROR_AND_EXIT("Type(): strtol overflowed");
+        ERROR_AND_EXIT("TypeSpecifier(): strtol overflowed");
         SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
       }
     }
 
-    Consume(RBRACKET, "Type(): Expected ] after '%s', got '%s' instead.",
+    Consume(RBRACKET, "TypeSpecifier(): Expected ] after '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
             TokenTypeTranslation(Parser.next.type));
 
@@ -498,7 +499,7 @@ static AST_Node *Type(bool) {
     if (type_token.type == VOID) {
       ERROR_AT_TOKEN(
         Parser.next,
-        "Type(): Cannot use VOID as a type declaration", "");
+        "TypeSpecifier(): Cannot use VOID as a type declaration", "");
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
     }
 
@@ -506,7 +507,7 @@ static AST_Node *Type(bool) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
       REDECLARATION_AT_TOKEN(Parser.next,
                              s.token,
-                             "Type(): Redeclaration of identifier '%.*s', previously declared on line %d\n",
+                             "TypeSpecifier(): Redeclaration of identifier '%.*s', previously declared on line %d\n",
                              Parser.next.length,
                              Parser.next.position_in_source,
                              s.annotation.declared_on_line);
@@ -516,7 +517,7 @@ static AST_Node *Type(bool) {
     if (TokenAfterNextIs(LPAREN)) {
       ERROR_AT_TOKEN(
         Parser.current,
-        "Type(): Function declarations cannot be preceded by a type", "");
+        "TypeSpecifier(): Function declarations cannot be preceded by a type", "");
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
     }
 
@@ -524,7 +525,7 @@ static AST_Node *Type(bool) {
     AddTo(SYMBOL_TABLE(), NewSymbol(Parser.next, a, DECL_DECLARED));
   }
 
-  Consume(IDENTIFIER, "Type(): Expected IDENTIFIER after Type '%s%s', got '%s' instead.",
+  Consume(IDENTIFIER, "TypeSpecifier(): Expected IDENTIFIER after Type '%s%s', got '%s' instead.",
           TokenTypeTranslation(type_token.type),
           (is_array) ? "[]" : "",
           TokenTypeTranslation(Parser.next.type));
@@ -1117,7 +1118,7 @@ static AST_Node *Enum(bool) {
   AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_UNINITIALIZED));
 
   AST_Node *enum_name = Identifier(false);
-  enum_name->type = ENUM_IDENTIFIER_NODE;
+  enum_name->node_type = ENUM_IDENTIFIER_NODE;
 
   EnumBlock(&enum_name);
 

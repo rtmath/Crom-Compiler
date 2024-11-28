@@ -7,6 +7,7 @@
 #include "parser_annotation.h"
 #include "symbol_table.h"
 #include "token.h"
+#include "type.h"
 #include "value.h"
 
 #define LEFT 0
@@ -18,7 +19,7 @@
 #define MIDDLE_NODE(n) ((n)->nodes[MIDDLE])
 
 typedef enum {
-  UNTYPED,
+  UNTYPED_NODE,
   START_NODE,
   CHAIN_NODE,
   DECLARATION_NODE,
@@ -66,7 +67,7 @@ typedef enum {
 
 typedef struct AST_Node {
   ErrorCode error_code; // This is really only for the Start node of the AST
-  NodeType type;
+  NodeType node_type;
   Token token;
   ParserAnnotation annotation;
   Value value;
@@ -82,5 +83,26 @@ const char *NodeTypeTranslation(NodeType t);
 
 void PrintAST(AST_Node *root);
 void PrintNode(AST_Node *node);
+
+bool NodeIs_NULL(AST_Node *n);
+bool NodeIs_Untyped(AST_Node *n);
+bool NodeIs_Start(AST_Node *n);
+bool NodeIs_Chain(AST_Node *n);
+bool NodeIs_ArraySubscript(AST_Node *n);
+bool NodeIs_Identifier(AST_Node *n);
+bool NodeIs_TerseAssignment(AST_Node *n);
+bool NodeIs_EnumAssignment(AST_Node *n);
+bool NodeIs_EnumIdentifier(AST_Node *n);
+bool NodeIs_EnumEntry(AST_Node *n);
+bool NodeIs_StructMember(AST_Node *n);
+bool NodeIs_If(AST_Node *n);
+bool NodeIs_For(AST_Node *n);
+bool NodeIs_While(AST_Node *n);
+bool NodeIs_Function(AST_Node *n);
+bool NodeIs_Return(AST_Node *n);
+bool NodeIs_PrefixIncrement(AST_Node *n);
+bool NodeIs_PrefixDecrement(AST_Node *n);
+bool NodeIs_PostfixIncrement(AST_Node *n);
+bool NodeIs_PostfixDecrement(AST_Node *n);
 
 #endif
