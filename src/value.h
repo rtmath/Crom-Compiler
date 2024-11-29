@@ -5,24 +5,10 @@
 
 #include "parser_annotation.h"
 #include "token.h"
-
-typedef enum {
-  V_NONE,
-  V_INT,
-  V_UINT,
-  V_FLOAT,
-  V_CHAR,
-  V_STRING,
-  V_BOOL,
-  V_STRUCT,
-  V_ARRAY,
-  V_OVERFLOW,
-} ValueType;
+#include "type.h"
 
 typedef struct Value {
-  ValueType type;
-  ValueType array_type;
-  int array_size;
+  Type type;
   union {
     uint64_t   uinteger;
     int64_t     integer;

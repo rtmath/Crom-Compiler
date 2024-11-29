@@ -87,10 +87,13 @@ Value ArrayInitializerList(AST_Node *n) {
     current = &(*current)->right;
   } while (*current != NULL && (*current)->left != NULL);
 
-  return (Value){
-    .type = V_ARRAY,
-    .array_type = n->value.type,
-    .array_size = i,
+  return (Value) {
+    .type = (Type) {
+      .category = TC_ARRAY,
+      .specifier = n->value.type.specifier,
+      .array_size = i,
+    },
+
     .as.array = data,
   };
 }

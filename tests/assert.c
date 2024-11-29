@@ -49,27 +49,27 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
   if (ht == NULL) ht = NewHashTable();
 
   bool predicate = false;
-  switch(v1.type) {
-    case V_NONE: {
-      LogError(false, MSG_SPACER "%s(): Value type from AST is NONE\n", func_name);
-    } break;
-    case V_INT: {
-      predicate = v1.as.integer == v2.as.integer;
-      LogError(predicate,
-               MSG_SPACER "%s() assertion failed, %ld != %ld",
-               func_name,
-               v1.as.integer,
-               v2.as.integer);
-    } break;
-    case V_UINT: {
-      predicate = v1.as.uinteger == v2.as.uinteger;
-      LogError(predicate,
-               MSG_SPACER "%s() assertion failed, %lu != %lu",
-               func_name,
-               v1.as.uinteger,
-               v2.as.uinteger);
-    } break;
-    case V_FLOAT: {
+
+  if (TypeIs_None(v1.type)) {
+    LogError(false, MSG_SPACER "%s(): Value type from AST is NONE\n", func_name);
+
+  } else if (TypeIs_Int(v1.type)) {
+    predicate = v1.as.integer == v2.as.integer;
+    LogError(predicate,
+             MSG_SPACER "%s() assertion failed, %ld != %ld",
+             func_name,
+             v1.as.integer,
+             v2.as.integer);
+
+  } else if (TypeIs_Uint(v1.type)) {
+    predicate = v1.as.uinteger == v2.as.uinteger;
+    LogError(predicate,
+             MSG_SPACER "%s() assertion failed, %lu != %lu",
+             func_name,
+             v1.as.uinteger,
+             v2.as.uinteger);
+
+  } else if (TypeIs_Float(v1.type)) {
       // I know floating point equality is perilous. This is intended to
       // check that a literal value from a Crom source file passes through
       // the compilation pipeline and comes out the other end without
@@ -81,19 +81,16 @@ bool ASSERT_EQUAL(Value v1, Value v2, const char *file_name, const char *func_na
                func_name,
                v1.as.floating,
                v2.as.floating);
-    } break;
-    case V_BOOL: {
-      predicate = (v1.as.boolean == v2.as.boolean);
-      LogError(predicate,
-               MSG_SPACER "%s() assertion failed, %s != %s",
-               func_name,
-               (v1.as.floating) ? "true" : "false",
-               (v2.as.floating) ? "true" : "false");
-    } break;
-    default: {
-      LogError(false, "[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
-      ERROR_AND_EXIT_FMTMSG("[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
-    } break;
+  } else if (TypeIs_Bool(v1.type)) {
+    predicate = (v1.as.boolean == v2.as.boolean);
+    LogError(predicate,
+             MSG_SPACER "%s() assertion failed, %s != %s",
+             func_name,
+             (v1.as.floating) ? "true" : "false",
+             (v2.as.floating) ? "true" : "false");
+  } else {
+    LogError(false, "[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
+    ERROR_AND_EXIT_FMTMSG("[%s:%s] Assert: Value type %d not implemented yet\n", file_name, func_name, v1.type);
   }
 
   LogResults(predicate, file_name);

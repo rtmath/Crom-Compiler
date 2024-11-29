@@ -131,7 +131,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf("%s", NodeTypeTranslation(node->node_type));
   }
 
-  if (node->value.type != V_NONE) {
+  if (node->value.type.specifier != T_NONE) {
     printf(" :: ");
     InlinePrintValue(node->value);
   }

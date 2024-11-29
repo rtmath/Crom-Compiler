@@ -227,18 +227,21 @@ SymbolTable *NewSymbolTable() {
 
 Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationState d) {
   SymbolTable *fields = (a.ostensible_type == OST_STRUCT)
-  ? NewSymbolTable()
-  : NULL;
+                          ? NewSymbolTable()
+                          : NULL;
 
   SymbolTable *fn_params = (a.is_function)
-  ? NewSymbolTable()
-  : NULL;
+                             ? NewSymbolTable()
+                             : NULL;
 
   Symbol s = {
-    .token = t,
-    .annotation = a,
-    .value = {0},
     .declaration_state = d,
+    .annotation = a,
+    .token = t,
+    .value = (Value){
+      .type = {0},
+      .as.uinteger = 0,
+    },
     .struct_fields = fields,
     .fn_params = fn_params,
     .fn_param_count = 0,

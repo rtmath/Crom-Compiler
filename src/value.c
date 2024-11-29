@@ -39,7 +39,7 @@ Value NewValue(ParserAnnotation a, Token t) {
       if (a.is_signed) {
         if (Int64Overflow(t, base)) {
           ERROR_AT_TOKEN(t, "I64 Overflow\n", "");
-          return (Value){ .type = V_OVERFLOW, .as.integer = 0 };
+          return (Value){ .type = NoType(), .as.integer = 0 };
         }
 
         int64_t integer = TokenToInt64(t, base);
@@ -47,7 +47,7 @@ Value NewValue(ParserAnnotation a, Token t) {
       } else {
         if (Uint64Overflow(t, base)) {
           ERROR_AT_TOKEN(t, "U64 Overflow\n", "");
-          return (Value){ .type = V_OVERFLOW, .as.uinteger = 0 };
+          return (Value){ .type = NoType(), .as.uinteger = 0 };
         }
 
         uint64_t unsignedint = TokenToUint64(t, base);
@@ -58,7 +58,7 @@ Value NewValue(ParserAnnotation a, Token t) {
     case ACT_FLOAT: {
       if (DoubleOverflow(t) || DoubleUnderflow(t)) {
         ERROR_AT_TOKEN(t, "F64 Over/Underflow\n", "");
-        return (Value){ .type = V_OVERFLOW, .as.floating = 0 };
+        return (Value){ .type = NoType(), .as.floating = 0 };
       }
 
       double d = TokenToDouble(t);
@@ -98,107 +98,89 @@ Value NewValue(ParserAnnotation a, Token t) {
 
 Value NewIntValue(int64_t i) {
   return (Value){
-    .type = V_INT,
-    .array_type = 0,
-    .array_size = 0,
+    .type = NewType(I64),
     .as.integer = i,
   };
 }
 
 Value NewUintValue(uint64_t u) {
   return (Value){
-    .type = V_UINT,
-    .array_type = 0,
-    .array_size = 0,
+    .type = NewType(U64),
     .as.uinteger = u,
   };
 }
 
 Value NewFloatValue(double d) {
-  return (Value){
-    .type = V_FLOAT,
-    .array_type = 0,
-    .array_size = 0,
+  Type t = NewType(F64);
+  Value v = (Value){
+    .type = t,
     .as.floating = d,
   };
+  return v;
+  /*
+  return (Value){
+    .type = NewType(F64),
+    .as.floating = d,
+  };
+  */
 }
+
 Value NewCharValue(char c) {
   return (Value){
-    .type = V_CHAR,
-    .array_type = 0,
-    .array_size = 0,
+    .type = NewType(CHAR),
     .as.character = c,
   };
 }
 
 Value NewStringValue(const char *s) {
   return (Value){
-    .type = V_STRING,
-    .array_type = V_CHAR,
-    .array_size = strlen(s),
+    .type = NewArrayType(STRING, strlen(s)),
     .as.string = s,
   };
 }
 
 Value NewBoolValue(bool b)  {
   return (Value){
-    .type = V_BOOL,
-    .array_type = 0,
-    .array_size = 0,
+    .type = NewType(BOOL),
     .as.boolean = b,
   };
 }
 
 Value AddValues(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewIntValue(v1.as.integer + v2.as.integer);
-    case V_UINT: return NewUintValue(v1.as.uinteger + v2.as.uinteger);
-    case V_FLOAT: return NewFloatValue(v1.as.floating + v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("AddValues(): Invalid type %d", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer + v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger + v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewFloatValue(v1.as.floating + v2.as.floating);
 
   return (Value){0};
 }
 
 Value SubValues(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewIntValue(v1.as.integer - v2.as.integer);
-    case V_UINT: return NewUintValue(v1.as.uinteger - v2.as.uinteger);
-    case V_FLOAT: return NewFloatValue(v1.as.floating - v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("SubValues(): Invalid type %d", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer - v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger - v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewFloatValue(v1.as.floating - v2.as.floating);
 
   return (Value){0};
 }
 
 Value MulValues(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewIntValue(v1.as.integer * v2.as.integer);
-    case V_UINT: return NewUintValue(v1.as.uinteger * v2.as.uinteger);
-    case V_FLOAT: return NewFloatValue(v1.as.floating * v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("MulValues(): Invalid type %d", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer * v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger * v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewFloatValue(v1.as.floating * v2.as.floating);
 
   return (Value){0};
 }
 
 Value DivValues(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewIntValue(v1.as.integer / v2.as.integer);
-    case V_UINT: return NewUintValue(v1.as.uinteger / v2.as.uinteger);
-    case V_FLOAT: return NewFloatValue(v1.as.floating / v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("DivValues(): Invalid type %d", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer / v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger / v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewFloatValue(v1.as.floating / v2.as.floating);
 
   return (Value){0};
 }
 
 Value ModValues(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewIntValue(v1.as.integer % v2.as.integer);
-    case V_UINT: return NewUintValue(v1.as.uinteger % v2.as.uinteger);
-    default: ERROR_AND_EXIT_FMTMSG("ModValues(): Invalid type %d", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer % v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger % v2.as.uinteger);
 
   return (Value){0};
 }
@@ -208,89 +190,97 @@ Value Not(Value v) {
 }
 
 Value Equality(Value v1, Value v2) {
-  switch (v1.type) {
-    case V_INT: return NewBoolValue(v1.as.integer == v2.as.integer);
-    case V_UINT: return NewBoolValue(v1.as.uinteger == v2.as.uinteger);
-    case V_FLOAT: return NewBoolValue(v1.as.floating == v2.as.floating);
-    case V_CHAR: return NewBoolValue(v1.as.character == v2.as.character);
-    case V_BOOL: return NewBoolValue(v1.as.boolean == v2.as.boolean);
-    default: printf("Equality(): Not implemented yet\n");
-  }
+  if (TypeIs_Int(v1.type)) return NewBoolValue(v1.as.integer == v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewBoolValue(v1.as.uinteger == v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewBoolValue(v1.as.floating == v2.as.floating);
+  if (TypeIs_Char(v1.type)) return NewBoolValue(v1.as.character == v2.as.character);
+  if (TypeIs_Bool(v1.type)) return NewBoolValue(v1.as.boolean == v2.as.boolean);
 
   return (Value){0};
 }
 
 Value GreaterThan(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewBoolValue(v1.as.integer > v2.as.integer);
-    case V_UINT: return NewBoolValue(v1.as.uinteger > v2.as.uinteger);
-    case V_FLOAT: return NewBoolValue(v1.as.floating > v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to GreaterThan()\n", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewBoolValue(v1.as.integer > v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewBoolValue(v1.as.uinteger > v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewBoolValue(v1.as.floating > v2.as.floating);
 
   return (Value){0};
 }
 
 Value LessThan(Value v1, Value v2) {
-  switch(v1.type) {
-    case V_INT: return NewBoolValue(v1.as.integer < v2.as.integer);
-    case V_UINT: return NewBoolValue(v1.as.uinteger < v2.as.uinteger);
-    case V_FLOAT: return NewBoolValue(v1.as.floating < v2.as.floating);
-    default: ERROR_AND_EXIT_FMTMSG("Invalid type %d passed to LessThan()\n", v1.type);
-  }
+  if (TypeIs_Int(v1.type)) return NewBoolValue(v1.as.integer < v2.as.integer);
+  if (TypeIs_Uint(v1.type)) return NewBoolValue(v1.as.uinteger < v2.as.uinteger);
+  if (TypeIs_Float(v1.type)) return NewBoolValue(v1.as.floating < v2.as.floating);
 
   return (Value){0};
 }
 
 Value LogicalAND(Value v1, Value v2) {
-  if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
-  if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
+  if (!TypesEqual(v1.type, v2.type)) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
 
   return NewBoolValue(v1.as.boolean && v2.as.boolean);
 }
 
 Value LogicalOR(Value v1, Value v2) {
-  if (v1.type != V_BOOL || v2.type != V_BOOL) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
-  if (v1.type != v2.type) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
+  if (!TypesEqual(v1.type, v2.type)) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
 
   return NewBoolValue(v1.as.boolean || v2.as.boolean);
 }
 
 void InlinePrintValue(Value v) {
-  switch(v.type) {
-    case V_NONE: {
-      printf("None");
-    } break;
-    case V_INT: {
-      printf("Integer: %ld", v.as.integer);
-    } break;
-    case V_UINT: {
-      printf("Unsigned Integer: %lu", v.as.uinteger);
-    } break;
-    case V_FLOAT: {
-      printf("Float: %f", v.as.floating);
-    } break;
-    case V_CHAR: {
-      printf("Char: %c", v.as.character);
-    } break;
-    case V_STRING: {
-      printf("String: %s", v.as.string);
-    } break;
-    case V_BOOL: {
-      printf("Bool: %s", (v.as.boolean) ? "true" : "false");
-    } break;
-    case V_ARRAY: {
-      printf("Array [");
-      InlinePrintValue(v.as.array[0]);
-      if (v.array_size > 1) {
-        printf(" .. ");
-        InlinePrintValue(v.as.array[v.array_size - 1]);
-      }
-      printf("]");
-    } break;
-    default: {
-      printf("PrintValue(): Value type '%d' not implemented yet.", v.type);
-    } break;
+  if (TypeIs_Array(v.type)) {
+    InlinePrintType(v.type);
+    printf(" [");
+    InlinePrintValue(v.as.array[0]);
+    if (v.type.array_size > 1) {
+      printf(" .. ");
+      InlinePrintValue(v.as.array[v.type.array_size - 1]);
+    }
+    printf("]");
+    return;
+  }
+
+  if (TypeIs_None(v.type)) {
+    printf("NONE");
+    return;
+  }
+
+  if (TypeIs_Int(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %ld", v.as.integer);
+    return;
+  }
+
+  if (TypeIs_Uint(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %lu", v.as.uinteger);
+    return;
+  }
+
+  if (TypeIs_Float(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %f", v.as.floating);
+    return;
+  }
+
+  if (TypeIs_Char(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %c", v.as.character);
+    return;
+  }
+
+  if (TypeIs_String(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %s", v.as.string);
+    return;
+  }
+
+  if (TypeIs_Bool(v.type)) {
+    InlinePrintType(v.type);
+    printf(": %s", (v.as.boolean) ? "true" : "false");
+    return;
   }
 }
 
