@@ -10,7 +10,7 @@
 #define MSG_SPACER "               "
 
 HashTable *ht;
-const char *error_msgs[MAX_ERROR_MESSAGES];
+char *error_msgs[MAX_ERROR_MESSAGES];
 int emi = 0;
 
 static void LogError(bool predicate, const char *msg, ...) {
@@ -142,6 +142,9 @@ void PrintResults(TestResults t, const char *test_group_name) {
   if (error_occurred) {
     for (int i = 0; i < emi; i++) {
       printf("%s\n", error_msgs[i]);
+      free(error_msgs[i]);
     }
+
+    emi = 0;
   }
 }
