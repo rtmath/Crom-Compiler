@@ -151,7 +151,7 @@ static Symbol GetSymbol(SymbolTable *st, const char *key) {
     .on_line = -1
   };
 
-  return NewSymbol(SYMBOL_NOT_FOUND, NoAnnotation(), DECL_NONE);
+  return NewSymbol(SYMBOL_NOT_FOUND, NoType(), DECL_NONE);
 }
 
 static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
@@ -167,11 +167,11 @@ static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
     if (strcmp(check_bucket->key, key) == 0) {
       // When SetEntry() overwrites an existing entry,
       // preserve the line it was declared on
-      int preserve_dol = check_bucket->entry.annotation.declared_on_line;
+      int preserve_dol = check_bucket->entry.declared_on_line;
       int preserve_id = check_bucket->entry.debug_id;
       FreeBucket(check_bucket);
 
-      b->entry.annotation.declared_on_line = preserve_dol;
+      b->entry.declared_on_line = preserve_dol;
       b->entry.debug_id = preserve_id;
       st->buckets[index] = b;
       return b->entry;
@@ -184,7 +184,7 @@ static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
   }
 
   // Save the line an item was declared on the first time it is stored
-  b->entry.annotation.declared_on_line = b->entry.token.on_line;
+  b->entry.declared_on_line = b->entry.token.on_line;
   b->entry.debug_id = debug_guid++;
 
   st->buckets[index] = b;
@@ -225,21 +225,20 @@ SymbolTable *NewSymbolTable() {
   return NewSymbolTable_Sized(INITIAL_TABLE_CAPACITY);
 }
 
-Symbol NewSymbol(Token t, ParserAnnotation a, DeclarationState d) {
-  SymbolTable *fields = (a.ostensible_type == OST_STRUCT)
+Symbol NewSymbol(Token token, Type type, DeclarationState d) {
+  SymbolTable *fields = (TypeIs_Struct(type))
                           ? NewSymbolTable()
                           : NULL;
 
-  SymbolTable *fn_params = (a.is_function)
+  SymbolTable *fn_params = (TypeIs_Function(type))
                              ? NewSymbolTable()
                              : NULL;
 
   Symbol s = {
     .declaration_state = d,
-    .annotation = a,
-    .token = t,
+    .token = token,
     .value = (Value){
-      .type = {0},
+      .type = type,
       .as.uinteger = 0,
     },
     .struct_fields = fields,
@@ -285,7 +284,7 @@ void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
   FnParam fp = {
     .ordinality = function.fn_param_count,
     .param_token = param.token,
-    .annotation = param.annotation,
+    .type = param.value.type,
   };
   function.fn_param_list[function.fn_param_count] = fp;
   function.fn_param_count++;
@@ -304,11 +303,39 @@ void SetValue(SymbolTable *st, Token t, Value v) {
   AddTo(st, s);
 }
 
+void SetValueType(SymbolTable *st, Token t, Type type) {
+  Symbol s = RetrieveFrom(st, t);
+  if (s.token.type == ERROR) {
+    printf("SetValueType(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    return;
+  };
+
+  s.value.type = type;
+  AddTo(st, s);
+}
+
+void SetStructValue(SymbolTable *st, Token struct_name, Token member_name, Value value) {
+  Symbol parent_struct = RetrieveFrom(st, struct_name);
+  if (parent_struct.token.type == ERROR) {
+    printf("SetValueType(): Struct '%.*s' not found in symbol table", struct_name.length, struct_name.position_in_source);
+    return;
+  };
+
+  Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, member_name);
+  if (struct_member.token.type == ERROR) {
+    printf("SetValueType(): Struct member '%.*s' not found in symbol table", member_name.length, member_name.position_in_source);
+    return;
+  };
+
+  struct_member.value = value;
+  AddTo(parent_struct.struct_fields, struct_member);
+}
+
 void PrintSymbol(Symbol s) {
   printf("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   printf(" ");
-  InlinePrintOstAnnotation(s.annotation);
+  InlinePrintType(s.value.type);
   printf("\n");
   if (s.struct_fields != NULL) printf("has Struct Fields\n");
   if (s.fn_params != NULL) printf("has %d Function Params\n", s.fn_param_count);

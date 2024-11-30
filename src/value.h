@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#include "parser_annotation.h"
 #include "token.h"
 #include "type.h"
 
@@ -21,7 +20,7 @@ typedef struct Value {
   } as;
 } Value;
 
-Value NewValue(ParserAnnotation a, Token t);
+Value NewValue(Type type, Token token);
 Value NewIntValue(int64_t i);
 Value NewUintValue(uint64_t u);
 Value NewFloatValue(double d);

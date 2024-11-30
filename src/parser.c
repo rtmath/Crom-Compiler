@@ -19,7 +19,7 @@ static SymbolTable *SYMBOL_TABLE();
 static AST_Node *StructMemberAccess(Token struct_name);
 static AST_Node *FunctionDeclaration(Symbol symbol);
 static AST_Node *FunctionCall(Token identifier);
-static AST_Node *InitializerList(ParserAnnotation expected_type);
+static AST_Node *InitializerList(Type expected_type);
 
 struct {
   Token current;
@@ -193,7 +193,7 @@ static Symbol ExistsInOuterScope(Token t) {
     .on_line = 1,
   };
 
-  return NewSymbol(SYMBOL_NOT_FOUND, NoAnnotation(), DECL_NONE);
+  return NewSymbol(SYMBOL_NOT_FOUND, NoType(), DECL_NONE);
 }
 /* === End Scope Related === */
 
@@ -434,7 +434,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
       "Parse(): Unexpected token '%.*s'",
       Parser.current.length,
       Parser.current.position_in_source);
-    return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoAnnotation());
+    return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoType());
   }
 
   bool can_assign = PrecedenceLevel <= ASSIGNMENT;
@@ -451,7 +451,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
         "Parse(): Unexpected token '%.*s'",
         Parser.current.length,
         Parser.current.position_in_source);
-      return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoAnnotation());
+      return NewNode(UNTYPED_NODE, NULL, NULL, NULL, NoType());
     }
 
     AST_Node *infix_node = infix_rule(can_assign);
@@ -470,9 +470,8 @@ static AST_Node *Parse(int PrecedenceLevel) {
 }
 
 static AST_Node *TypeSpecifier(bool) {
-
   Token type_token = Parser.current;
-  bool is_array = false;
+  bool is_array = false || type_token.type == STRING;
   long array_size = 0;
 
   if (Match(LBRACKET)) {
@@ -510,7 +509,7 @@ static AST_Node *TypeSpecifier(bool) {
                              "TypeSpecifier(): Redeclaration of identifier '%.*s', previously declared on line %d\n",
                              Parser.next.length,
                              Parser.next.position_in_source,
-                             s.annotation.declared_on_line);
+                             s.declared_on_line);
       SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
     }
 
@@ -521,8 +520,8 @@ static AST_Node *TypeSpecifier(bool) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
     }
 
-    ParserAnnotation a = (is_array) ? ArrayAnnotation(type_token.type, array_size) : AnnotateType(type_token.type);
-    AddTo(SYMBOL_TABLE(), NewSymbol(Parser.next, a, DECL_DECLARED));
+    Type type = (is_array) ? NewArrayType(type_token.type, array_size) : NewType(type_token.type);
+    AddTo(SYMBOL_TABLE(), NewSymbol(Parser.next, type, DECL_DECLARED));
   }
 
   Consume(IDENTIFIER, "TypeSpecifier(): Expected IDENTIFIER after Type '%s%s', got '%s' instead.",
@@ -549,12 +548,12 @@ static AST_Node *Identifier(bool can_assign) {
                                "Identifier(): Function '%.*s' has been redeclared, original declaration on line %d\n",
                                identifier_token.length,
                                identifier_token.position_in_source,
-                               symbol.annotation.declared_on_line);
+                               symbol.declared_on_line);
         SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
       }
 
       // TODO: Check for function definition in outer scope
-      if (!is_in_symbol_table) AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, FunctionAnnotation(VOID), DECL_UNINITIALIZED));
+      if (!is_in_symbol_table) AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, NewFunctionType(VOID), DECL_UNINITIALIZED));
       symbol = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
 
       return FunctionDeclaration(symbol);
@@ -597,7 +596,7 @@ static AST_Node *Identifier(bool can_assign) {
                            "Identifier(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                            identifier_token.length,
                            identifier_token.position_in_source,
-                           already_declared.annotation.declared_on_line);
+                           already_declared.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
 
@@ -614,7 +613,7 @@ static AST_Node *Identifier(bool can_assign) {
       SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
     }
 
-    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.annotation);
+    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.value.type);
   }
 
   if (Match(MINUS_MINUS)) {
@@ -626,7 +625,7 @@ static AST_Node *Identifier(bool can_assign) {
       SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
     }
 
-    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.annotation);
+    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, symbol.value.type);
   }
 
   if (Match(EQUALS)) {
@@ -638,19 +637,22 @@ static AST_Node *Identifier(bool can_assign) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
     }
 
-    if (symbol.annotation.is_array) {
+    if (TypeIs_Array(symbol.value.type) &&
+        !TypeIs_String(symbol.value.type)) {
       if (Match(LCURLY)) {
-        AST_Node *initializer_list = InitializerList(symbol.annotation);
+        AST_Node *initializer_list = InitializerList(symbol.value.type);
         symbol.declaration_state = DECL_DEFINED;
         symbol = AddTo(SYMBOL_TABLE(), symbol);
         return NewNodeFromSymbol(ASSIGNMENT_NODE, initializer_list, array_index, NULL, symbol);
+      } else if (array_index != NULL) {
+        /* Subscripting */
       } else {
         ERROR_AT_TOKEN(identifier_token, "Identifier(): Arrays are not assignable", "");
         SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
       }
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.value.type, DECL_DEFINED));
     return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), array_index, NULL, stored_symbol);
   }
 
@@ -669,7 +671,7 @@ static AST_Node *Identifier(bool can_assign) {
     return terse_assignment;
   }
 
-  if (symbol.annotation.ostensible_type == OST_STRUCT && Match(PERIOD)) {
+  if (TypeIs_Struct(symbol.value.type) && Match(PERIOD)) {
     return StructMemberAccess(identifier_token);
   }
 
@@ -687,7 +689,7 @@ static AST_Node *Identifier(bool can_assign) {
   return NewNodeFromToken(
     (s.declaration_state == DECL_DECLARED) ? DECLARATION_NODE
                                            : IDENTIFIER_NODE,
-    NULL, array_index, NULL, identifier_token, s.annotation
+    NULL, array_index, NULL, identifier_token, s.value.type
   );
 }
 
@@ -721,7 +723,7 @@ static AST_Node *Unary(bool) {
         SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
       }
 
-      return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
+      return NewNodeFromToken(PREFIX_INCREMENT_NODE, parse_result, NULL, NULL, operator_token, NoType());
     } break;
 
     case MINUS_MINUS: {
@@ -741,13 +743,13 @@ static AST_Node *Unary(bool) {
         SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
       }
 
-      return NewNodeFromToken(PREFIX_DECREMENT_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
+      return NewNodeFromToken(PREFIX_DECREMENT_NODE, parse_result, NULL, NULL, operator_token, NoType());
     } break;
 
     case BITWISE_NOT:
     case LOGICAL_NOT:
     case MINUS:
-      return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoAnnotation());
+      return NewNodeFromToken(UNARY_OP_NODE, parse_result, NULL, NULL, operator_token, NoType());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Unary(): Unknown Unary operator '%s'\n",
@@ -776,7 +778,7 @@ static AST_Node *Binary(bool) {
     case ASTERISK:
     case DIVIDE:
     case MODULO:
-      return NewNodeFromToken(BINARY_ARITHMETIC_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(BINARY_ARITHMETIC_NODE, NULL, NULL, parse_result, operator_token, NoType());
     case EQUALITY:
     case LOGICAL_AND:
     case LOGICAL_OR:
@@ -785,14 +787,14 @@ static AST_Node *Binary(bool) {
     case GREATER_THAN:
     case LESS_THAN_EQUALS:
     case GREATER_THAN_EQUALS:
-      return NewNodeFromToken(BINARY_LOGICAL_NODE, NULL, NULL, parse_result, operator_token, AnnotateType(BOOL));
+      return NewNodeFromToken(BINARY_LOGICAL_NODE, NULL, NULL, parse_result, operator_token, NewType(BOOL));
     case BITWISE_XOR:
     case BITWISE_NOT:
     case BITWISE_AND:
     case BITWISE_OR:
     case BITWISE_LEFT_SHIFT:
     case BITWISE_RIGHT_SHIFT:
-      return NewNodeFromToken(BINARY_BITWISE_NODE, NULL, NULL, parse_result, operator_token, AnnotateType(U64));
+      return NewNodeFromToken(BINARY_BITWISE_NODE, NULL, NULL, parse_result, operator_token, NewType(U64));
     default:
       ERROR_AT_TOKEN(operator_token,
                      "Binary(): Unknown operator '%s'\n",
@@ -820,7 +822,7 @@ static AST_Node *TerseAssignment(bool) {
     case BITWISE_OR_EQUALS:
     case BITWISE_LEFT_SHIFT_EQUALS:
     case BITWISE_RIGHT_SHIFT_EQUALS:
-      return NewNodeFromToken(TERSE_ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoAnnotation());
+      return NewNodeFromToken(TERSE_ASSIGNMENT_NODE, NULL, NULL, parse_result, operator_token, NoType());
     default:
       ERROR_AT_TOKEN(operator_token,
                      "TerseAssignment(): Unknown operator '%s'\n",
@@ -831,12 +833,12 @@ static AST_Node *TerseAssignment(bool) {
 }
 
 static AST_Node *Block(bool) {
-  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+  AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->left = Statement(_);
-    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
   }
@@ -858,9 +860,9 @@ static AST_Node *Statement(bool) {
   AST_Node *expr_result = Expression(_);
 
   // Allow optional semicolon after Enum, Struct and Function definitions
-  if (expr_result->annotation.ostensible_type == OST_ENUM   ||
-      expr_result->annotation.ostensible_type == OST_STRUCT ||
-      expr_result->annotation.is_function)
+  if (TypeIs_Enum(expr_result->value.type)   ||
+      TypeIs_Struct(expr_result->value.type) ||
+      TypeIs_Function(expr_result->value.type))
   {
     Match(SEMICOLON);
   } else {
@@ -896,7 +898,7 @@ static AST_Node *IfStmt(bool) {
 
   EndScope();
 
-  return NewNode(IF_NODE, condition, body_if_true, body_if_false, NoAnnotation());
+  return NewNode(IF_NODE, condition, body_if_true, body_if_false, NoType());
 }
 
 static AST_Node *TernaryIfStmt(AST_Node *condition) {
@@ -906,7 +908,7 @@ static AST_Node *TernaryIfStmt(AST_Node *condition) {
   Consume(COLON, "TernaryIfStmt(): Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_false = Expression(_);
 
-  return NewNode(IF_NODE, condition, if_true, if_false, NoAnnotation());
+  return NewNode(IF_NODE, condition, if_true, if_false, NoType());
 }
 
 static AST_Node *WhileStmt(bool) {
@@ -914,7 +916,7 @@ static AST_Node *WhileStmt(bool) {
   Consume(LCURLY, "WhileStmt(): Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *block = Block(_);
   Match(SEMICOLON);
-  return NewNode(WHILE_NODE, condition, NULL, block, NoAnnotation());
+  return NewNode(WHILE_NODE, condition, NULL, block, NoType());
 }
 
 static AST_Node *ForStmt(bool) {
@@ -933,8 +935,8 @@ static AST_Node *ForStmt(bool) {
 
   (*find_last_body_statement)->left = after_loop;
 
-  AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoAnnotation());
-  return NewNode(FOR_NODE, initialization, NULL, while_node, NoAnnotation());
+  AST_Node *while_node = NewNode(WHILE_NODE, condition, NULL, body, NoType());
+  return NewNode(FOR_NODE, initialization, NULL, while_node, NoType());
 }
 
 static AST_Node *Break(bool) {
@@ -945,7 +947,7 @@ static AST_Node *Break(bool) {
     SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
   }
 
-  return NewNode(BREAK_NODE, NULL, NULL, NULL, NoAnnotation());
+  return NewNode(BREAK_NODE, NULL, NULL, NULL, NoType());
 }
 
 static AST_Node *Continue(bool) {
@@ -956,7 +958,7 @@ static AST_Node *Continue(bool) {
     SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
   }
 
-  return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoAnnotation());
+  return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoType());
 }
 
 static AST_Node *Return(bool) {
@@ -966,7 +968,7 @@ static AST_Node *Return(bool) {
     expr = Expression(_);
   }
 
-  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? AnnotateType(VOID) : expr->annotation);
+  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? NewType(VOID) : expr->value.type);
 }
 
 static AST_Node *Parens(bool) {
@@ -1005,7 +1007,7 @@ static AST_Node *ArraySubscripting(bool) {
 
     return_value = NewNodeFromSymbol(ARRAY_SUBSCRIPT_NODE, NULL, NULL, NULL, symbol);
   } else if (Match(INT_LITERAL)) {
-    return_value = NewNodeFromToken(ARRAY_SUBSCRIPT_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
+    return_value = NewNodeFromToken(ARRAY_SUBSCRIPT_NODE, NULL, NULL, NULL, Parser.current, NewType(Parser.current.type));
   }
 
   Consume(RBRACKET, "ArraySubscripting(): Where's the ']'?");
@@ -1034,7 +1036,7 @@ static AST_Node *EnumListEntry(bool can_assign) {
                            "EnumListEntry(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                            identifier_token.length,
                            identifier_token.position_in_source,
-                           already_declared.annotation.declared_on_line);
+                           already_declared.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
 
@@ -1047,11 +1049,11 @@ static AST_Node *EnumListEntry(bool can_assign) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.value.type, DECL_DEFINED));
     return NewNodeFromSymbol(ENUM_ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
-  return NewNodeFromToken(ENUM_LIST_ENTRY_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
+  return NewNodeFromToken(ENUM_LIST_ENTRY_NODE, NULL, NULL, NULL, identifier_token, NewType(ENUM_LITERAL));
 }
 
 static void EnumBlock(AST_Node **enum_name) {
@@ -1071,16 +1073,16 @@ static void EnumBlock(AST_Node **enum_name) {
                      "EnumBlock(): Enum identifier '%.*s' already exists, declared on line %d",
                      Parser.next.length,
                      Parser.next.position_in_source,
-                     symbol.annotation.declared_on_line);
+                     symbol.declared_on_line);
       SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
     }
 
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER, got '%s' instead.",
             TokenTypeTranslation(Parser.next.type));
-    AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, AnnotateType(ENUM_LITERAL), DECL_DEFINED));
+    AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, NewType(ENUM_LITERAL), DECL_DEFINED));
 
     (*current)->left = EnumListEntry(CAN_ASSIGN);
-    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
 
@@ -1111,18 +1113,18 @@ static AST_Node *Enum(bool) {
       "Redeclaration of Enum '%.*s', original declaration on Line %d",
       stored_symbol.token.length,
       stored_symbol.token.position_in_source,
-      stored_symbol.annotation.declared_on_line);
+      stored_symbol.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
 
-  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_UNINITIALIZED));
+  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, NewType(ENUM), DECL_UNINITIALIZED));
 
   AST_Node *enum_name = Identifier(false);
   enum_name->node_type = ENUM_IDENTIFIER_NODE;
 
   EnumBlock(&enum_name);
 
-  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, AnnotateType(ENUM), DECL_DEFINED));
+  AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, NewType(ENUM), DECL_DEFINED));
   return enum_name;
 }
 
@@ -1175,8 +1177,8 @@ static AST_Node *StructMemberAccess(Token struct_name) {
   UnshadowSymbolTable();
   EndScope();
 
-  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoAnnotation());
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.annotation);
+  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoType());
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.value.type);
 }
 
 static AST_Node *StructMemberDeclaration(bool can_assign) {
@@ -1200,7 +1202,7 @@ static AST_Node *StructMemberDeclaration(bool can_assign) {
                            "StructMemberDeclaration(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
                            identifier_token.length,
                            identifier_token.position_in_source,
-                           already_declared.annotation.declared_on_line);
+                           already_declared.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
 
@@ -1213,11 +1215,11 @@ static AST_Node *StructMemberDeclaration(bool can_assign) {
       SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.annotation, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.value.type, DECL_DEFINED));
     return NewNodeFromSymbol(STRUCT_MEMBER_IDENTIFIER_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, AnnotateType(ENUM_LITERAL));
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, NewType(ENUM_LITERAL));
 }
 
 static void StructBody(AST_Node **struct_identifier) {
@@ -1255,7 +1257,7 @@ static void StructBody(AST_Node **struct_identifier) {
                      "StructBody(): Struct identifier '%.*s' already exists",
                      Parser.next.length,
                      Parser.next.position_in_source,
-                     symbol.annotation.declared_on_line);
+                     symbol.declared_on_line);
     }
 
     Consume(IDENTIFIER,
@@ -1265,12 +1267,12 @@ static void StructBody(AST_Node **struct_identifier) {
     AddTo(SYMBOL_TABLE(),
           NewSymbol(Parser.current,
                       (is_array)
-                        ? ArrayAnnotation(type_token.type, 0)
-                        : AnnotateType(type_token.type),
+                        ? NewArrayType(type_token.type, 0)
+                        : NewType(type_token.type),
                     DECL_DECLARED));
 
     (*current)->left = StructMemberDeclaration(CAN_ASSIGN);
-    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
 
@@ -1301,10 +1303,10 @@ static AST_Node *Struct() {
                    "Struct(): Struct '%.*s' is already in symbol table, declared on line %d\n",
                    identifier_token.length,
                    identifier_token.position_in_source,
-                   existing_struct.annotation.declared_on_line);
+                   existing_struct.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
-  Symbol identifier_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, AnnotateType(STRUCT), DECL_DECLARED));
+  Symbol identifier_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, NewType(STRUCT), DECL_DECLARED));
 
   ShadowSymbolTable(identifier_symbol.struct_fields);
 
@@ -1319,7 +1321,7 @@ static AST_Node *Struct() {
   return struct_identifier;
 }
 
-static AST_Node *InitializerList(ParserAnnotation expected_type) {
+static AST_Node *InitializerList(Type expected_type) {
   AST_Node *n = NULL;
   AST_Node **current = &n;
 
@@ -1327,7 +1329,7 @@ static AST_Node *InitializerList(ParserAnnotation expected_type) {
     if (n == NULL) n = NewNode(ARRAY_INITIALIZER_LIST_NODE, NULL, NULL, NULL, expected_type);
 
     (*current)->left = Expression(_);
-    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
 
@@ -1347,7 +1349,7 @@ static AST_Node *InitializerList(ParserAnnotation expected_type) {
 }
 
 static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
-  AST_Node *params = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
+  AST_Node *params = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &params;
 
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
@@ -1384,17 +1386,17 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
     Symbol stored_symbol = AddTo(fn_params,
                                  NewSymbol(identifier_token,
                                            (is_array)
-                                             ? ArrayAnnotation(type_token.type, 0)
-                                             : AnnotateType(type_token.type),
+                                             ? NewArrayType(type_token.type, 0)
+                                             : NewType(type_token.type),
                                            DECL_DEFINED)
     );
     RegisterFnParam(SYMBOL_TABLE(), identifier, stored_symbol);
 
-    (*current)->annotation = stored_symbol.annotation;
+    (*current)->value.type = stored_symbol.value.type;
     (*current)->token = identifier_token;
 
     if (Match(COMMA) || !NextTokenIs(RPAREN)) {
-      (*current)->left = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoAnnotation());
+      (*current)->left = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoType());
 
       current = &(*current)->left;
     }
@@ -1410,7 +1412,7 @@ static AST_Node *FunctionReturnType() {
 
   Token fn_return_type = Parser.current;
 
-  return NewNodeFromToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, AnnotateType(fn_return_type.type));
+  return NewNodeFromToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, NewType(fn_return_type.type));
 }
 
 static AST_Node *FunctionBody(SymbolTable *fn_params) {
@@ -1418,7 +1420,7 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
 
   Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
 
-  AST_Node *body = NewNode(FUNCTION_BODY_NODE, NULL, NULL, NULL, NoAnnotation());
+  AST_Node *body = NewNode(FUNCTION_BODY_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &body;
 
   BeginScope();
@@ -1426,7 +1428,7 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->left = Statement(_);
-    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
   }
@@ -1438,7 +1440,7 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   UnshadowSymbolTable();
 
   if (body->left == NULL) { // Insert a Void Return if there's no function body
-    body->left = NewNode(RETURN_NODE, NULL, NULL, NULL, AnnotateType(VOID));
+    body->left = NewNode(RETURN_NODE, NULL, NULL, NULL, NewType(VOID));
   }
 
   return body;
@@ -1460,15 +1462,16 @@ static AST_Node *FunctionDeclaration(Symbol symbol) {
                    "FunctionDeclaration(): Redeclaration of function '%.*s' (declared on line %d)\n",
                    symbol.token.length,
                    symbol.token.position_in_source,
-                   already_declared.annotation.declared_on_line);
+                   already_declared.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
+
   // Retrieve updated reference to symbol before modifying
   symbol = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
 
-  symbol.annotation = (symbol.declaration_state == DECL_DECLARED)
-                        ? symbol.annotation
-                        : FunctionAnnotation(return_type->token.type);
+  symbol.value.type = (symbol.declaration_state == DECL_DECLARED)
+                        ? symbol.value.type
+                        : NewFunctionType(return_type->token.type);
   symbol.declaration_state = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
   Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
 
@@ -1495,13 +1498,13 @@ static AST_Node *FunctionCall(Token function_name) {
       ConsumeAnyLiteral("FunctionCall(): Expected literal\n");
       Token literal = Parser.current;
 
-      (*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, AnnotateType(literal.type));
+      (*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, NewType(literal.type));
     }
 
     if (Match(COMMA)) {
       if (NextTokenIs(RPAREN)) { break; }
 
-      (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+      (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
       current = &(*current)->right;
     }
   }
@@ -1510,15 +1513,15 @@ static AST_Node *FunctionCall(Token function_name) {
 
   Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE(), function_name);
 
-  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, fn_definition.annotation);
+  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, fn_definition.value.type);
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, AnnotateType(Parser.current.type));
+  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NewType(Parser.current.type));
 }
 
 AST_Node *ParserBuildAST() {
-  AST_Node *root = NewNode(START_NODE, NULL, NULL, NULL, NoAnnotation());
+  AST_Node *root = NewNode(START_NODE, NULL, NULL, NULL, NoType());
 
   AST_Node **current_node = &root;
 
@@ -1530,7 +1533,7 @@ AST_Node *ParserBuildAST() {
       ERROR_AND_EXIT("ParserBuildAST(): AST could not be created");
     }
 
-    AST_Node *next_statement = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoAnnotation());
+    AST_Node *next_statement = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     (*current_node)->left = parse_result;
     (*current_node)->right = next_statement;

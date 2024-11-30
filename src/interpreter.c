@@ -47,13 +47,13 @@ static void EndScope() {
 /* === End Scope Related === */
 
 void Literal(AST_Node *n) {
-  n->value = NewValue(n->annotation, n->token);
+  n->value = NewValue(n->value.type, n->token);
 }
 
 void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
-  if (stored_symbol.annotation.actual_type == ACT_STRING) {
+  if (TypeIs_String(stored_symbol.value.type)) {
     if (!NodeIs_NULL(n->middle) && NodeIs_ArraySubscript(n->middle)) {
       // Extract char from a "str[i]"-type thing
       int64_t index = TokenToInt64(n->middle->token, 10);
@@ -61,7 +61,7 @@ void Identifier(AST_Node *n) {
     } else {
       n->value = stored_symbol.value;
     }
-  } else if (stored_symbol.annotation.is_array) {
+  } else if (TypeIs_Array(stored_symbol.value.type)) {
     int subscript = TokenToInt64(n->middle->token, 10);
     n->value = stored_symbol.value.as.array[subscript];
   } else {
@@ -71,21 +71,21 @@ void Identifier(AST_Node *n) {
 
 Value ArrayInitializerList(AST_Node *n) {
   AST_Node **current = &n->left;
-  Value *data = calloc(n->annotation.array_size, sizeof(Value));
+  Value *data = calloc(n->value.type.array_size, sizeof(Value));
   int i = 0;
 
-  do {
+  while (*current != NULL && (*current)->left != NULL) {
     if (NodeIs_Identifier((*current)->left)) {
       Symbol s = RetrieveFrom(SYMBOL_TABLE(), (*current)->left->token);
       data[i] = s.value;
     } else {
-      data[i] = NewValue((*current)->left->annotation,
+      data[i] = NewValue((*current)->left->value.type,
                          (*current)->left->token);
     }
 
     i++;
     current = &(*current)->right;
-  } while (*current != NULL && (*current)->left != NULL);
+  }
 
   return (Value) {
     .type = (Type) {
@@ -103,10 +103,10 @@ void Assignment(AST_Node *n) {
   if (IsIn(SYMBOL_TABLE(), n->token)) {
     symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
   } else {
-    symbol = NewSymbol(n->token, n->annotation, DECL_NONE);
+    symbol = NewSymbol(n->token, n->value.type, DECL_NONE);
   }
 
-  if (n->annotation.is_array && n->annotation.actual_type != ACT_STRING) {
+  if (TypeIs_Array(n->value.type) && !TypeIs_String(n->value.type)) {
     symbol.value = ArrayInitializerList(n);
   } else if (false /* TODO: Array subscripting */) {
 
@@ -156,44 +156,40 @@ void TerseAssignment(AST_Node *n) {
 }
 
 void Unary(AST_Node *n) {
+  Type type = n->left->value.type;
+  Value value = n->left->value;
+
   switch(n->token.type) {
     case BITWISE_NOT: {
-      uint64_t value = n->left->value.as.uinteger;
+      uint64_t uint = value.as.uinteger;
 
-      switch(n->left->annotation.bit_width) {
-        case 8: {
-          uint8_t truncated = (~value);
+      if (TypeIs_U8(type)) {
+          uint8_t truncated = (~uint);
           n->value = NewUintValue(truncated);
-        } break;
-        case 16: {
-          uint16_t truncated = (~value);
+      } else if (TypeIs_U16(type)) {
+          uint16_t truncated = (~uint);
           n->value = NewUintValue(truncated);
-        } break;
-        case 32: {
-          uint32_t truncated = (~value);
+      } else if (TypeIs_U32(type)) {
+          uint32_t truncated = (~uint);
           n->value = NewUintValue(truncated);
-        } break;
-        case 64: {
-          uint64_t truncated = (~value);
+      } else if (TypeIs_U64(type)) {
+          uint64_t truncated = (~uint);
           n->value = NewUintValue(truncated);
-        } break;
-        default: return;
       }
-
     } break;
     case LOGICAL_NOT: {
-      n->value = NewBoolValue(!(n->left->value.as.boolean));
+      n->value = NewBoolValue(!(value.as.boolean));
     } break;
     case MINUS: {
-      if (n->annotation.actual_type == ACT_FLOAT) {
-        n->value = NewFloatValue(-(n->left->value.as.floating));
+      if (TypeIs_Float(type)) {
+        n->value = NewFloatValue(-(value.as.floating));
         break;
       }
 
-      if (n->annotation.is_signed) {
-        n->value = NewIntValue(-(n->left->value.as.integer));
-      } else {
-        n->value = NewUintValue(-(n->left->value.as.uinteger));
+      if (TypeIs_Int(type)) {
+        n->value = NewIntValue(-(value.as.integer));
+      } else if (TypeIs_Uint(type)) {
+        n->value = NewUintValue(-(value.as.uinteger));
       }
     } break;
     default: {
@@ -317,9 +313,9 @@ void FunctionCall(AST_Node *n) {
   while (args != NULL) {
     Symbol s = AddTo(SYMBOL_TABLE(),
                      NewSymbol(params->token,
-                               params->annotation,
+                               params->value.type,
                                DECL_DEFINED));
-    s.value = NewValue(args->annotation, args->token);
+    s.value = NewValue(args->value.type, args->token);
     AddTo(SYMBOL_TABLE(), s);
 
     params = params->left;
@@ -345,12 +341,10 @@ void StructDeclaration(AST_Node *struct_identifier) {
 
     Literal((*current)->left);
 
-    // TODO: Make a helper function for storing struct members
-    Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), struct_identifier->token);
-    Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, (*current)->token);
-    struct_member.value = (*current)->left->value;
-    AddTo(parent_struct.struct_fields, struct_member);
-
+    SetStructValue(SYMBOL_TABLE(),
+                   struct_identifier->token,
+                   (*current)->token,
+                   (*current)->left->value);
     current = &(*current)->right;
   }
 }
@@ -370,7 +364,7 @@ void StructMemberAccess(AST_Node *struct_identifier) {
 
 void PrefixIncrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
-  if (s.annotation.is_signed) {
+  if (TypeIs_Int(s.value.type)) {
     s.value.as.integer++;
   } else {
     s.value.as.uinteger++;
@@ -384,7 +378,7 @@ void PostfixIncrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->token);
   n->value = s.value;
 
-  if (s.annotation.is_signed) {
+  if (TypeIs_Int(s.value.type)) {
     s.value.as.integer++;
   } else {
     s.value.as.uinteger++;
@@ -395,7 +389,7 @@ void PostfixIncrement(AST_Node *n) {
 
 void PrefixDecrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
-  if (s.annotation.is_signed) {
+  if (TypeIs_Int(s.value.type)) {
     s.value.as.integer--;
   } else {
     s.value.as.uinteger--;
@@ -409,7 +403,7 @@ void PostfixDecrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   n->value = s.value;
 
-  if (s.annotation.is_signed) {
+  if (TypeIs_Int(s.value.type)) {
     s.value.as.integer--;
   } else {
     s.value.as.uinteger--;

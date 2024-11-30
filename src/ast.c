@@ -55,11 +55,11 @@ const char *NodeTypeTranslation(NodeType t) {
   return _NodeTypeTranslation[t];
 }
 
-AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, ParserAnnotation a) {
+AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Type type) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->node_type = node_type;
-  n->annotation = a;
+  n->value.type = type;
 
   n->left = left;
   n->middle = middle;
@@ -68,12 +68,12 @@ AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node
   return n;
 }
 
-AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, ParserAnnotation a) {
+AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, Type type) {
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->token = token;
   n->node_type = node_type;
-  n->annotation = a;
+  n->value.type = type;
 
   n->left = left;
   n->middle = middle;
@@ -87,7 +87,7 @@ AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle
 
   n->token = symbol.token;
   n->node_type = node_type;
-  n->annotation = symbol.annotation;
+  n->value.type = symbol.value.type;
 
   n->left = left;
   n->middle = middle;
@@ -119,8 +119,8 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     : printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  if (node->annotation.actual_type != ACT_NOT_APPLICABLE) {
-    InlinePrintActAnnotation(node->annotation);
+  if (!TypeIs_None(node->value.type)) {
+    InlinePrintType(node->value.type);
     printf(" ");
   }
 
@@ -154,21 +154,17 @@ static void InlinePrintNodeSummary(AST_Node *node) {
   printf("%16s Node | ",
          NodeTypeTranslation(node->node_type));
   InlinePrintToken(node->token);
-  printf(" [OST ");
-  InlinePrintOstAnnotation(node->annotation);
-  printf(" : ACT ");
-  InlinePrintActAnnotation(node->annotation);
-  printf("]");
+  printf(" {");
+  InlinePrintType(node->value.type);
+  printf("}");
 }
 
 void PrintNode(AST_Node *node) {
   printf("%16s Node ", NodeTypeTranslation(node->node_type));
   printf("'%.*s'", node->token.length, node->token.position_in_source);
-  printf(" [OST ");
-  InlinePrintOstAnnotation(node->annotation);
-  printf(" : ACT ");
-  InlinePrintActAnnotation(node->annotation);
-  printf("] | Value: ");
+  printf(" {");
+  InlinePrintType(node->value.type);
+  printf("} | Value: ");
   PrintValue(node->value);
   printf("\n");
 
