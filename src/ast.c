@@ -119,7 +119,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     : printf("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  if (!TypeIs_None(node->value.type)) {
+  if (!TypeIs_None(node->value.type) && node->node_type != START_NODE) {
     InlinePrintType(node->value.type);
     printf(" ");
   }
@@ -131,8 +131,8 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     printf("%s", NodeTypeTranslation(node->node_type));
   }
 
-  if (node->value.type.specifier != T_NONE) {
-    printf(" :: ");
+  if (node->value.type.specifier != T_NONE && node->node_type != START_NODE) {
+    printf(" | ");
     InlinePrintValue(node->value);
   }
 
