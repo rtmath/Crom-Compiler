@@ -2,7 +2,7 @@
 #include <stdlib.h> // for malloc and friends
 #include <stdbool.h>
 #include <stdio.h>  // printf
-#include <string.h> // for strlen, strcmp
+#include <string.h> // for strcmp
 
 #include "common.h"
 #include "error.h"
@@ -13,18 +13,6 @@ static int debug_guid = 0;
 
 static Symbol GetSymbol(SymbolTable *st, const char *key);
 static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s);
-
-static char *CopyString(const char *s) {
-  int length = strlen(s);
-  char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
-
-  for (int i = 0; i < length; i++) {
-    new_s[i] = s[i];
-  }
-  new_s[length] = '\0';
-
-  return new_s;
-}
 
 static int Hash(const char *s, int prime, int bucket_capacity) {
   unsigned long long hash = 0;
@@ -226,14 +214,6 @@ SymbolTable *NewSymbolTable() {
 }
 
 Symbol NewSymbol(Token token, Type type, DeclarationState d) {
-  SymbolTable *fields = (TypeIs_Struct(type))
-                          ? NewSymbolTable()
-                          : NULL;
-
-  SymbolTable *fn_params = (TypeIs_Function(type))
-                             ? NewSymbolTable()
-                             : NULL;
-
   Symbol s = {
     .declaration_state = d,
     .token = token,
@@ -241,9 +221,6 @@ Symbol NewSymbol(Token token, Type type, DeclarationState d) {
       .type = type,
       .as.uinteger = 0,
     },
-    .struct_fields = fields,
-    .fn_params = fn_params,
-    .fn_param_count = 0,
   };
 
   return s;
@@ -280,16 +257,14 @@ bool IsIn(SymbolTable *st, Token token) {
   return (symbol.token.type != ERROR);
 }
 
-void RegisterFnParam(SymbolTable *st, Symbol function, Symbol param) {
-  FnParam fp = {
-    .ordinality = function.fn_param_count,
-    .param_token = param.token,
-    .type = param.value.type,
-  };
-  function.fn_param_list[function.fn_param_count] = fp;
-  function.fn_param_count++;
+void AddParams(SymbolTable *st, Symbol function_symbol) {
+  FnParam *next = function_symbol.value.type.params.next;
 
-  AddTo(st, function);
+  while (next != NULL) {
+    AddTo(st, NewSymbol(next->token, next->type, DECL_DEFINED));
+
+    next = next->next;
+  }
 }
 
 void SetValue(SymbolTable *st, Token t, Value v) {
@@ -314,30 +289,11 @@ void SetValueType(SymbolTable *st, Token t, Type type) {
   AddTo(st, s);
 }
 
-void SetStructValue(SymbolTable *st, Token struct_name, Token member_name, Value value) {
-  Symbol parent_struct = RetrieveFrom(st, struct_name);
-  if (parent_struct.token.type == ERROR) {
-    printf("SetValueType(): Struct '%.*s' not found in symbol table", struct_name.length, struct_name.position_in_source);
-    return;
-  };
-
-  Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, member_name);
-  if (struct_member.token.type == ERROR) {
-    printf("SetValueType(): Struct member '%.*s' not found in symbol table", member_name.length, member_name.position_in_source);
-    return;
-  };
-
-  struct_member.value = value;
-  AddTo(parent_struct.struct_fields, struct_member);
-}
-
 void PrintSymbol(Symbol s) {
   printf("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   printf(" ");
   InlinePrintType(s.value.type);
   printf("\n");
-  if (s.struct_fields != NULL) printf("has Struct Fields\n");
-  if (s.fn_params != NULL) printf("has %d Function Params\n", s.fn_param_count);
   PrintValue(s.value);
 }

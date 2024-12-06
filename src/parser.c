@@ -6,18 +6,18 @@
 #include <stdlib.h> // for malloc
 
 #include "ast.h"
+#include "common.h"
 #include "error.h"
 #include "io.h"
 #include "lexer.h"
 
 /* Global Variables */
-static SymbolTable *shadowed_symbol_table;
 ErrorCode error_code = ERR_UNSET;
 
 /* Forward Declarations */
 static SymbolTable *SYMBOL_TABLE();
 static AST_Node *StructMemberAccess(Token struct_name);
-static AST_Node *FunctionDeclaration(Symbol symbol);
+static AST_Node *FunctionDeclaration(Token function_name);
 static AST_Node *FunctionCall(Token identifier);
 static AST_Node *InitializerList(Type expected_type);
 
@@ -170,14 +170,6 @@ static void EndScope() {
   Scope.depth--;
 }
 
-static void ShadowSymbolTable(SymbolTable *st) {
-  shadowed_symbol_table = st;
-}
-
-static void UnshadowSymbolTable() {
-  shadowed_symbol_table = NULL;
-}
-
 static Symbol ExistsInOuterScope(Token t) {
   for (int i = Scope.depth; i >= 0; i--) {
     Symbol result = RetrieveFrom(Scope.locals[i], t);
@@ -198,9 +190,7 @@ static Symbol ExistsInOuterScope(Token t) {
 /* === End Scope Related === */
 
 static SymbolTable *SYMBOL_TABLE() {
-  return (shadowed_symbol_table != NULL)
-           ? shadowed_symbol_table
-           : Scope.locals[Scope.depth];
+  return Scope.locals[Scope.depth];
 }
 
 static void Advance() {
@@ -554,9 +544,8 @@ static AST_Node *Identifier(bool can_assign) {
 
       // TODO: Check for function definition in outer scope
       if (!is_in_symbol_table) AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, NewFunctionType(VOID), DECL_UNINITIALIZED));
-      symbol = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
 
-      return FunctionDeclaration(symbol);
+      return FunctionDeclaration(identifier_token);
     } else { // Function call
       if (!is_in_symbol_table) {
         ERROR_AT_TOKEN(
@@ -1140,11 +1129,10 @@ static AST_Node *StructMemberAccess(Token struct_name) {
   }
 
   BeginScope();
-  ShadowSymbolTable(struct_symbol.struct_fields);
 
   Consume(IDENTIFIER, "StructMemberAccess(): Expected identifier", "");
   Token field_name = Parser.current;
-  if (!IsIn(SYMBOL_TABLE(), field_name)) {
+  if (!StructContainsMember(struct_symbol.value.type, field_name)) {
     ERROR_AT_TOKEN(
       field_name,
       "StructMemberAccess(): Struct '%.*s' has no member '%.*s'",
@@ -1174,56 +1162,14 @@ static AST_Node *StructMemberAccess(Token struct_name) {
     SetErrorCodeIfUnset(&error_code, ERR_UNDEFINED);
   }
 
-  UnshadowSymbolTable();
   EndScope();
 
   AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoType());
   return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.value.type);
 }
 
-static AST_Node *StructMemberDeclaration(bool can_assign) {
-  Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.current);
-  bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.current);
-  Token identifier_token = Parser.current;
-
-  if (!is_in_symbol_table) {
-    ERROR_AT_TOKEN(identifier_token,
-                   "StructMemberDeclaration(): Line %d: Undeclared identifier '%.*s'",
-                   identifier_token.on_line,
-                   identifier_token.length,
-                   identifier_token.position_in_source);
-    SetErrorCodeIfUnset(&error_code, ERR_UNDECLARED);
-  }
-
-  if (symbol.declaration_state == DECL_NONE && can_assign) {
-    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), identifier_token);
-    REDECLARATION_AT_TOKEN(identifier_token,
-                           already_declared.token,
-                           "StructMemberDeclaration(): Identifier '%.*s' has been redeclared. First declared on line %d\n",
-                           identifier_token.length,
-                           identifier_token.position_in_source,
-                           already_declared.declared_on_line);
-    SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
-  }
-
-  if (Match(EQUALS)) {
-    if (!can_assign) {
-      ERROR_AT_TOKEN(identifier_token,
-                     "StructMemberDeclaration(): Cannot assign to identifier '%.*s'",
-                     identifier_token.length,
-                     identifier_token.position_in_source);
-      SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
-    }
-
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.value.type, DECL_DEFINED));
-    return NewNodeFromSymbol(STRUCT_MEMBER_IDENTIFIER_NODE, Expression(_), NULL, NULL, stored_symbol);
-  }
-
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, identifier_token, NewType(ENUM_LITERAL));
-}
-
-static void StructBody(AST_Node **struct_identifier) {
-  AST_Node **current = struct_identifier;
+static void StructBody(AST_Node **struct_name) {
+  AST_Node **current = struct_name;
 
   Consume(LCURLY, "Struct(): Expected '{' after STRUCT declaration, got '%s' instead",
           TokenTypeTranslation(Parser.next.type));
@@ -1243,35 +1189,34 @@ static void StructBody(AST_Node **struct_identifier) {
     }
 
     bool is_array = false;
+    int array_size = 0;
     if (Match(LBRACKET)) {
+      if (!NextTokenIs(RBRACKET)) {
+        Consume(INT_LITERAL, "StructBody(): Expected INT_LITERAL, got '%s'", Parser.next);
+        array_size = TokenToInt64(Parser.current, 10);
+      }
       Consume(RBRACKET, "StructBody(): Expected ']' after '['");
       is_array = true;
-    }
-
-    Symbol symbol = RetrieveFrom(SYMBOL_TABLE(), Parser.next);
-    bool is_in_symbol_table = IsIn(SYMBOL_TABLE(), Parser.next);
-
-    if (is_in_symbol_table) {
-      SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
-      ERROR_AT_TOKEN(Parser.next,
-                     "StructBody(): Struct identifier '%.*s' already exists",
-                     Parser.next.length,
-                     Parser.next.position_in_source,
-                     symbol.declared_on_line);
     }
 
     Consume(IDENTIFIER,
             "StructBody(): Expected IDENTIFIER, got '%s' instead",
             TokenTypeTranslation(Parser.next.type));
 
-    AddTo(SYMBOL_TABLE(),
-          NewSymbol(Parser.current,
-                      (is_array)
-                        ? NewArrayType(type_token.type, 0)
-                        : NewType(type_token.type),
-                    DECL_DECLARED));
+    Token member_token = Parser.current;
+    Type member_type = (is_array) ? NewArrayType(type_token.type, array_size) : NewType(type_token.type);
 
-    (*current)->left = StructMemberDeclaration(CAN_ASSIGN);
+    if (StructContainsMember((*struct_name)->value.type, member_token)) {
+      SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
+      ERROR_AT_TOKEN(member_token,
+                     "StructBody(): Struct member '%.*s' redeclared",
+                     member_token.length,
+                     member_token.position_in_source);
+    }
+
+    AddMemberToStruct(&(*struct_name)->value.type, member_type, member_token);
+
+    (*current)->left = NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, member_token, member_type);
     (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
@@ -1308,12 +1253,8 @@ static AST_Node *Struct() {
   }
   Symbol identifier_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, NewType(STRUCT), DECL_DECLARED));
 
-  ShadowSymbolTable(identifier_symbol.struct_fields);
-
   AST_Node *struct_identifier = NewNodeFromSymbol(STRUCT_DECLARATION_NODE, NULL, NULL, NULL, identifier_symbol);
   StructBody(&struct_identifier);
-
-  UnshadowSymbolTable();
 
   identifier_symbol.declaration_state = DECL_DEFINED;
   AddTo(SYMBOL_TABLE(), identifier_symbol);
@@ -1348,13 +1289,13 @@ static AST_Node *InitializerList(Type expected_type) {
   return n;
 }
 
-static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
+static AST_Node *FunctionParams(Token function_name) {
+  Symbol function = RetrieveFrom(SYMBOL_TABLE(), function_name);
+
   AST_Node *params = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &params;
 
   while (!NextTokenIs(RPAREN) && !NextTokenIs(TOKEN_EOF)) {
-    identifier = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
-
     ConsumeAnyType("FunctionParams(): Expected a type, got '%s' instead", TokenTypeTranslation(Parser.next.type));
     Token type_token = Parser.current;
 
@@ -1373,27 +1314,23 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
 
     Consume(IDENTIFIER, "FunctionParams(): Expected identifier after '(', got '%s' instead",
             TokenTypeTranslation(Parser.next.type));
-    Token identifier_token = Parser.current;
+    Token member_name = Parser.current;
+    Type member_type = (is_array) ? NewArrayType(type_token.type, 0) : NewType(type_token.type);
 
-    Symbol existing_symbol = RetrieveFrom(SYMBOL_TABLE(), identifier.token);
-    if (IsIn(fn_params, identifier_token) && existing_symbol.declaration_state != DECL_DECLARED) {
-      ERROR_AT_TOKEN(identifier_token,
+    if (FunctionHasParam(function.value.type, member_name) &&
+                         function.declaration_state != DECL_DECLARED)
+    {
+      ERROR_AT_TOKEN(member_name,
                      "FunctionParams(): Duplicate parameter name '%.*s'",
-                     identifier_token.length,
-                     identifier_token.position_in_source);
+                     member_name.length,
+                     member_name.position_in_source);
       SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
     }
-    Symbol stored_symbol = AddTo(fn_params,
-                                 NewSymbol(identifier_token,
-                                           (is_array)
-                                             ? NewArrayType(type_token.type, 0)
-                                             : NewType(type_token.type),
-                                           DECL_DEFINED)
-    );
-    RegisterFnParam(SYMBOL_TABLE(), identifier, stored_symbol);
 
-    (*current)->value.type = stored_symbol.value.type;
-    (*current)->token = identifier_token;
+    AddParamToFunction(&function.value.type, member_type, member_name);
+
+    (*current)->value.type = member_type;
+    (*current)->token = member_name;
 
     if (Match(COMMA) || !NextTokenIs(RPAREN)) {
       (*current)->left = NewNode(FUNCTION_PARAM_NODE, NULL, NULL, NULL, NoType());
@@ -1401,6 +1338,8 @@ static AST_Node *FunctionParams(SymbolTable *fn_params, Symbol identifier) {
       current = &(*current)->left;
     }
   }
+
+  AddTo(SYMBOL_TABLE(), function);
 
   return params;
 }
@@ -1415,16 +1354,18 @@ static AST_Node *FunctionReturnType() {
   return NewNodeFromToken(FUNCTION_RETURN_TYPE_NODE, NULL, NULL, NULL, fn_return_type, NewType(fn_return_type.type));
 }
 
-static AST_Node *FunctionBody(SymbolTable *fn_params) {
+static AST_Node *FunctionBody(Token function_name) {
   if (NextTokenIs(SEMICOLON)) { return NULL; }
 
   Consume(LCURLY, "FunctionBody(): Expected '{' to begin function body, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+
+  Symbol function = RetrieveFrom(SYMBOL_TABLE(), function_name);
 
   AST_Node *body = NewNode(FUNCTION_BODY_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &body;
 
   BeginScope();
-  ShadowSymbolTable(fn_params);
+  AddParams(SYMBOL_TABLE(), function);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->left = Statement(_);
@@ -1433,11 +1374,9 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
     current = &(*current)->right;
   }
 
-
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
 
   EndScope();
-  UnshadowSymbolTable();
 
   if (body->left == NULL) { // Insert a Void Return if there's no function body
     body->left = NewNode(RETURN_NODE, NULL, NULL, NULL, NewType(VOID));
@@ -1446,36 +1385,35 @@ static AST_Node *FunctionBody(SymbolTable *fn_params) {
   return body;
 }
 
-static AST_Node *FunctionDeclaration(Symbol symbol) {
+static AST_Node *FunctionDeclaration(Token function_name) {
   if (Scope.depth != 0) {
-    ERROR_AT_TOKEN(symbol.token, "FunctionDeclaration(): Functions must be declared in global scope.", "");
+    ERROR_AT_TOKEN(function_name, "FunctionDeclaration(): Functions must be declared in global scope.", "");
     SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_DECLARATION);
   }
 
-  AST_Node *params = FunctionParams(symbol.fn_params, symbol);
+  AST_Node *params = FunctionParams(function_name);
   AST_Node *return_type = FunctionReturnType();
-  AST_Node *body = FunctionBody(symbol.fn_params);
+  AST_Node *body = FunctionBody(function_name);
 
-  if ((symbol.declaration_state == DECL_DECLARED) && body == NULL) {
-    Symbol already_declared = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
-    ERROR_AT_TOKEN(symbol.token,
+  Symbol function = RetrieveFrom(SYMBOL_TABLE(), function_name);
+
+  if ((function.declaration_state == DECL_DECLARED) && body == NULL) {
+    ERROR_AT_TOKEN(function.token,
                    "FunctionDeclaration(): Redeclaration of function '%.*s' (declared on line %d)\n",
-                   symbol.token.length,
-                   symbol.token.position_in_source,
-                   already_declared.declared_on_line);
+                   function.token.length,
+                   function.token.position_in_source,
+                   function.declared_on_line);
     SetErrorCodeIfUnset(&error_code, ERR_REDECLARED);
   }
 
-  // Retrieve updated reference to symbol before modifying
-  symbol = RetrieveFrom(SYMBOL_TABLE(), symbol.token);
+  if (function.declaration_state != DECL_DECLARED) {
+    function.value.type.specifier = return_type->value.type.specifier;
+  }
 
-  symbol.value.type = (symbol.declaration_state == DECL_DECLARED)
-                        ? symbol.value.type
-                        : NewFunctionType(return_type->token.type);
-  symbol.declaration_state = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
-  Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
+  function.declaration_state = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
+  function = AddTo(SYMBOL_TABLE(), function);
 
-  return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, updated_symbol);
+  return NewNodeFromSymbol((body == NULL) ? DECLARATION_NODE : FUNCTION_NODE, return_type, params, body, function);
 }
 
 static AST_Node *FunctionCall(Token function_name) {

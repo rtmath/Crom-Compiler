@@ -341,10 +341,12 @@ void StructDeclaration(AST_Node *struct_identifier) {
 
     Literal((*current)->left);
 
+    /* TODO: Need to store Struct Values somewhere
     SetStructValue(SYMBOL_TABLE(),
                    struct_identifier->token,
                    (*current)->token,
                    (*current)->left->value);
+    */
     current = &(*current)->right;
   }
 }
@@ -357,9 +359,8 @@ void StructMemberAccess(AST_Node *struct_identifier) {
     return;
   }
 
-  Symbol parent_struct = RetrieveFrom(SYMBOL_TABLE(), struct_identifier->right->token);
-  Symbol struct_member = RetrieveFrom(parent_struct.struct_fields, struct_identifier->token);
-  struct_identifier->value = struct_member.value;
+  // TODO: Need to store Struct Values somewhere
+  //struct_identifier->value = GetStructValue(SYMBOL_TABLE(), struct_identifier->right->token, struct_identifier->token);
 }
 
 void PrefixIncrement(AST_Node *n) {

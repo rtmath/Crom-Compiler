@@ -17,4 +17,7 @@ bool Uint64Overflow(Token t, int base);
 bool DoubleOverflow(Token t);
 bool DoubleUnderflow(Token t);
 
+char *CopyString(const char *s);
+char *CopyStringL(const char *s, int length);
+
 #endif

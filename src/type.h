@@ -27,12 +27,38 @@ enum TypeSpecifier {
   T_VOID,
 };
 
-typedef struct {
+struct FnParam;
+struct StructMember;
+
+struct ParamList {
+  struct FnParam *next;
+};
+
+struct MemberList {
+  struct StructMember *next;
+};
+
+typedef struct Type {
   enum TypeCategory  category;
   enum TypeSpecifier specifier;
 
   int array_size;
+
+  struct ParamList params;
+  struct MemberList members;
 } Type;
+
+typedef struct StructMember {
+  struct Type type;
+  Token token;
+  struct StructMember *next;
+} StructMember;
+
+typedef struct FnParam {
+  struct Type type;
+  Token token;
+  struct FnParam *next;
+} FnParam;
 
 Type SmallestContainingIntType(int64_t i64);
 Type SmallestContainingUintType(uint64_t u64);
@@ -83,5 +109,13 @@ bool TypeIs_Bool(Type t);
 bool TypeIs_Enum(Type t);
 bool TypeIs_Struct(Type t);
 bool TypeIs_Void(Type t);
+
+bool StructContainsMember(Type struct_type, Token member_name);
+void AddMemberToStruct(Type *struct_type, Type member_type, Token member_name);
+StructMember *GetStructMember(Type struct_type, Token member_name);
+
+bool FunctionHasParam(Type function_type, Token param_name);
+void AddParamToFunction(Type *function_type, Type param_type, Token param_name);
+FnParam *GetFunctionParam(Type struct_type, Token param_name);
 
 #endif

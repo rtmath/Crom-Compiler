@@ -1,10 +1,13 @@
 #include <float.h> // FLT_MAX and DBL_MAX
 #include <stdio.h> // for printf
+#include <stdlib.h> // for calloc
+#include <string.h> // for strcmp
 
+#include "common.h"
 #include "error.h"
 #include "type.h"
 
-static Type _Value(enum TypeSpecifier type_specifier, enum TypeCategory type_category, int array_size) {
+static Type _Type(enum TypeSpecifier type_specifier, enum TypeCategory type_category, int array_size) {
   return (Type){
     .category = type_category,
     .specifier = type_specifier,
@@ -17,42 +20,42 @@ Type _NewType(TokenType t, int array_size) {
   const int _ = TC_NONE;
 
   switch(t) {
-    case I8:  return _Value(T_I8,  _, array_size);
-    case I16: return _Value(T_I16, _, array_size);
-    case I32: return _Value(T_I32, _, array_size);
-    case I64: return _Value(T_I64, _, array_size);
+    case I8:  return _Type(T_I8,  _, array_size);
+    case I16: return _Type(T_I16, _, array_size);
+    case I32: return _Type(T_I32, _, array_size);
+    case I64: return _Type(T_I64, _, array_size);
 
-    case U8:  return _Value(T_U8,  _, array_size);
-    case U16: return _Value(T_U16, _, array_size);
-    case U32: return _Value(T_U32, _, array_size);
-    case U64: return _Value(T_U64, _, array_size);
+    case U8:  return _Type(T_U8,  _, array_size);
+    case U16: return _Type(T_U16, _, array_size);
+    case U32: return _Type(T_U32, _, array_size);
+    case U64: return _Type(T_U64, _, array_size);
 
-    case F32:  return _Value(T_F32, _, array_size);
+    case F32:  return _Type(T_F32, _, array_size);
     case F64:
-    case FLOAT_LITERAL: return _Value(T_F64, _, array_size);
+    case FLOAT_LITERAL: return _Type(T_F64, _, array_size);
 
     case INT_LITERAL:
     case BINARY_LITERAL:
-    case HEX_LITERAL: return _Value(T_U64, _, array_size);
+    case HEX_LITERAL: return _Type(T_U64, _, array_size);
 
-    case ENUM_LITERAL: return _Value(T_I64, _, array_size);
+    case ENUM_LITERAL: return _Type(T_I64, _, array_size);
 
     case BOOL:
-    case BOOL_LITERAL: return _Value(T_BOOL, _, array_size);
+    case BOOL_LITERAL: return _Type(T_BOOL, _, array_size);
 
     case CHAR:
-    case CHAR_LITERAL: return _Value(T_CHAR, _, array_size);
+    case CHAR_LITERAL: return _Type(T_CHAR, _, array_size);
 
     case STRING:
-    case STRING_LITERAL: return _Value(T_STRING, _, array_size);
+    case STRING_LITERAL: return _Type(T_STRING, _, array_size);
 
-    case VOID: return _Value(T_VOID, _, array_size);
-    case ENUM: return _Value(T_ENUM, _, array_size);
-    case STRUCT: return _Value(T_STRUCT, _, array_size);
+    case VOID: return _Type(T_VOID, _, array_size);
+    case ENUM: return _Type(T_ENUM, _, array_size);
+    case STRUCT: return _Type(T_STRUCT, _, array_size);
 
     default:
       ERROR_AND_EXIT_FMTMSG("NewType(): Invalid token type '%s'\n", TokenTypeTranslation(t));
-      return _Value(T_NONE, _, 0);
+      return _Type(T_NONE, _, 0);
   }
 }
 
@@ -283,4 +286,159 @@ bool TypeIs_Struct(Type t) {
 
 bool TypeIs_Void(Type t) {
   return t.specifier == T_VOID;
+}
+
+static StructMember *NewStructMember(Type type, Token token) {
+  StructMember *struct_member= calloc(1, sizeof(StructMember));
+
+  struct_member->type = type;
+  struct_member->token = token;
+
+  return struct_member;
+}
+
+StructMember *GetStructMember(Type struct_type, Token member_name) {
+  char *ident = CopyStringL(member_name.position_in_source,
+                            member_name.length);
+  StructMember *matching_member = NULL;
+  StructMember *check = struct_type.members.next;
+
+  while (check != NULL) {
+    char *name= CopyStringL(struct_type.members.next->token.position_in_source,
+                            struct_type.members.next->token.length);
+
+    if (strcmp(ident, name) == 0) {
+      matching_member = struct_type.members.next;
+      break;
+    }
+
+    check = (*check).next;
+
+    free(name);
+  }
+
+  free(ident);
+
+  return matching_member;
+}
+
+bool StructContainsMember(Type struct_type, Token member_name) {
+  char *ident = CopyStringL(member_name.position_in_source,
+                            member_name.length);
+  StructMember *matching_member = NULL;
+  StructMember *check = struct_type.members.next;
+
+  while (check != NULL) {
+    char *name= CopyStringL(struct_type.members.next->token.position_in_source,
+                            struct_type.members.next->token.length);
+
+    if (strcmp(ident, name) == 0) {
+      matching_member = struct_type.members.next;
+      break;
+    }
+
+    check = (*check).next;
+
+    free(name);
+  }
+
+  free(ident);
+
+  return matching_member != NULL;
+}
+
+
+void AddMemberToStruct(Type *struct_type, Type member_type, Token member_name) {
+  StructMember *check = struct_type->members.next;
+
+  // If first member in list
+  if (check == NULL) {
+    struct_type->members.next = NewStructMember(member_type, member_name);
+    return;
+  }
+
+  // Scan to end of members
+  while (check->next != NULL) {
+    check = check->next;
+  }
+
+  // Add member
+  check->next = NewStructMember(member_type, member_name);
+}
+
+static FnParam *NewFnParam(Type type, Token token) {
+  FnParam *fn_param = calloc(1, sizeof(FnParam));
+
+  fn_param->type = type;
+  fn_param->token = token;
+
+  return fn_param;
+}
+
+bool FunctionHasParam(Type function_type, Token param_name) {
+  char *ident = CopyStringL(param_name.position_in_source,
+                            param_name.length);
+  FnParam *matching_param = NULL;
+  FnParam *check = function_type.params.next;
+
+  while (check != NULL) {
+    char *name = CopyStringL(check->token.position_in_source,
+                             check->token.length);
+
+    if (strcmp(ident, name) == 0) {
+      matching_param = function_type.params.next;
+      break;
+    }
+
+    check = (*check).next;
+
+    free(name);
+  }
+
+  free(ident);
+
+  return matching_param != NULL;
+}
+
+void AddParamToFunction(Type *function_type, Type param_type, Token param_name) {
+  FnParam *check = function_type->params.next;
+
+  // If first param in list
+  if (check == NULL) {
+    function_type->params.next = NewFnParam(param_type, param_name);
+    return;
+  }
+
+  // Scan to end of param list
+  while (check->next != NULL) {
+    check = check->next;
+  }
+
+  // Add param
+  check->next = NewFnParam(param_type, param_name);
+}
+
+FnParam *GetFunctionParam(Type function_type, Token param_name) {
+  char *ident = CopyStringL(param_name.position_in_source,
+                            param_name.length);
+  FnParam *matching_param = NULL;
+  FnParam *check = function_type.params.next;
+
+  while (check != NULL) {
+    char *name = CopyStringL(check->token.position_in_source,
+                             check->token.length);
+
+    if (strcmp(ident, name) == 0) {
+      matching_param = function_type.params.next;
+      break;
+    }
+
+    check = (*check).next;
+
+    free(name);
+  }
+
+  free(ident);
+
+  return matching_param;
 }

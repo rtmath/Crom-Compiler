@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 static SymbolTable *SYMBOL_TABLE;
+static Type *in_function;
 static ErrorCode error_code;
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
@@ -161,7 +162,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   if (!types_match && types_are_not_numbers) return false;
   if (types_match && types_are_not_numbers) return true;
 
-  if (NodeIs_Identifier(from)) {
+  if (NodeIs_Identifier(from) ||
+      NodeIs_Return(from)) {
     return types_match;
   }
 
@@ -323,6 +325,12 @@ static void Assignment(AST_Node *identifier) {
 
 static void Identifier(AST_Node *identifier) {
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
+  if (symbol.token.type == ERROR && in_function != NULL) {
+    FnParam *param = GetFunctionParam(*in_function, identifier->token);
+    if (param != NULL) {
+      symbol = NewSymbol(param->token, param->type, DECL_DEFINED);
+    }
+  }
   Type t = symbol.value.type;
 
   if (!NodeIs_NULL(identifier->middle) &&
@@ -498,6 +506,7 @@ static void Function(AST_Node *node) {
   }
 }
 
+/*
 static void FunctionCall(AST_Node *node) {
   AST_Node **current = &(node)->middle;
   Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE, node->token);
@@ -545,6 +554,7 @@ static void FunctionCall(AST_Node *node) {
 
   ActualizeType(node, node->value.type);
 }
+*/
 
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = (node)->left;
@@ -804,27 +814,24 @@ static void StructMemberAccess(AST_Node *struct_identifier) {
   if (struct_identifier->left == NULL) {
     return;
   }
-  AST_Node *member = struct_identifier->left;
+  AST_Node *member_node = struct_identifier->left;
 
-  if (member == NULL || NodeIs_StructMember(member)) return;
+  if (member_node == NULL || NodeIs_StructMember(member_node)) return;
 
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE, struct_identifier->token);
-  Symbol identifier_symbol = RetrieveFrom(struct_symbol.struct_fields, member->token);
+  StructMember *member = GetStructMember(struct_symbol.value.type, member_node->token);
 
-  ActualizeType(member, identifier_symbol.value.type);
-  ActualizeType(struct_identifier, member->value.type);
+  ActualizeType(struct_identifier, member->type);
 }
 
 static void CheckTypesRecurse(AST_Node *node) {
-  SymbolTable *remember_st = SYMBOL_TABLE;
-  if (NodeIs_Function(node)) {
-    Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
-    SYMBOL_TABLE = s.fn_params;
-  }
-
   if (NodeIs_EnumIdentifier(node)) {
     HandleEnum(node);
     return;
+  }
+
+  if (NodeIs_Function(node)) {
+    in_function = &node->value.type;
   }
 
   if (node->left   != NULL) CheckTypesRecurse(node->left);
@@ -832,7 +839,7 @@ static void CheckTypesRecurse(AST_Node *node) {
   if (node->right  != NULL) CheckTypesRecurse(node->right);
 
   if (NodeIs_Function(node)) {
-    SYMBOL_TABLE = remember_st;
+    in_function = NULL;
   }
 
   switch(node->node_type) {
@@ -880,7 +887,7 @@ static void CheckTypesRecurse(AST_Node *node) {
       Function(node);
     } break;
     case FUNCTION_CALL_NODE: {
-      FunctionCall(node);
+      //FunctionCall(node);
     } break;
     case RETURN_NODE: {
       Return(node);

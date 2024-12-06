@@ -4,6 +4,7 @@
 #include <math.h>   // for HUGE_VAL
 #include <stddef.h> // for NULL
 #include <stdlib.h> // for strtoll and friends
+#include <string.h> // for strlen
 
 #include "common.h"
 #include "error.h"
@@ -62,4 +63,27 @@ bool DoubleUnderflow(Token t) {
   errno = 0;
   double value = strtod(t.position_in_source, NULL);
   return (errno == ERANGE && (value <= DBL_MIN));
+}
+
+char *CopyString(const char *s) {
+  int length = strlen(s);
+  char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
+
+  for (int i = 0; i < length; i++) {
+    new_s[i] = s[i];
+  }
+  new_s[length] = '\0';
+
+  return new_s;
+}
+
+char *CopyStringL(const char *s, int length) {
+  char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
+
+  for (int i = 0; i < length; i++) {
+    new_s[i] = s[i];
+  }
+  new_s[length] = '\0';
+
+  return new_s;
 }
