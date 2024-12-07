@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+i8 check = 128; // INT8_MAX + 1

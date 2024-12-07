@@ -1,0 +1,5 @@
+// ERR_LEXER_ERROR
+
+// Lexer creates an Error token when the binary literal exceeds a length of 64
+u64 check =
+b'1111111111111111111111111111111111111111111111111111111111111111110';

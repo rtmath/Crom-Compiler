@@ -1,0 +1,6 @@
+// ERR_TYPE_DISAGREEMENT
+
+u8 a = 10;
+i8 b = -127;
+
+bool check = a > b;

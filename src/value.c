@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <stdio.h>  // for printf
 #include <stdlib.h> // for malloc
 #include <string.h> // for strcmp
 
@@ -36,6 +35,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Int(type)) {
     if (Int64Overflow(token, base)) {
+      SetErrorCode(ERR_OVERFLOW);
       ERROR_AT_TOKEN(token, "I64 Overflow\n", "");
       return (Value){ .type = NoType(), .as.integer = 0 };
     }
@@ -45,6 +45,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Uint(type)) {
     if (Uint64Overflow(token, base)) {
+      SetErrorCode(ERR_OVERFLOW);
       ERROR_AT_TOKEN(token, "U64 Overflow\n", "");
       return (Value){ .type = NoType(), .as.uinteger = 0 };
     }
@@ -54,6 +55,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Float(type)) {
     if (DoubleOverflow(token) || DoubleUnderflow(token)) {
+      SetErrorCode(ERR_OVERFLOW);
       ERROR_AT_TOKEN(token, "F64 Over/Underflow\n", "");
       return (Value){ .type = NoType(), .as.floating = 0 };
     }
@@ -215,48 +217,48 @@ Value LogicalOR(Value v1, Value v2) {
 
 void InlinePrintValue(Value v) {
   if (TypeIs_None(v.type)) {
-    printf("NONE");
+    Print("NONE");
     return;
   }
 
   if (TypeIs_Int(v.type)) {
     InlinePrintType(v.type);
-    printf(": %ld", v.as.integer);
+    Print(": %ld", v.as.integer);
     return;
   }
 
   if (TypeIs_Uint(v.type)) {
     InlinePrintType(v.type);
-    printf(": %lu", v.as.uinteger);
+    Print(": %lu", v.as.uinteger);
     return;
   }
 
   if (TypeIs_Float(v.type)) {
     InlinePrintType(v.type);
-    printf(": %f", v.as.floating);
+    Print(": %f", v.as.floating);
     return;
   }
 
   if (TypeIs_Char(v.type)) {
     InlinePrintType(v.type);
-    printf(": %c", v.as.character);
+    Print(": %c", v.as.character);
     return;
   }
 
   if (TypeIs_String(v.type)) {
     InlinePrintType(v.type);
-    printf(": %s", v.as.string);
+    Print(": %s", v.as.string);
     return;
   }
 
   if (TypeIs_Bool(v.type)) {
     InlinePrintType(v.type);
-    printf(": %s", (v.as.boolean) ? "true" : "false");
+    Print(": %s", (v.as.boolean) ? "true" : "false");
     return;
   }
 }
 
 void PrintValue(Value v) {
   InlinePrintValue(v);
-  printf("\n");
+  Print("\n");
 }

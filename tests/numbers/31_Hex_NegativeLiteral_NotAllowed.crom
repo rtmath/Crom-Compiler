@@ -1,0 +1,3 @@
+// ERR_TYPE_DISAGREEMENT
+
+u64 check  = -0xBEEFCAFE;

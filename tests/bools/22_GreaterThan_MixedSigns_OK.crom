@@ -1,0 +1,3 @@
+// OK
+
+bool check = 1 > -1;

@@ -12,9 +12,6 @@
 static AST_Node *function_definitions[100]; // TODO: Dynamic array?
 static int fdi = 0;
 
-// check_value's purpose is to hoist a value out of the AST for unit tests
-static Value check_value;
-
 /* === Forward Declarations === */
 static void InterpretRecurse(AST_Node *n);
 
@@ -149,7 +146,7 @@ void TerseAssignment(AST_Node *n) {
       n->value = NewUintValue(identifier->value.as.uinteger ^ value->value.as.uinteger);
     } break;
 
-    default: printf("TerseAssignment(): Not implemented yet\n");
+    default: Print("TerseAssignment(): Not implemented yet\n");
   }
 
   SetValue(SYMBOL_TABLE(), identifier->token, n->value);
@@ -193,7 +190,7 @@ void Unary(AST_Node *n) {
       }
     } break;
     default: {
-      printf("Unary(): Not implemented yet\n");
+      Print("Unary(): Not implemented yet\n");
     } break;
   }
 }
@@ -221,7 +218,7 @@ void BinaryArithmetic(AST_Node *n) {
                            n->right->value);
     } break;
     default: {
-      printf("BinaryArithmetic(): Not implemented yet\n");
+      Print("BinaryArithmetic(): Not implemented yet\n");
     } break;
   }
 }
@@ -253,7 +250,7 @@ void BinaryLogical(AST_Node *n) {
       n->value = LogicalOR(n->left->value, n->right->value);
     } break;
     default: {
-      printf("BinaryLogical(): %s not implemented yet\n", TokenTypeTranslation(n->token.type));
+      Print("BinaryLogical(): %s not implemented yet\n", TokenTypeTranslation(n->token.type));
     } break;
   }
 }
@@ -281,7 +278,7 @@ void BinaryBitwise(AST_Node *n) {
                               n->right->value.as.uinteger);
     } break;
     default: {
-      printf("BinaryBitwise(): Not implemented yet\n");
+      Print("BinaryBitwise(): Not implemented yet\n");
     } break;
   }
 }
@@ -325,7 +322,6 @@ void FunctionCall(AST_Node *n) {
   // Evaluate function body
   if (fn_def->right != NULL) {
     InterpretRecurse(fn_def->right);
-    n->value = check_value;
   }
 
   EndScope();
@@ -429,7 +425,6 @@ static void InterpretRecurse(AST_Node *n) {
     } break;
     case STRUCT_MEMBER_IDENTIFIER_NODE: {
       StructMemberAccess(n);
-      check_value = n->value;
     } break;
     case UNARY_OP_NODE: {
       Unary(n);
@@ -445,11 +440,9 @@ static void InterpretRecurse(AST_Node *n) {
     } break;
     case ASSIGNMENT_NODE: {
       Assignment(n);
-      check_value = n->value;
     } break;
     case TERSE_ASSIGNMENT_NODE: {
       TerseAssignment(n);
-      check_value = n->value;
     } break;
     case LITERAL_NODE: {
       Literal(n);
@@ -473,7 +466,6 @@ static void InterpretRecurse(AST_Node *n) {
       FunctionCall(n);
     } break;
     case RETURN_NODE: {
-      check_value = n->left->value;
     } break;
     default: break;
   }
@@ -483,9 +475,4 @@ void Interpret(AST_Node *root, SymbolTable *st) {
   Scope.locals[Scope.depth] = st;
 
   InterpretRecurse(root);
-  if (root->error_code == ERR_UNSET) {
-    root->error_code = OK;
-  }
-
-  root->value = check_value;
 }

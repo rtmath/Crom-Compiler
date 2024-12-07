@@ -1,0 +1,9 @@
+// OK
+
+enum Numbers {
+  Zero,
+  NegFive = -5,
+  Two,
+}
+
+bool check = Two == -4;

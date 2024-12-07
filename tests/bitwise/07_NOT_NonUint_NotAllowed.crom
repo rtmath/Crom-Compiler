@@ -1,0 +1,4 @@
+// ERR_TYPE_DISAGREEMENT
+
+i8 a = 6;
+u8 check = ~a;

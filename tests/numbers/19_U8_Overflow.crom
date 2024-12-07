@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+u8 check = 256; // UINT8_MAX + 1

@@ -1,0 +1,5 @@
+// ERR_MISSING_SEMICOLON
+
+struct Check {
+  f32 f = 4.5;
+};

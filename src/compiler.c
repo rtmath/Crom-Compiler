@@ -1,5 +1,3 @@
-#include <stdio.h> // for printf
-
 #include "compiler.h"
 #include "interpreter.h"
 #include "lexer.h"

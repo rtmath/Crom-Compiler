@@ -1,0 +1,3 @@
+// ERR_TYPE_DISAGREEMENT
+
+i32 check = b'10001001';

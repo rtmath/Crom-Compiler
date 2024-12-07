@@ -1,0 +1,8 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+enum Check {
+  Foo,
+  Bar,
+};
+
+i8 check = Check;

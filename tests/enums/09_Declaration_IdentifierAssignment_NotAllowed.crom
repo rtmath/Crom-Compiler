@@ -1,0 +1,13 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+i64 x = 5;
+
+enum Weekdays {
+  Sunday,
+  Monday = x,
+  Tuesday,
+  Wednesday,
+  Thursday,
+  Friday,
+  Saturday,
+};

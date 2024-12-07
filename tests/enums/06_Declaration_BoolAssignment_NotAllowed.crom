@@ -1,0 +1,11 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+enum Weekdays {
+  Sunday,
+  Monday,
+  Tuesday = false,
+  Wednesday,
+  Thursday,
+  Friday,
+  Saturday,
+};

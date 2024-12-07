@@ -1,0 +1,7 @@
+// ERR_UNDECLARED
+
+struct Struct {
+  f32 f;
+};
+
+f32 check = f;

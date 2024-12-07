@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+i8 check = -129; // INT8_MIN + 1

@@ -1,0 +1,3 @@
+// OK
+
+u16 check = 65535; // UINT16_MAX

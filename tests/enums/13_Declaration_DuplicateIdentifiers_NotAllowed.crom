@@ -1,0 +1,6 @@
+// ERR_REDECLARED
+
+enum Foo {
+  Check,
+  Check,
+};

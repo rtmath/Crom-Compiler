@@ -1,0 +1,5 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+enum Check = 5; {
+  Foo,
+}

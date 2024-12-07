@@ -1,0 +1,3 @@
+// OK
+
+i8 check = 127; // INT8_MAX

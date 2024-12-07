@@ -2,7 +2,6 @@
 #include <stdlib.h> // for malloc and friends
 #include <string.h> // for strlen, strcmp
 
-#include "common.h"
 #include "hashtable.h"
 
 #define ROOM_FOR_NULL_BYTE 1

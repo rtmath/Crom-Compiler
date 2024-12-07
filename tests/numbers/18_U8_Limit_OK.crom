@@ -1,0 +1,3 @@
+// OK
+
+u8 check = 255; // UINT8_MAX

@@ -1,7 +1,6 @@
 #include <math.h>   // for pow, sqrt, floor
 #include <stdlib.h> // for malloc and friends
 #include <stdbool.h>
-#include <stdio.h>  // printf
 #include <string.h> // for strcmp
 
 #include "common.h"
@@ -196,7 +195,7 @@ static const char *DeclarationStateTranslation(DeclarationState ds) {
 }
 
 static void InlinePrintDeclarationState(DeclarationState ds) {
-  printf("%s", DeclarationStateTranslation(ds));
+  Print("%s", DeclarationStateTranslation(ds));
 }
 
 static char *ExtractString(Token token) {
@@ -270,7 +269,7 @@ void AddParams(SymbolTable *st, Symbol function_symbol) {
 void SetValue(SymbolTable *st, Token t, Value v) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    printf("SetValue(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    Print("SetValue(): Token %.*s not found in symbol table", t.length, t.position_in_source);
     return;
   };
 
@@ -281,7 +280,7 @@ void SetValue(SymbolTable *st, Token t, Value v) {
 void SetValueType(SymbolTable *st, Token t, Type type) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    printf("SetValueType(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    Print("SetValueType(): Token %.*s not found in symbol table", t.length, t.position_in_source);
     return;
   };
 
@@ -290,10 +289,10 @@ void SetValueType(SymbolTable *st, Token t, Type type) {
 }
 
 void PrintSymbol(Symbol s) {
-  printf("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
+  Print("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
-  printf(" ");
+  Print(" ");
   InlinePrintType(s.value.type);
-  printf("\n");
+  Print("\n");
   PrintValue(s.value);
 }

@@ -57,7 +57,6 @@ typedef enum {
 } NodeType;
 
 typedef struct AST_Node {
-  ErrorCode error_code; // This is really only for the Start node of the AST
   NodeType node_type;
   Token token;
   Value value;

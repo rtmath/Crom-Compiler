@@ -1,5 +1,4 @@
 #include <float.h> // FLT_MAX and DBL_MAX
-#include <stdio.h> // for printf
 #include <stdlib.h> // for calloc
 #include <string.h> // for strcmp
 
@@ -102,42 +101,42 @@ Type NewFunctionType(TokenType t) {
 
 void InlinePrintType(Type t) {
   if (t.category == TC_FUNCTION) {
-    printf("Fn::");
+    Print("Fn::");
   }
 
   switch (t.specifier) {
-    case T_NONE: printf("NONE"); break;
+    case T_NONE: Print("NONE"); break;
 
-    case T_I8:  printf("I8");  break;
-    case T_I16: printf("I16"); break;
-    case T_I32: printf("I32"); break;
-    case T_I64: printf("I64"); break;
+    case T_I8:  Print("I8");  break;
+    case T_I16: Print("I16"); break;
+    case T_I32: Print("I32"); break;
+    case T_I64: Print("I64"); break;
 
-    case T_U8:  printf("U8");  break;
-    case T_U16: printf("U16"); break;
-    case T_U32: printf("U32"); break;
-    case T_U64: printf("U64"); break;
+    case T_U8:  Print("U8");  break;
+    case T_U16: Print("U16"); break;
+    case T_U32: Print("U32"); break;
+    case T_U64: Print("U64"); break;
 
-    case T_F32: printf("F32"); break;
-    case T_F64: printf("F64"); break;
+    case T_F32: Print("F32"); break;
+    case T_F64: Print("F64"); break;
 
-    case T_CHAR: printf("char"); break;
-    case T_STRING: printf("string"); break;
-    case T_BOOL: printf("bool"); break;
+    case T_CHAR: Print("char"); break;
+    case T_STRING: Print("string"); break;
+    case T_BOOL: Print("bool"); break;
 
-    case T_ENUM: printf("enum"); break;
-    case T_STRUCT: printf("struct"); break;
-    case T_VOID: printf("void"); break;
+    case T_ENUM: Print("enum"); break;
+    case T_STRUCT: Print("struct"); break;
+    case T_VOID: Print("void"); break;
   }
 
   if (t.category == TC_ARRAY) {
-    printf("[%d]", t.array_size);
+    Print("[%d]", t.array_size);
   }
 }
 
 void PrintType(Type t) {
   InlinePrintType(t);
-  printf("\n");
+  Print("\n");
 }
 
 const char *TypeTranslation(Type t) {

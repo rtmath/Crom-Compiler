@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+u32 check = 4294967296; // UINT32_MAX + 1

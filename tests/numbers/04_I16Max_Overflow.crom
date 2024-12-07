@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+i16 check = 32768; // INT16_MAX + 1

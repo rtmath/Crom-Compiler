@@ -2,7 +2,6 @@
 #define HASHTABLE_H
 
 #include "assert.h"
-#include "common.h"
 
 typedef struct {
   char *key;

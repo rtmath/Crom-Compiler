@@ -1,7 +1,7 @@
-#include <stdio.h>  // for printf
 #include <stdlib.h> // for calloc
 
 #include "ast.h"
+#include "common.h"
 #include "error.h"
 
 static const char* const _NodeTypeTranslation[] =
@@ -112,31 +112,31 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
   }
   buf[i] = '\0';
 
-  printf("%s", buf);
+  Print("%s", buf);
   if (node->token.type != UNINITIALIZED) {
     (node->token.type == STRING_LITERAL)
-    ? printf("\"%.*s\" ", node->token.length, node->token.position_in_source)
-    : printf("%.*s ", node->token.length, node->token.position_in_source);
+    ? Print("\"%.*s\" ", node->token.length, node->token.position_in_source)
+    : Print("%.*s ", node->token.length, node->token.position_in_source);
   }
 
   if (!TypeIs_None(node->value.type) && node->node_type != START_NODE) {
     InlinePrintType(node->value.type);
-    printf(" ");
+    Print(" ");
   }
 
   if (!NodeIs_Untyped(node) &&
       !NodeIs_Chain(node)   &&
       !NodeIs_Start(node)   &&
       !NodeIs_Function(node)) {
-    printf("%s", NodeTypeTranslation(node->node_type));
+    Print("%s", NodeTypeTranslation(node->node_type));
   }
 
   if (node->value.type.specifier != T_NONE && node->node_type != START_NODE) {
-    printf(" | ");
+    Print(" | ");
     InlinePrintValue(node->value);
   }
 
-  printf("\n");
+  Print("\n");
 
   if (NodeIs_Chain(node)) unindent += NUM_INDENT_SPACES;
   PrintASTRecurse(node->left, depth + 1, unindent);
@@ -151,39 +151,39 @@ void PrintAST(AST_Node *root) {
 }
 
 static void InlinePrintNodeSummary(AST_Node *node) {
-  printf("%16s Node | ",
+  Print("%16s Node | ",
          NodeTypeTranslation(node->node_type));
   InlinePrintToken(node->token);
-  printf(" {");
+  Print(" {");
   InlinePrintType(node->value.type);
-  printf("}");
+  Print("}");
 }
 
 void PrintNode(AST_Node *node) {
-  printf("%16s Node ", NodeTypeTranslation(node->node_type));
-  printf("'%.*s'", node->token.length, node->token.position_in_source);
-  printf(" {");
+  Print("%16s Node ", NodeTypeTranslation(node->node_type));
+  Print("'%.*s'", node->token.length, node->token.position_in_source);
+  Print(" {");
   InlinePrintType(node->value.type);
-  printf("} | Value: ");
+  Print("} | Value: ");
   PrintValue(node->value);
-  printf("\n");
+  Print("\n");
 
   if (node->left != NULL) {
-    printf("  LEFT: ");
+    Print("  LEFT: ");
     InlinePrintNodeSummary(node->left);
-    printf("\n");
+    Print("\n");
   }
   if (node->middle != NULL) {
-    printf("MIDDLE: ");
+    Print("MIDDLE: ");
     InlinePrintNodeSummary(node->middle);
-    printf("\n");
+    Print("\n");
   }
   if (node->right != NULL) {
-    printf(" RIGHT: ");
+    Print(" RIGHT: ");
     InlinePrintNodeSummary(node->right);
-    printf("\n");
+    Print("\n");
   }
-  printf("----------------------------------------------------------\n");
+  Print("----------------------------------------------------------\n");
 }
 
 bool NodeIs_NULL(AST_Node *n) {

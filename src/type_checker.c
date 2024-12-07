@@ -11,7 +11,6 @@
 
 static SymbolTable *SYMBOL_TABLE;
 static Type *in_function;
-static ErrorCode error_code;
 
 bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
 Type ShrinkToSmallestContainingType(AST_Node *node);
@@ -33,11 +32,11 @@ static int GetBase(AST_Node* node) {
 void VerifyTypeIs(Type type, AST_Node *node) {
   if (TypesMatchExactly(node->value.type, type)) return;
 
+  SetErrorCode(ERR_TYPE_DISAGREEMENT);
   ERROR_AT_TOKEN(node->token,
                  "VerifyTypeIs(): Type disagreement, expected type '%s', got type '%s'",
                  TypeTranslation(type),
                  TypeTranslation(node->value.type));
-  SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
 }
 
 void ActualizeType(AST_Node *node, Type t) {
@@ -54,7 +53,7 @@ void ShrinkAndActualizeType(AST_Node *node) {
 }
 
 bool Overflow(AST_Node *from, AST_Node *target_type) {
-  SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+  SetErrorCode(ERR_OVERFLOW);
   ERROR_AT_TOKEN(from->token,
                  "Literal value overflows target type '%s'\n",
                  TypeTranslation(target_type->value.type));
@@ -87,8 +86,8 @@ bool CanConvertToInt(AST_Node *from, AST_Node *target_type) {
     return Overflow(from, target_type);
 
   } else {
+    SetErrorCode(ERR_PEBCAK);
     ERROR_AND_EXIT_FMTMSG("CanConverToInt(): Invalid type '%s'", TypeTranslation(target_type->value.type));
-    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
     return false;
   }
 }
@@ -124,8 +123,8 @@ bool CanConvertToUint(AST_Node *from, AST_Node *target_type) {
     return Overflow(from, target_type);
 
   } else {
+    SetErrorCode(ERR_PEBCAK);
     ERROR_AND_EXIT_FMTMSG("CanConvertToUint(): Invalid type '%s'\n", TypeTranslation(target_type->value.type));
-    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
     return false;
   }
 }
@@ -146,8 +145,8 @@ bool CanConvertToFloat(AST_Node *from, AST_Node *target_type) {
     return Overflow(from, target_type);
 
   } else {
+    SetErrorCode(ERR_PEBCAK);
     ERROR_AND_EXIT_FMTMSG("CanConvertToFloat(): Invalid type '%s'\n", TypeTranslation(target_type->value.type));
-    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
     return false;
   }
 }
@@ -187,7 +186,7 @@ Type ShrinkToSmallestContainingType(AST_Node *node) {
 
   if (TypeIs_Int(node->value.type)) {
     if (Int64Overflow(node->token, base)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      SetErrorCode(ERR_OVERFLOW);
       return NoType();
     }
 
@@ -196,7 +195,7 @@ Type ShrinkToSmallestContainingType(AST_Node *node) {
 
   } else if (TypeIs_Uint(node->value.type)) {
     if (Uint64Overflow(node->token, base)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      SetErrorCode(ERR_OVERFLOW);
       return NoType();
     }
 
@@ -205,12 +204,12 @@ Type ShrinkToSmallestContainingType(AST_Node *node) {
 
   } else if (TypeIs_Float(node->value.type)) {
     if (DoubleOverflow(node->token)) {
-      SetErrorCodeIfUnset(&error_code, ERR_OVERFLOW);
+      SetErrorCode(ERR_OVERFLOW);
       return NoType();
     }
 
     if (DoubleUnderflow(node->token)) {
-      SetErrorCodeIfUnset(&error_code, ERR_UNDERFLOW);
+      SetErrorCode(ERR_UNDERFLOW);
       return NoType();
     }
     double d = TokenToDouble(node->token);
@@ -230,8 +229,8 @@ Type ShrinkToSmallestContainingType(AST_Node *node) {
     return NewType(STRING);
   }
 
+  SetErrorCode(ERR_PEBCAK);
   ERROR_AND_EXIT_FMTMSG("ShrinkToSmallestContainingType(): Invalid type '%s'", TypeTranslation(node->value.type));
-  SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
   return NoType();
 }
 /* === END HELPERS === */
@@ -250,18 +249,18 @@ static void Declaration(AST_Node *identifier) {
 
 static void Assignment(AST_Node *identifier) {
   if (!TypeIs_Array(identifier->value.type) && identifier->middle != NULL) {
+    SetErrorCode(ERR_IMPROPER_ASSIGNMENT);
     ERROR_AT_TOKEN(
       identifier->token,
       "Assignment(): '%.*s' is not an array\n",
       identifier->token.length,
       identifier->token.position_in_source);
-    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
   }
 
   AST_Node *value = identifier->left;
   if (NodeIs_EnumAssignment(identifier) &&
       (!TypeIs_Int(value->value.type) || NodeIs_Identifier(value))) {
-    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    SetErrorCode(ERR_IMPROPER_ASSIGNMENT);
     ERROR_AT_TOKEN(value->token,
                    "Assignment(): Assignment to enum identifier must be of type INT", "");
   }
@@ -269,7 +268,7 @@ static void Assignment(AST_Node *identifier) {
   if (!TypeIs_Uint(identifier->value.type) &&
       (value->token.type == HEX_LITERAL || value->token.type == BINARY_LITERAL))
   {
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(value->token,
       "Assignment(): '%s' cannot be assigned to non-Uint types",
       TokenTypeTranslation(value->token.type));
@@ -308,19 +307,19 @@ static void Assignment(AST_Node *identifier) {
   }
 
   if (TypeIs_Enum(value->value.type)) {
-    SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+    SetErrorCode(ERR_IMPROPER_ASSIGNMENT);
     ERROR_AT_TOKEN(identifier->token,
                    "Assignment(): Can't use Enum name as an identifier", "");
     return;
   }
 
+  SetErrorCode(ERR_TYPE_DISAGREEMENT);
   ERROR_AT_TOKEN(identifier->token,
                  "Assignment(): Identifier '%.*s' has type '%s' and child node has type '%s'",
                  identifier->token.length,
                  identifier->token.position_in_source,
                  TypeTranslation(identifier->value.type),
                  TypeTranslation(identifier->left->value.type));
-  SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
 }
 
 static void Identifier(AST_Node *identifier) {
@@ -366,8 +365,8 @@ static void Literal(AST_Node *node) {
     return;
 
   } else {
+    SetErrorCode(ERR_PEBCAK);
     ERROR_AND_EXIT_FMTMSG("Literal(): Case '%s' not implemented yet", TypeTranslation(node->value.type));
-    SetErrorCodeIfUnset(&error_code, ERR_PEBCAK);
   }
 }
 
@@ -434,11 +433,11 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
 
     if (NodeIs_Return((*current)->left)) {
       if (!TypeIsConvertible((*current)->left->left, return_type)) {
+        SetErrorCode(ERR_TYPE_DISAGREEMENT);
         ERROR_AT_TOKEN((*current)->left->left->token,
                        "TypeCheckNestedReturns(): Can't convert type from %s to %s",
                        TypeTranslation((*current)->left->value.type),
                        TypeTranslation(return_type->value.type));
-        SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
@@ -464,12 +463,12 @@ static void Function(AST_Node *node) {
         ActualizeType(node, node->value.type);
 
         if (!IsDeadEnd((*check)->right)) {
+          SetErrorCode(ERR_UNREACHABLE_CODE);
           ERROR_AT_TOKEN(
             (*check)->right->left->token,
             "Function(): Unreachable code in function %.*s",
             node->token.length,
             node->token.position_in_source);
-          SetErrorCodeIfUnset(&error_code, ERR_UNREACHABLE_CODE);
         }
 
         return;
@@ -481,6 +480,7 @@ static void Function(AST_Node *node) {
          * segfaults without this check. The 'missing return' error will
          * trigger appropriately after the do-while loop finishes. */
       } else {
+        SetErrorCode(ERR_TYPE_DISAGREEMENT);
         ERROR_AT_TOKEN(
           (*check)->left->left->token,
           "Function(): in function '%.*s': Return type '%s' is not convertible to '%s'",
@@ -488,7 +488,6 @@ static void Function(AST_Node *node) {
           node->token.position_in_source,
           TypeTranslation((*check)->left->value.type),
           TypeTranslation(return_type->value.type));
-        SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
       }
     }
 
@@ -498,11 +497,11 @@ static void Function(AST_Node *node) {
   if (TypeIs_Void(return_type->value.type)) {
     node->value.type.specifier = T_VOID;
   } else {
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(node->token,
                    "Function(): Missing return statement in non-void function '%.*s'",
                    node->token.length,
                    node->token.position_in_source);
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 }
 
@@ -522,7 +521,7 @@ static void FunctionCall(AST_Node *node) {
         fn_definition.fn_param_list[i].param_token.length,
         fn_definition.fn_param_list[i].param_token.position_in_source
       );
-      SetErrorCodeIfUnset(&error_code, ERR_TOO_FEW);
+      SetErrorCode(ERR_TOO_FEW);
     }
 
     // TypeIsConvertible deals with AST_Nodes but fn_params aren't an AST_Node
@@ -538,7 +537,7 @@ static void FunctionCall(AST_Node *node) {
                      node->token.position_in_source,
                      TypeTranslation(argument->value.type),
                      TypeTranslation(wrapped_param->value.type));
-      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      SetErrorCode(ERR_TYPE_DISAGREEMENT);
     }
 
     current = &(*current)->right;
@@ -549,7 +548,7 @@ static void FunctionCall(AST_Node *node) {
                    "%.*s(): Too many arguments",
                    node->token.length,
                    node->token.position_in_source);
-    SetErrorCodeIfUnset(&error_code, ERR_TOO_MANY);
+    SetErrorCode(ERR_TOO_MANY);
   }
 
   ActualizeType(node, node->value.type);
@@ -567,7 +566,7 @@ static void UnaryOp(AST_Node *node) {
 
   if (node->token.type == BITWISE_NOT) {
     if (!TypeIs_Uint(check_node->value.type)) {
-      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      SetErrorCode(ERR_TYPE_DISAGREEMENT);
       ERROR_AT_TOKEN(check_node->token, "Operand must be of type Uint", "");
     }
 
@@ -578,7 +577,7 @@ static void UnaryOp(AST_Node *node) {
   if (node->token.type == MINUS) {
     if (check_node->token.type == HEX_LITERAL ||
         check_node->token.type == BINARY_LITERAL) {
-      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+      SetErrorCode(ERR_TYPE_DISAGREEMENT);
       ERROR_AT_TOKEN(check_node->token,
                      "'%s' not allowed with unary '-'",
                      TokenTypeTranslation(check_node->token.type));
@@ -602,7 +601,7 @@ static void UnaryOp(AST_Node *node) {
       return;
     }
 
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(node->token,
                    "UnaryOp(): Type disagreement: expected INT or FLOAT, got '%s'",
                    TypeTranslation(check_node->value.type));
@@ -613,11 +612,11 @@ static void BinaryArithmeticOp(AST_Node *node) {
   node->value.type = node->left->value.type;
 
   if (!TypeIsConvertible(node->right, node)) {
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(node->right->token,
                    "BinaryArithmeticOp(): Cannot convert from type '%s' to '%s'\n",
                    TypeTranslation(node->right->value.type),
                    TypeTranslation(node->value.type));
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
   }
 
   ActualizeType(node->right, node->value.type);
@@ -632,7 +631,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       // Check left node individually for incorrect type
       if (TypeIs_Int(node->left->value.type) &&
           TypeIs_Float(node->left->value.type)) {
-        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        SetErrorCode(ERR_UNEXPECTED);
         ERROR_AT_TOKEN(node->left->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        TypeTranslation(node->left->value.type));
@@ -642,7 +641,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       // Check right node individually for incorrect type
       if (TypeIs_Int(node->right->value.type) &&
           TypeIs_Float(node->right->value.type)) {
-        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        SetErrorCode(ERR_UNEXPECTED);
         ERROR_AT_TOKEN(node->right->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        TypeTranslation(node->right->value.type));
@@ -658,7 +657,7 @@ static void BinaryLogicalOp(AST_Node *node) {
         if (TypeIsConvertible(node->right, node->left)) {
           ActualizeType(node->right, node->left->value.type);
         } else {
-          SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+          SetErrorCode(ERR_TYPE_DISAGREEMENT);
           ERROR_AT_TOKEN(node->right->token,
                          "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
                          TypeTranslation(node->right->value.type),
@@ -674,7 +673,7 @@ static void BinaryLogicalOp(AST_Node *node) {
         if (TypeIsConvertible(node->left, node->right)) {
           ActualizeType(node->left, node->right->value.type);
         } else {
-          SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+          SetErrorCode(ERR_TYPE_DISAGREEMENT);
           ERROR_AT_TOKEN(node->left->token,
                          "BinaryLogicalOP(): Type '%s' is not convertible to other operand type '%s'",
                          TypeTranslation(node->right->value.type),
@@ -689,7 +688,7 @@ static void BinaryLogicalOp(AST_Node *node) {
     case LOGICAL_AND:
     case LOGICAL_OR: {
       if (!TypeIs_Bool(node->left->value.type)) {
-        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        SetErrorCode(ERR_UNEXPECTED);
         ERROR_AT_TOKEN(node->left->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        TypeTranslation(node->left->value.type));
@@ -697,7 +696,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       }
 
       if (!TypeIs_Bool(node->right->value.type)) {
-        SetErrorCodeIfUnset(&error_code, ERR_UNEXPECTED);
+        SetErrorCode(ERR_UNEXPECTED);
         ERROR_AT_TOKEN(node->right->token,
                        "BinaryLogicalOP(): Invalid operand type '%s', expected Bool",
                        TypeTranslation(node->right->value.type));
@@ -708,7 +707,7 @@ static void BinaryLogicalOp(AST_Node *node) {
     } break;
 
     default: {
-      printf("BinaryLogicalOp(): Not implemented yet\n");
+      Print("BinaryLogicalOp(): Not implemented yet\n");
     } break;
   }
 }
@@ -719,7 +718,7 @@ static void BinaryBitwiseOp(AST_Node *node) {
 
   // Check left node individually for incorrect type
   if (!TypeIs_Uint(left_value->value.type)) {
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(left_value->token,
                    "BinaryBitwiseOP(): Invalid operand type '%s', expected Uint",
                    TypeTranslation(left_value->value.type));
@@ -728,7 +727,7 @@ static void BinaryBitwiseOp(AST_Node *node) {
 
   // Check right node individually for incorrect type
   if (!TypeIs_Uint(right_value->value.type)) {
-    SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
+    SetErrorCode(ERR_TYPE_DISAGREEMENT);
     ERROR_AT_TOKEN(right_value->token,
                    "BinaryBitwiseOP(): Invalid operand type '%s', expected Bool",
                    TypeTranslation(right_value->value.type));
@@ -751,19 +750,19 @@ static void InitializerList(AST_Node *node) {
     if (!TypeIsConvertible((*current)->left, node)) {
       // Actualize the ostensible type for the error message
       ActualizeType(node, node->value.type);
+      SetErrorCode(ERR_TYPE_DISAGREEMENT);
       ERROR_AT_TOKEN((*current)->left->token,
                      "InitializerList(): Cannot convert from type '%s' to '%s'\n",
                      TypeTranslation((*current)->left->value.type),
                      TypeTranslation(node->value.type));
-      SetErrorCodeIfUnset(&error_code, ERR_TYPE_DISAGREEMENT);
     }
 
     num_literals_in_list++;
     if (num_literals_in_list > node->value.type.array_size) {
+      SetErrorCode(ERR_TOO_MANY);
       ERROR_AT_TOKEN((*current)->left->token,
                      "InitializerList(): Too many elements in initializer list (array size is %d)",
                      node->value.type.array_size);
-      SetErrorCodeIfUnset(&error_code, ERR_TOO_MANY);
     }
 
     current = &(*current)->right;
@@ -783,7 +782,7 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
     if ((!TypeIs_Int(value->value.type) &&
          !TypeIs_Uint(value->value.type)) ||
         NodeIs_Identifier(value)) {
-      SetErrorCodeIfUnset(&error_code, ERR_IMPROPER_ASSIGNMENT);
+      SetErrorCode(ERR_IMPROPER_ASSIGNMENT);
       ERROR_AT_TOKEN(value->token,
                      "Assignment(): Assignment to enum identifier must be of type INT", "");
     }
@@ -909,12 +908,6 @@ static void CheckTypesRecurse(AST_Node *node) {
 }
 
 void CheckTypes(AST_Node *node, SymbolTable *symbol_table) {
-  UnsetErrorCode(&error_code);
-
   SYMBOL_TABLE = symbol_table;
   CheckTypesRecurse(node);
-
-  if (node->error_code == ERR_UNSET) {
-    SetErrorCodeIfUnset(&node->error_code, error_code);
-  }
 }

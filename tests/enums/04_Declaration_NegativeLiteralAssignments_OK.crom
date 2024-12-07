@@ -1,0 +1,11 @@
+// OK
+
+enum Weekdays {
+  Sunday = 0,
+  Monday = -1,
+  Tuesday,
+  Wednesday,
+  Thursday,
+  Friday = -3,
+  Saturday,
+};

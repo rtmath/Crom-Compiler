@@ -1,0 +1,6 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+enum Enum {
+  Identifier,
+  Check = Identifier,
+};

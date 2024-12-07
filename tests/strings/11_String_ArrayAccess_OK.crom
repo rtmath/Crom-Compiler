@@ -1,0 +1,4 @@
+// OK
+
+string s = "okay";
+char c = s[3];

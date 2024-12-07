@@ -1,0 +1,9 @@
+// OK
+
+enum Drinks {
+  Milk,
+  OJ,
+  Water,
+};
+
+i64 check = OJ;

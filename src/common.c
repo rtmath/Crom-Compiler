@@ -2,7 +2,9 @@
 #include <float.h>  // for DBL_MIN
 #include <limits.h> // for LLONG_MAX and friends
 #include <math.h>   // for HUGE_VAL
+#include <stdarg.h> // for va_list and friends
 #include <stddef.h> // for NULL
+#include <stdio.h>
 #include <stdlib.h> // for strtoll and friends
 #include <string.h> // for strlen
 
@@ -65,9 +67,13 @@ bool DoubleUnderflow(Token t) {
   return (errno == ERANGE && (value <= DBL_MIN));
 }
 
+char *NewString(int size) {
+  return malloc(sizeof(char) * size);
+}
+
 char *CopyString(const char *s) {
   int length = strlen(s);
-  char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
+  char *new_s = NewString(length + ROOM_FOR_NULL_BYTE);
 
   for (int i = 0; i < length; i++) {
     new_s[i] = s[i];
@@ -78,7 +84,7 @@ char *CopyString(const char *s) {
 }
 
 char *CopyStringL(const char *s, int length) {
-  char *new_s = malloc(sizeof(char) * (length + ROOM_FOR_NULL_BYTE));
+  char *new_s = NewString(length + ROOM_FOR_NULL_BYTE);
 
   for (int i = 0; i < length; i++) {
     new_s[i] = s[i];
@@ -86,4 +92,42 @@ char *CopyStringL(const char *s, int length) {
   new_s[length] = '\0';
 
   return new_s;
+}
+
+char *Concat(char *a, char *b) {
+  int a_len = strlen(a) + ROOM_FOR_NULL_BYTE;
+  int b_len = strlen(b) + ROOM_FOR_NULL_BYTE;
+  int total_len = a_len + b_len;
+
+  char *s = NewString(total_len);
+
+  strncpy(s, a, a_len);
+  strncpy(&s[a_len - 1], b, b_len);
+
+  return s;
+}
+
+bool StringsMatch(char *a, char *b) {
+  return strcmp(a, b) == 0;
+}
+
+void Print(const char *fmt, ...) {
+#if RUNNING_TESTS
+  return;
+#endif
+
+  va_list args;
+  va_start(args, fmt);
+
+  vprintf(fmt, args);
+
+  va_end(args);
+}
+
+void Print_VAList(const char *fmt, va_list args) {
+#if RUNNING_TESTS
+  return;
+#endif
+
+  vprintf(fmt, args);
 }

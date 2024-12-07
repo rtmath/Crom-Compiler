@@ -1,0 +1,9 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+enum Enum {
+  Foo,
+};
+
+enum Check2 {
+  Check = Foo
+};

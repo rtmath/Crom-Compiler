@@ -1,0 +1,5 @@
+// ERR_LEXER_ERROR
+
+string s "multi
+          line
+          string";

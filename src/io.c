@@ -30,10 +30,6 @@ int ReadFile(const char *filename, char **dest) {
 }
 
 void PrintSourceLine(const char *filename, int line_number) {
-#if OVERRIDE_ERROR_PRINTING
-  return;
-#endif
-
   char buf[200];
 
   FILE *fd = fopen(filename, "r");
@@ -43,17 +39,13 @@ void PrintSourceLine(const char *filename, int line_number) {
     fgets(buf, 200, fd);
   }
 
-  printf("%s:\n", filename);
-  printf("%5d | %s", line_number, buf);
+  Print("%s:\n", filename);
+  Print("%5d | %s", line_number, buf);
 
   fclose(fd);
 }
 
 void PrintSourceLineOfToken(Token t) {
-#if OVERRIDE_ERROR_PRINTING
-  return;
-#endif
-
   PrintSourceLine(t.from_filename, t.on_line);
 
   char buf[200] = {0};
@@ -64,5 +56,5 @@ void PrintSourceLineOfToken(Token t) {
   buf[i] = '^';
 
   const char *spacer = "        "; // enough space to match the "%5d | " in PrintSourceLine()
-  printf("%s%s\n", spacer, buf);
+  Print("%s%s\n", spacer, buf);
 }

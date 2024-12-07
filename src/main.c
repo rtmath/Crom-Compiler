@@ -6,8 +6,13 @@
 #include "io.h"
 #include "symbol_table.h"
 
-int main(void) {
-  const char *filename = "test.txt";
+int main(int argc, char **argv) {
+  char *filename = "test.txt";
+
+  if (argc == 2) {
+    filename = argv[1];
+  }
+
   char *contents = NULL;
   ReadFile(filename, &contents);
 
@@ -15,7 +20,7 @@ int main(void) {
   AST_Node *compiled_code = Compile(filename, contents, &st);
 
   Interpret(compiled_code, st);
-  PrintAST(compiled_code);
 
+  ReportErrorCode();
   return 0;
 }

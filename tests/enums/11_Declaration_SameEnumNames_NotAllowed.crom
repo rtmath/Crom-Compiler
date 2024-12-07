@@ -1,0 +1,9 @@
+// ERR_REDECLARED
+
+enum Check {
+  Foo,
+};
+
+enum Check {
+  Bar,
+};

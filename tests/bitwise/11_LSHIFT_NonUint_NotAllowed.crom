@@ -1,0 +1,6 @@
+// ERR_TYPE_DISAGREEMENT
+
+f32 a = 6.0;
+f32 b = 10.3;
+
+u8 c = a << b;

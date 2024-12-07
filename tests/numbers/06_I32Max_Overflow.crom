@@ -1,0 +1,3 @@
+// ERR_OVERFLOW
+
+i32 check = 2147483648; // INT32_MAX + 1
