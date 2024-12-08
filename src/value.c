@@ -35,8 +35,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Int(type)) {
     if (Int64Overflow(token, base)) {
-      SetErrorCode(ERR_OVERFLOW);
-      ERROR_AT_TOKEN(token, "I64 Overflow\n", "");
+      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "I64 Overflow\n", "");
       return (Value){ .type = NoType(), .as.integer = 0 };
     }
 
@@ -45,8 +44,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Uint(type)) {
     if (Uint64Overflow(token, base)) {
-      SetErrorCode(ERR_OVERFLOW);
-      ERROR_AT_TOKEN(token, "U64 Overflow\n", "");
+      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "U64 Overflow\n", "");
       return (Value){ .type = NoType(), .as.uinteger = 0 };
     }
 
@@ -55,8 +53,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Float(type)) {
     if (DoubleOverflow(token) || DoubleUnderflow(token)) {
-      SetErrorCode(ERR_OVERFLOW);
-      ERROR_AT_TOKEN(token, "F64 Over/Underflow\n", "");
+      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "F64 Over/Underflow\n", "");
       return (Value){ .type = NoType(), .as.floating = 0 };
     }
 
