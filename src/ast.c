@@ -11,18 +11,25 @@ static const char* const _NodeTypeTranslation[] =
   [CHAIN_NODE] = "Chain",
   [DECLARATION_NODE] = "Declaration",
   [IDENTIFIER_NODE] = "Identifier",
+  [LITERAL_NODE] = "Literal",
+
+  [ASSIGNMENT_NODE] = "Assignment",
+  [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
+
   [STRUCT_DECLARATION_NODE] = "Struct Declaration",
   [STRUCT_IDENTIFIER_NODE] = "Struct Identifier",
   [STRUCT_MEMBER_IDENTIFIER_NODE] = "Struct Member",
+
   [ENUM_IDENTIFIER_NODE] = "Enum Identifier",
   [ENUM_LIST_ENTRY_NODE] = "Enum List Entry",
+  [ENUM_ASSIGNMENT_NODE] = "Enum Assignment",
+
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
   [ARRAY_INITIALIZER_LIST_NODE] = "Array Initializer List",
 
   [IF_NODE] = "If",
   [WHILE_NODE] = "While",
   [FOR_NODE] = "For",
-
   [BREAK_NODE] = "Break",
   [CONTINUE_NODE] = "Continue",
   [RETURN_NODE] = "Return",
@@ -34,11 +41,6 @@ static const char* const _NodeTypeTranslation[] =
   [FUNCTION_CALL_NODE] = "Fn Call",
   [FUNCTION_ARGUMENT_NODE] = "Fn Argument",
 
-  [LITERAL_NODE] = "Literal",
-
-  [ASSIGNMENT_NODE] = "Assignment",
-  [ENUM_ASSIGNMENT_NODE] = "Enum Assignment",
-  [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
   [UNARY_OP_NODE] = "Unary",
   [BINARY_LOGICAL_NODE] = "Binary (Logical)",
   [BINARY_ARITHMETIC_NODE] = "Binary (Arithmetic)",

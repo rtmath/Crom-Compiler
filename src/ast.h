@@ -15,18 +15,27 @@ typedef enum {
   CHAIN_NODE,
   DECLARATION_NODE,
   IDENTIFIER_NODE,
-  STRUCT_DECLARATION_NODE,
-  STRUCT_IDENTIFIER_NODE,
-  STRUCT_MEMBER_IDENTIFIER_NODE,
+  LITERAL_NODE,
+
+  ASSIGNMENT_NODE,
+  TERSE_ASSIGNMENT_NODE,
+
+  // TODO: Disambiguate naming
+  STRUCT_DECLARATION_NODE,       // the Struct Name (struct Weekday { ... })
+  STRUCT_IDENTIFIER_NODE,        // the Struct Name for use in member access (Weekday.Monday)
+  STRUCT_MEMBER_IDENTIFIER_NODE, // the Member Name (Monday)
+
+  // TODO: Disambiguate naming
   ENUM_IDENTIFIER_NODE, // the Enum name (enum Weekday { ... })
   ENUM_LIST_ENTRY_NODE, // the individual Enum values (Monday, etc)
+  ENUM_ASSIGNMENT_NODE, // e.g. Monday = 5
+
   ARRAY_SUBSCRIPT_NODE,
   ARRAY_INITIALIZER_LIST_NODE,
 
   IF_NODE,
   WHILE_NODE,
   FOR_NODE,
-
   BREAK_NODE,
   CONTINUE_NODE,
   RETURN_NODE,
@@ -38,11 +47,6 @@ typedef enum {
   FUNCTION_CALL_NODE,
   FUNCTION_ARGUMENT_NODE,
 
-  LITERAL_NODE,
-
-  ASSIGNMENT_NODE,
-  ENUM_ASSIGNMENT_NODE,
-  TERSE_ASSIGNMENT_NODE,
   UNARY_OP_NODE,
   BINARY_LOGICAL_NODE,
   BINARY_ARITHMETIC_NODE,
