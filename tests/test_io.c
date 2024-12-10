@@ -131,7 +131,7 @@ struct Filepaths TestPaths(char *str) {
 }
 
 char *CompilerProgramPath() {
-  return ConcatPath(BuildSrcFullPath(), "test_version.out");
+  return ConcatPath(BuildSrcFullPath(), "t.out");
 }
 
 int ExtractExpectedResult(char *filename) {
