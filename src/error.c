@@ -124,6 +124,6 @@ ErrorCode ErrorCodeLookup(char *str) {
 
 void ReportErrorCode() {
 #ifndef RUNNING_TESTS
-  printf("%s\n", ErrorCodeTranslation(error_code));
+  printf("\nExit Code: %s\n", ErrorCodeTranslation(error_code));
 #endif
 }
