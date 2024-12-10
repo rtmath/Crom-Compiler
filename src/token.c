@@ -1,7 +1,16 @@
-#include <stdio.h>
+#include <string.h>
 
 #include "common.h"
 #include "token.h"
+
+bool TokenValuesMatch(Token a, Token b) {
+  return (a.type != ERROR &&
+          a.type == b.type &&
+          a.length == b.length &&
+          strncmp(a.position_in_source,
+                  b.position_in_source,
+                  a.length) == 0);
+}
 
 void InlinePrintToken(Token t) {
   Print("%s(%.*s)",

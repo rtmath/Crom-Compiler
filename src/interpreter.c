@@ -8,6 +8,7 @@
 #include "interpreter.h"
 #include "symbol_table.h"
 
+#if 0
 /* === Global === */
 static AST_Node *function_definitions[100]; // TODO: Dynamic array?
 static int fdi = 0;
@@ -475,4 +476,9 @@ void Interpret(AST_Node *root, SymbolTable *st) {
   Scope.locals[Scope.depth] = st;
 
   InterpretRecurse(root);
+}
+#endif
+
+void Interpret(AST_Node *root, SymbolTable *st) {
+  PrintAST(root);
 }

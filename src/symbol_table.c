@@ -1,219 +1,49 @@
-#include <math.h>   // for pow, sqrt, floor
-#include <stdlib.h> // for malloc and friends
-#include <stdbool.h>
-#include <string.h> // for strcmp
+#include <stdlib.h>
 
 #include "common.h"
 #include "error.h"
 #include "symbol_table.h"
 
-const int INITIAL_TABLE_CAPACITY = 53;
-static int debug_guid = 0;
+#include <stdio.h>
 
-static Symbol GetSymbol(SymbolTable *st, const char *key);
-static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s);
+static int symbol_guid = 0;
+static Symbol NOT_FOUND = {
+  .symbol_id = -1,
+  .declaration_state = DECL_NONE,
+  .token = {
+    .type = ERROR,
+    .position_in_source = "No symbol found in Symbol Table",
+    .length = 31,
+    .on_line = -1,
+  },
+  .value = {
+    .type = {0},
+    .as.uinteger = 0,
+  },
+};
 
-static int Hash(const char *s, int prime, int bucket_capacity) {
-  unsigned long long hash = 0;
-  int length = strlen(s);
+USE_DYNAMIC_ARRAY(Symbol)
 
-  for (int i = 0; i < length; i++) {
-    hash += (unsigned long long)pow(prime, length - (i + 1)) * s[i];
-    hash = hash % bucket_capacity;
-  }
+struct SymbolTable {
+  int count;
+  DA(Symbol) symbols;
+};
 
-  return (int)hash;
-}
-
-static int GetHash(const char *s, int num_buckets, int num_collisions) {
-  /* Afaik these primes can be anything as long as they are greater
-   * than ASCII's 128 table size and distinct from each other */
-  #define HT_PRIME_1 151
-  #define HT_PRIME_2 163
-
-  int hash_a = Hash(s, HT_PRIME_1, num_buckets);
-  int hash_b = Hash(s, HT_PRIME_2, num_buckets);
-  if (hash_b % num_buckets == 0) hash_b = 1;
-
-  return (hash_a + (num_collisions * (hash_b))) % num_buckets;
-
-  #undef HT_PRIME_1
-  #undef HT_PRIME_2
-}
-
-static int IsPrime(int x) {
-  const int UNDEFINED = -1;
-  const int NOT_PRIME = 0;
-  const int  IS_PRIME = 1;
-
-  if (x < 2) return UNDEFINED;
-  if (x < 4) return IS_PRIME;
-  if (x % 2 == 0) return NOT_PRIME;
-  for (int i = 3; i <= floor(sqrt((double) x)); i += 2) {
-    if (x % i == 0) return NOT_PRIME;
-  }
-
-  return IS_PRIME;
-}
-
-static int NextPrime(int x) {
-  while (IsPrime(x) != 1) {
-    x++;
-  }
-  return x;
-}
-
-static Bucket *NewBucket(const char *k, Symbol s) {
-  Bucket *b = malloc(sizeof(Bucket));
-  b->key = CopyString(k);
-  b->entry = s;
-
-  return b;
-}
-
-static void FreeBucket(Bucket *b) {
-  free(b->key);
-  free(b);
-}
-
-static SymbolTable *NewSymbolTable_Sized(int initial_capacity) {
-  SymbolTable *st = malloc(sizeof(SymbolTable));
-  st->initial_capacity = initial_capacity;
-  st->capacity = NextPrime(initial_capacity);
-  st->num_buckets = 0;
-  st->buckets = calloc(st->capacity, sizeof(Bucket));
+SymbolTable *NewSymbolTable() {
+  SymbolTable *st = calloc(sizeof(SymbolTable), 1);
+  DA_INIT(Symbol, st->symbols);
 
   return st;
 }
 
 void DeleteSymbolTable(SymbolTable *st) {
-  for (int i = 0; i < st->capacity; i++) {
-    Bucket *b = st->buckets[i];
-    if (b != NULL) FreeBucket(b);
-  }
-  free(st->buckets);
+  DA_FREE(Symbol, st->symbols);
   free(st);
 }
 
-static void ResizeSymbolTable(SymbolTable *st, int new_capacity) {
-  SymbolTable *temp_st = NewSymbolTable_Sized(new_capacity);
-
-  for (int i = 0; i < st->capacity; i++) {
-    Bucket *b = st->buckets[i];
-    if (b != NULL) SetSymbol(temp_st, b->key, b->entry);
-  }
-
-  st->initial_capacity = temp_st->initial_capacity;
-  st->num_buckets = temp_st->num_buckets;
-
-  int swap_capacity = st->capacity;
-  st->capacity = temp_st->capacity;
-  temp_st->capacity = swap_capacity;
-
-  Bucket **swap_buckets = st->buckets;
-  st->buckets = temp_st->buckets;
-  temp_st->buckets = swap_buckets;
-
-  DeleteSymbolTable(temp_st);
-}
-
-static Symbol GetSymbol(SymbolTable *st, const char *key) {
-  int index = GetHash(key, st->capacity, 0);
-  Bucket *b = st->buckets[index];
-
-  int i = 1;
-  while (b != NULL) {
-    if (strcmp(b->key, key) == 0) return b->entry;
-
-    // Collision occurred, try next bucket
-    index = GetHash(key, st->capacity, i);
-    b = st->buckets[index];
-    i++;
-  }
-
-  Token SYMBOL_NOT_FOUND = {
-    .type = ERROR,
-    .position_in_source = "No symbol found in Symbol Table",
-    .length = 31,
-    .on_line = -1
-  };
-
-  return NewSymbol(SYMBOL_NOT_FOUND, NoType(), DECL_NONE);
-}
-
-static Symbol SetSymbol(SymbolTable *st, const char *key, Symbol s) {
-  float table_load = (float)(st->num_buckets / st->capacity);
-  if (table_load > 0.7) ResizeSymbolTable(st, st->initial_capacity * 2);
-
-  Bucket *b = NewBucket(key, s);
-  int index = GetHash(key, st->capacity, 0);
-  Bucket *check_bucket = st->buckets[index];
-
-  int i = 1;
-  while (check_bucket != NULL) {
-    if (strcmp(check_bucket->key, key) == 0) {
-      // When SetEntry() overwrites an existing entry,
-      // preserve the line it was declared on
-      int preserve_dol = check_bucket->entry.declared_on_line;
-      int preserve_id = check_bucket->entry.debug_id;
-      FreeBucket(check_bucket);
-
-      b->entry.declared_on_line = preserve_dol;
-      b->entry.debug_id = preserve_id;
-      st->buckets[index] = b;
-      return b->entry;
-    }
-
-    // Collision occurred, try next bucket
-    index = GetHash(b->key, st->capacity, i);
-    check_bucket = st->buckets[index];
-    i++;
-  }
-
-  // Save the line an item was declared on the first time it is stored
-  b->entry.declared_on_line = b->entry.token.on_line;
-  b->entry.debug_id = debug_guid++;
-
-  st->buckets[index] = b;
-  st->num_buckets++;
-  return b->entry;
-}
-
-static const char* const _DeclarationStateTranslation[] =
-{
-  [DECL_NONE] = "NONE",
-  [DECL_UNINITIALIZED] = "UNINITIALIZED",
-  [DECL_DECLARED] = "DECLARED",
-  [DECL_DEFINED] = "DEFINED",
-};
-
-static const char *DeclarationStateTranslation(DeclarationState ds) {
-  if (ds < 0 || ds >= DECL_ENUM_COUNT) {
-    ERROR_AND_EXIT_FMTMSG("DeclarationStateTranslation(): '%d' out of range", ds);
-  }
-  return _DeclarationStateTranslation[ds];
-}
-
-static void InlinePrintDeclarationState(DeclarationState ds) {
-  Print("%s", DeclarationStateTranslation(ds));
-}
-
-static char *ExtractString(Token token) {
-  char *str = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
-  for (int i = 0; i < token.length; i++) {
-    str[i] = token.position_in_source[i];
-  }
-  str[token.length] = '\0';
-
-  return str;
-}
-
-SymbolTable *NewSymbolTable() {
-  return NewSymbolTable_Sized(INITIAL_TABLE_CAPACITY);
-}
-
-Symbol NewSymbol(Token token, Type type, DeclarationState d) {
+Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   Symbol s = {
+    .symbol_id = -1,
     .declaration_state = d,
     .token = token,
     .value = (Value){
@@ -225,35 +55,62 @@ Symbol NewSymbol(Token token, Type type, DeclarationState d) {
   return s;
 }
 
+static Symbol GetSymbol(SymbolTable *st, int symbol_id) {
+  if (symbol_id < 0 || symbol_id >= st->count) return NOT_FOUND;
+  return DA_GET(st->symbols, symbol_id);
+}
+
+static Symbol SetSymbol(SymbolTable *st, Symbol s) {
+  DA_SET(Symbol, st->symbols, s.symbol_id, s);
+  return DA_GET(st->symbols, s.symbol_id);
+}
+
+static Symbol AddSymbol(SymbolTable *st, Symbol s) {
+  s.declared_on_line = s.token.on_line;
+  DA_ADD(Symbol, st->symbols, s);
+  return DA_GET(st->symbols, st->symbols.count - 1);
+}
+
 Symbol AddTo(SymbolTable *st, Symbol s) {
   if (s.token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
 
-  char *key = ExtractString(s.token);
+  Symbol existing_symbol = RetrieveFrom(st, s.token);
+  if (existing_symbol.token.type != ERROR) {
+    existing_symbol.declaration_state = s.declaration_state;
+    existing_symbol.value.type = s.value.type;
+    existing_symbol.token = s.token;
 
-  Symbol stored_symbol = SetSymbol(st, key, s);
-  free(key);
+    Symbol updated_symbol = SetSymbol(st, existing_symbol);
+    return updated_symbol;
+  }
+
+  s.symbol_id = symbol_guid++;
+  Symbol stored_symbol = AddSymbol(st, s);
+  st->count++;
 
   return stored_symbol;
 }
 
-Symbol RetrieveFrom(SymbolTable *st, Token token) {
-  if (token.type == ERROR) ERROR_AND_EXIT("Cannot retrieve ERROR token from Symbol Table");
+Symbol RetrieveFrom(SymbolTable *st, Token t) {
+  for (int i = 0; i < st->count; i++) {
+    Symbol check = GetSymbol(st, i);
+    if (TokenValuesMatch(check.token, t)) {
+      return check;
+    }
+  }
 
-  char *key = ExtractString(token);
-
-  Symbol symbol = GetSymbol(st, key);
-
-  free(key);
-  return symbol;
+  return NOT_FOUND;
 }
 
-bool IsIn(SymbolTable *st, Token token) {
-  char *key = ExtractString(token);
+bool IsIn(SymbolTable *st, Token t) {
+  for (int i = 0; i < st->count; i++) {
+    Symbol check = GetSymbol(st, i);
+    if (TokenValuesMatch(check.token, t)) {
+      return true;
+    }
+  }
 
-  Symbol symbol = GetSymbol(st, key);
-
-  free(key);
-  return (symbol.token.type != ERROR);
+  return false;
 }
 
 void AddParams(SymbolTable *st, Symbol function_symbol) {
@@ -269,9 +126,9 @@ void AddParams(SymbolTable *st, Symbol function_symbol) {
 void SetValue(SymbolTable *st, Token t, Value v) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    Print("SetValue(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    Print("SetValue(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
     return;
-  };
+  }
 
   s.value = v;
   AddTo(st, s);
@@ -280,16 +137,35 @@ void SetValue(SymbolTable *st, Token t, Value v) {
 void SetValueType(SymbolTable *st, Token t, Type type) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    Print("SetValueType(): Token %.*s not found in symbol table", t.length, t.position_in_source);
+    Print("SetValueType(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
     return;
-  };
+  }
 
   s.value.type = type;
   AddTo(st, s);
 }
 
+static const char* const _DeclarationStateTranslation[] =
+{
+  [DECL_NONE] = "None",
+  [DECL_UNINITIALIZED] = "UNINITIALIZED",
+  [DECL_DECLARED] = "DECLARED",
+  [DECL_DEFINED] = "DEFINED",
+};
+
+static const char *DeclarationStateTranslation(enum DeclarationState ds) {
+  if (ds < 0 || ds >= DECL_ENUM_COUNT) {
+    ERROR_AND_EXIT_FMTMSG("DeclarationStateTranslation(): '%d' out of range", ds);
+  }
+  return _DeclarationStateTranslation[ds];
+}
+
+static void InlinePrintDeclarationState(enum DeclarationState ds) {
+  Print("%s", DeclarationStateTranslation(ds));
+}
+
 void PrintSymbol(Symbol s) {
-  Print("%d: %.*s\n", s.debug_id, s.token.length, s.token.position_in_source);
+  Print("%d: %.*s\n", s.symbol_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   Print(" ");
   InlinePrintType(s.value.type);

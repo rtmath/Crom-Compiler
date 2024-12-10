@@ -1,6 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <stdbool.h>
 #include "token_type.h"
 
 typedef struct {
@@ -13,6 +14,8 @@ typedef struct {
   int on_line;
   int line_x_offset;
 } Token;
+
+bool TokenValuesMatch(Token a, Token b);
 
 void InlinePrintToken(Token t);
 void PrintToken(Token t);
