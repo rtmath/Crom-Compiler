@@ -16,11 +16,12 @@ int main(int argc, char **argv) {
   char *contents = NULL;
   ReadFile(filename, &contents);
 
-  SymbolTable *st = NewSymbolTable();
+  SymbolTable *st = NULL;
   AST_Node *compiled_code = Compile(filename, contents, &st);
 
   Interpret(compiled_code, st);
 
-  ReportErrorCode();
+  PrintAllSymbols(st);
+  DebugReportErrorCode();
   return 0;
 }

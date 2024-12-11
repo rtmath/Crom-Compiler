@@ -4,6 +4,7 @@
 #include "common.h"
 #include "error.h"
 
+static SymbolTable *debug_symbol_table = NULL;
 static int error_code = OK;
 
 static void PrintFormattedStr(const char *fmt_string, va_list args) {
@@ -62,7 +63,7 @@ void ErrorAndExit_VAList(const char *src_filename, int line_number,
 }
 
 void Exit() {
-  ReportErrorCode();
+  DebugReportErrorCode();
   exit(error_code);
 }
 
@@ -122,8 +123,19 @@ ErrorCode ErrorCodeLookup(char *str) {
   return ERR_UNKNOWN;
 }
 
-void ReportErrorCode() {
+void DebugRegisterSymbolTable(SymbolTable *st) {
+  debug_symbol_table = st;
+}
+
+void DebugPrintSymbolsOnExit() {
+  if (debug_symbol_table == NULL) return;
+
+  PrintAllSymbols(debug_symbol_table);
+}
+
+void DebugReportErrorCode() {
 #ifndef RUNNING_TESTS
+  DebugPrintSymbolsOnExit();
   printf("\nExit Code: %s\n", ErrorCodeTranslation(error_code));
 #endif
 }

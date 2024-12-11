@@ -4,6 +4,7 @@
 #include <stdarg.h> // for variadic args, va_list et al.
 
 #include "io.h"
+#include "symbol_table.h" // for DebugRegisterSymbolTable
 
 typedef enum {
   OK, // No error occurred.
@@ -71,6 +72,7 @@ void SetErrorCode(ErrorCode code);
 const char *ErrorCodeTranslation(ErrorCode code);
 ErrorCode ErrorCodeLookup(char *str);
 
-void ReportErrorCode();
+void DebugReportErrorCode();
+void DebugRegisterSymbolTable(SymbolTable *st);
 
 #endif

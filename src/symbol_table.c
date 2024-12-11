@@ -183,3 +183,27 @@ void PrintSymbol(Symbol s) {
   Print("\n");
   PrintValue(s.value);
 }
+
+void InlinePrintSymbol(Symbol s) {
+  Print("Symbol %2d: '%.*s' ", s.symbol_id, s.token.length, s.token.position_in_source);
+  InlinePrintType(s.value.type);
+  Print("[");
+  InlinePrintDeclarationState(s.declaration_state);
+  Print("]");
+  if (DEFINED(s)) {
+    Print(" = ");
+    InlinePrintValue(s.value);
+  }
+}
+
+void PrintAllSymbols(SymbolTable *st) {
+  Print("\n|-- SYMBOLS --|\n");
+  for (int i = 0; i < st->count; i++ ) {
+    InlinePrintSymbol(DA_GET(st->symbols, i));
+    Print("\n");
+  }
+
+  if (st->count != st->symbols.count) {
+    Print("%d unreported symbols\n", st->symbols.count - st->count);
+  }
+}

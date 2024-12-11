@@ -8,6 +8,7 @@
 AST_Node *Compile(const char *filename, const char *source, SymbolTable **st) {
   InitLexer(filename, source);
   InitParser(st);
+  DebugRegisterSymbolTable(*st);
   AST_Node *ast = ParserBuildAST();
 
   CheckTypes(ast, *st);

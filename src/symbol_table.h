@@ -48,5 +48,7 @@ Symbol SetValue(SymbolTable *st, Token t, Value v);
 Symbol SetValueType(SymbolTable *st, Token t, Type type);
 
 void PrintSymbol(Symbol s);
+void InlinePrintSymbol(Symbol s);
+void PrintAllSymbols(SymbolTable *st);
 
 #endif
