@@ -53,7 +53,7 @@ Type _NewType(TokenType t, int array_size) {
     case STRUCT: return _Type(T_STRUCT, _, array_size);
 
     default:
-      ERROR_AND_EXIT_FMTMSG("NewType(): Invalid token type '%s'\n", TokenTypeTranslation(t));
+      COMPILER_ERROR_FMTMSG("NewType(): Invalid token type '%s'\n", TokenTypeTranslation(t));
       return _Type(T_NONE, _, 0);
   }
 }

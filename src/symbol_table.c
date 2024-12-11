@@ -72,7 +72,7 @@ static Symbol AddSymbol(SymbolTable *st, Symbol s) {
 }
 
 Symbol AddTo(SymbolTable *st, Symbol s) {
-  if (s.token.type == ERROR) ERROR_AND_EXIT("Tried adding an ERROR token to Symbol Table");
+  if (s.token.type == ERROR) COMPILER_ERROR("Tried adding an ERROR token to Symbol Table");
 
   Symbol existing_symbol = RetrieveFrom(st, s.token);
   if (existing_symbol.token.type != ERROR) {
@@ -166,7 +166,7 @@ static const char* const _DeclarationStateTranslation[] =
 
 static const char *DeclarationStateTranslation(enum DeclarationState ds) {
   if (ds < 0 || ds >= DECL_ENUM_COUNT) {
-    ERROR_AND_EXIT_FMTMSG("DeclarationStateTranslation(): '%d' out of range", ds);
+    COMPILER_ERROR_FMTMSG("DeclarationStateTranslation(): '%d' out of range", ds);
   }
   return _DeclarationStateTranslation[ds];
 }
@@ -187,7 +187,7 @@ void PrintSymbol(Symbol s) {
 void InlinePrintSymbol(Symbol s) {
   Print("Symbol %2d: '%.*s' ", s.symbol_id, s.token.length, s.token.position_in_source);
   InlinePrintType(s.value.type);
-  Print("[");
+  Print(" [");
   InlinePrintDeclarationState(s.declaration_state);
   Print("]");
   if (DEFINED(s)) {

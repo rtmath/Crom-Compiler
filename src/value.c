@@ -35,7 +35,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Int(type)) {
     if (Int64Overflow(token, base)) {
-      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "I64 Overflow\n", "");
+      ERROR(ERR_OVERFLOW, token);
       return (Value){ .type = NoType(), .as.integer = 0 };
     }
 
@@ -44,7 +44,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Uint(type)) {
     if (Uint64Overflow(token, base)) {
-      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "U64 Overflow\n", "");
+      ERROR(ERR_OVERFLOW, token);
       return (Value){ .type = NoType(), .as.uinteger = 0 };
     }
 
@@ -53,7 +53,7 @@ Value NewValue(Type type, Token token) {
 
   } else if (TypeIs_Float(type)) {
     if (DoubleOverflow(token) || DoubleUnderflow(token)) {
-      ERROR_AT_TOKEN(token, ERR_OVERFLOW, "F64 Over/Underflow\n", "");
+      ERROR(ERR_OVERFLOW, token);
       return (Value){ .type = NoType(), .as.floating = 0 };
     }
 
@@ -79,7 +79,7 @@ Value NewValue(Type type, Token token) {
     return NewStringValue(s);
 
   } else {
-    ERROR_AND_EXIT_FMTMSG("NewValue(): '%s' not implemented yet", TypeTranslation(type));
+    COMPILER_ERROR_FMTMSG("NewValue(): '%s' not implemented yet", TypeTranslation(type));
   }
 
   return ret_val;
@@ -199,15 +199,15 @@ Value LessThan(Value v1, Value v2) {
 }
 
 Value LogicalAND(Value v1, Value v2) {
-  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
-  if (!TypesMatchExactly(v1.type, v2.type)) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) INTERPRETER_ERROR("LogicalAND(): Cannot compare non-bool types");
+  if (!TypesMatchExactly(v1.type, v2.type)) INTERPRETER_ERROR("LogicalAND(): Type mismatch");
 
   return NewBoolValue(v1.as.boolean && v2.as.boolean);
 }
 
 Value LogicalOR(Value v1, Value v2) {
-  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) ERROR_AND_EXIT("LogicalAND(): Cannot compare non-bool types");
-  if (!TypesMatchExactly(v1.type, v2.type)) ERROR_AND_EXIT("LogicalAND(): Type mismatch");
+  if (!TypeIs_Bool(v1.type) || !TypeIs_Bool(v2.type)) INTERPRETER_ERROR("LogicalAND(): Cannot compare non-bool types");
+  if (!TypesMatchExactly(v1.type, v2.type)) INTERPRETER_ERROR("LogicalAND(): Type mismatch");
 
   return NewBoolValue(v1.as.boolean || v2.as.boolean);
 }

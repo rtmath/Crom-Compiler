@@ -7,61 +7,6 @@
 static SymbolTable *debug_symbol_table = NULL;
 static int error_code = OK;
 
-static void PrintFormattedStr(const char *fmt_string, va_list args) {
-  Print_VAList(fmt_string, args);
-}
-
-void ErrorAndContinue(const char *src_filename, int line_number, const char *msg) {
-  Print("[%s:%d] %s\n", src_filename, line_number, msg);
-}
-
-void ErrorAndExit(const char* src_filename, int line_number, const char *msg) {
-  ErrorAndContinue(src_filename, line_number, msg);
-
-  Exit();
-}
-
-void ErrorAndContinue_Variadic(const char *src_filename, int line_number,
-                                const char *fmt_string, ...) {
-  Print("[%s:%d] ", src_filename, line_number);
-
-  va_list args;
-  va_start(args, fmt_string);
-  PrintFormattedStr(fmt_string, args);
-  va_end(args);
-
-  Print("\n");
-}
-
-void ErrorAndExit_Variadic(const char* src_filename, int line_number,
-                  const char *fmt_string, ...)
-{
-  Print("[%s:%d] ", src_filename, line_number);
-
-  va_list args;
-  va_start(args, fmt_string);
-  PrintFormattedStr(fmt_string, args);
-  va_end(args);
-
-  Print("\n");
-
-  Exit();
-}
-
-void ErrorAndContinue_VAList(const char *src_filename, int line_number,
-                           const char *fmt_string, va_list args) {
-  Print("[%s:%d] ", src_filename, line_number);
-  PrintFormattedStr(fmt_string, args);
-  Print("\n");
-}
-
-void ErrorAndExit_VAList(const char *src_filename, int line_number,
-                       const char *fmt_string, va_list args) {
-  ErrorAndContinue_VAList(src_filename, line_number, fmt_string, args);
-
-  Exit();
-}
-
 void Exit() {
   DebugReportErrorCode();
   exit(error_code);
@@ -91,6 +36,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
     case ERR_LEXER_ERROR:          return "LEXER ERROR";
     case ERR_MISSING_SEMICOLON:    return "MISSING SEMICOLON";
+    case ERR_MISSING_RETURN:       return "MISSING RETURN";
     case ERR_PEBCAK:               return "PEBCAK";
     case ERR_MISC:                 return "MISC";
     case ERR_UNKNOWN:              return "UNKNOWN";
@@ -116,6 +62,7 @@ ErrorCode ErrorCodeLookup(char *str) {
   if (StringsMatch(str, "ERR_UNREACHABLE_CODE")) return ERR_UNREACHABLE_CODE;
   if (StringsMatch(str, "ERR_LEXER_ERROR")) return ERR_LEXER_ERROR;
   if (StringsMatch(str, "ERR_MISSING_SEMICOLON")) return ERR_MISSING_SEMICOLON;
+  if (StringsMatch(str, "ERR_MISSING_RETURN")) return ERR_MISSING_RETURN;
   if (StringsMatch(str, "ERR_PEBCAK")) return ERR_PEBCAK;
   if (StringsMatch(str, "ERR_MISC")) return ERR_MISC;
 
@@ -138,4 +85,143 @@ void DebugReportErrorCode() {
   DebugPrintSymbolsOnExit();
   printf("\nExit Code: %s\n", ErrorCodeTranslation(error_code));
 #endif
+}
+
+void Error(const char *file, int line, const char *func_name, ErrorCode error_code, Token token) {
+  SetErrorCode(error_code);
+  PrintSourceLineOfToken(token);
+
+  Print("[%s:%d] %s(): ", file, line, func_name);
+
+  switch (error_code) {
+    case OK: {
+      // This shouldn't ever happen
+    } break;
+    case ERR_UNDECLARED: {
+      Print("Undeclared identifier '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_UNDEFINED: {
+      Print("Undefined identifier '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_UNINITIALIZED: {
+      Print("Uninitialized identifier '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_REDECLARED: {
+      Symbol s = RetrieveFrom(debug_symbol_table, token);
+      Print("Redeclaration of '%.*s', originally declared on line '%d'",
+            token.length, token.position_in_source, s.declared_on_line);
+      PrintSourceLineOfToken(s.token);
+    } break;
+    case ERR_UNEXPECTED: {
+      Print("Unexpected token '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_TYPE_DISAGREEMENT: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_IMPROPER_DECLARATION: {
+      Print("Improper declaration");
+    } break;
+    case ERR_IMPROPER_ASSIGNMENT: {
+      Print("Improper assignment to identifier '.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_OVERFLOW: {
+      Print("Overflow");
+    } break;
+    case ERR_UNDERFLOW: {
+      Print("Underflow");
+    } break;
+    case ERR_TOO_MANY: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_TOO_FEW: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_EMPTY_BODY: {
+      Print("Body cannot be empty");
+    } break;
+    case ERR_UNREACHABLE_CODE: {
+      Print("Unreachable code in '%s'", func_name);
+    } break;
+    case ERR_LEXER_ERROR: {
+      Print("Encountered error token: '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_MISSING_SEMICOLON: {
+      Print("Expected semicolon");
+    } break;
+    case ERR_MISSING_RETURN: {
+      Print("Missing return in non-void function '%s'", func_name);
+    } break;
+    case ERR_PEBCAK: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_MISC: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_UNKNOWN: {
+      // This maybe shouldn't be handled in this function
+    } break;
+  }
+
+  Print("\n");
+  Exit();
+}
+
+void ErrorMsg(const char *file, int line, const char *func_name,
+              ErrorCode error_code, Token token, const char *msg) {
+  SetErrorCode(error_code);
+  PrintSourceLineOfToken(token);
+
+  Print("[%s:%d] %s(): ", file, line, func_name);
+  Print(msg);
+
+  Print("\n");
+  Exit();
+}
+
+void ErrorFmt(const char *file, int line, const char *func_name,
+              ErrorCode error_code, Token token, const char *fmt, ...) {
+  SetErrorCode(error_code);
+  PrintSourceLineOfToken(token);
+
+  Print("[%s:%d] %s(): ", file, line, func_name);
+  va_list args;
+  va_start(args, fmt);
+  Print_VAList(fmt, args);
+  va_end(args);
+
+  Print("\n");
+  Exit();
+}
+
+void ErrorVAList(const char *file, int line, const char *func_name,
+                 ErrorCode error_code, Token token, const char *fmt, va_list args) {
+  SetErrorCode(error_code);
+  PrintSourceLineOfToken(token);
+
+  Print("[%s:%d] %s(): ", file, line, func_name);
+  Print_VAList(fmt, args);
+
+  Print("\n");
+  Exit();
+}
+
+void ErrorAndExit(const char* src_filename, int line_number, ErrorCode error_code, const char *msg) {
+  SetErrorCode(error_code);
+  Print("[%s:%d] %s\n", src_filename, line_number, msg);
+
+  Exit();
+}
+
+void ErrorAndExit_Variadic(const char* src_filename, int line_number, ErrorCode error_code, const char *fmt_string, ...) {
+  SetErrorCode(error_code);
+  Print("[%s:%d] ", src_filename, line_number);
+
+  va_list args;
+  va_start(args, fmt_string);
+  Print_VAList(fmt_string, args);
+  va_end(args);
+
+  Print("\n");
+
+  Exit();
 }

@@ -21,7 +21,6 @@ int main(int argc, char **argv) {
 
   Interpret(compiled_code, st);
 
-  PrintAllSymbols(st);
   DebugReportErrorCode();
   return 0;
 }
