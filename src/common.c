@@ -15,7 +15,8 @@ int64_t TokenToInt64(Token t, int base) {
   errno = 0;
   long long value = strtoll(t.position_in_source, NULL, base);
   if (errno != 0) {
-    ERROR_AND_EXIT("TokenToInt64() underflow or overflow");
+    SetErrorCode(ERR_OVERFLOW);
+    ERROR_AND_EXIT("TokenToInt64() overflow");
   }
 
   return value;
@@ -25,7 +26,8 @@ uint64_t TokenToUint64(Token t, int base) {
   errno = 0;
   unsigned long long value = strtoull(t.position_in_source, NULL, base);
   if (errno != 0) {
-    ERROR_AND_EXIT("TokenToUint64() underflow or overflow");
+    SetErrorCode(ERR_OVERFLOW);
+    ERROR_AND_EXIT("TokenToUint64() overflow");
   }
 
   return value;
@@ -35,6 +37,7 @@ double TokenToDouble(Token t) {
   errno = 0;
   double value = strtod(t.position_in_source, NULL);
   if (errno != 0) {
+    SetErrorCode(ERR_OVERFLOW);
     ERROR_AND_EXIT("TokenToDouble() underflow or overflow");
   }
 

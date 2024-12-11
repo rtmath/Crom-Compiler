@@ -123,26 +123,37 @@ void AddParams(SymbolTable *st, Symbol function_symbol) {
   }
 }
 
-void SetValue(SymbolTable *st, Token t, Value v) {
+Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds) {
+  Symbol s = RetrieveFrom(st, t);
+  if (s.token.type == ERROR) {
+    Print("SetDecl(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
+    return NOT_FOUND;
+  }
+
+  s.declaration_state = ds;
+  return AddTo(st, s);
+}
+
+Symbol SetValue(SymbolTable *st, Token t, Value v) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
     Print("SetValue(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
-    return;
+    return NOT_FOUND;
   }
 
   s.value = v;
-  AddTo(st, s);
+  return AddTo(st, s);
 }
 
-void SetValueType(SymbolTable *st, Token t, Type type) {
+Symbol SetValueType(SymbolTable *st, Token t, Type type) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
     Print("SetValueType(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
-    return;
+    return NOT_FOUND;
   }
 
   s.value.type = type;
-  AddTo(st, s);
+  return AddTo(st, s);
 }
 
 static const char* const _DeclarationStateTranslation[] =

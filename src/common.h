@@ -9,6 +9,10 @@
 
 #define ROOM_FOR_NULL_BYTE 1
 
+#define BASE_10 10
+#define BASE_16 16
+#define BASE_2  2
+
 int64_t  TokenToInt64(Token t, int base);
 uint64_t TokenToUint64(Token t, int base);
 double   TokenToDouble(Token t);

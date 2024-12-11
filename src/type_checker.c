@@ -18,15 +18,11 @@ static void CheckTypesRecurse(AST_Node *node);
 
 /* === HELPERS === */
 static int GetBase(AST_Node* node) {
-  const int BASE_DECIMAL = 10;
-  const int BASE_HEX = 16;
-  const int BASE_BINARY = 2;
-
   return (node->token.type == HEX_LITERAL)
-           ? BASE_HEX
+           ? BASE_16
            : (node->token.type == BINARY_LITERAL)
-               ? BASE_BINARY
-               : BASE_DECIMAL;
+               ? BASE_2
+               : BASE_10;
 }
 
 void VerifyTypeIs(Type type, AST_Node *node) {
