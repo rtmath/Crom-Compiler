@@ -23,6 +23,7 @@ typedef struct {
 
   enum DeclarationState declaration_state;
   Token token;
+  Type  data_type;
   Value value;
 
   int declared_on_line;
@@ -44,8 +45,8 @@ void RegisterFnParam(SymbolTable *st, Symbol function_name, Symbol param);
 void AddParams(SymbolTable *st, Symbol function_symbol);
 
 Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds);
-Symbol SetValue(SymbolTable *st, Token t, Value v);
-Symbol SetValueType(SymbolTable *st, Token t, Type type);
+Symbol SetSymbolValue(SymbolTable *st, Token t, Value v);
+Symbol SetSymbolDataType(SymbolTable *st, Token t, Type type);
 
 void PrintSymbol(Symbol s);
 void InlinePrintSymbol(Symbol s);

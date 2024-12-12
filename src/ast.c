@@ -61,7 +61,7 @@ AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->node_type = node_type;
-  n->value.type = type;
+  n->data_type = type;
 
   n->left = left;
   n->middle = middle;
@@ -75,7 +75,7 @@ AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle,
 
   n->token = token;
   n->node_type = node_type;
-  n->value.type = type;
+  n->data_type = type;
 
   n->left = left;
   n->middle = middle;
@@ -89,7 +89,7 @@ AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle
 
   n->token = symbol.token;
   n->node_type = node_type;
-  n->value.type = symbol.value.type;
+  n->data_type = symbol.data_type;
 
   n->left = left;
   n->middle = middle;
@@ -121,8 +121,8 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     : Print("%.*s ", node->token.length, node->token.position_in_source);
   }
 
-  if (!TypeIs_None(node->value.type) && node->node_type != START_NODE) {
-    InlinePrintType(node->value.type);
+  if (!TypeIs_None(node->data_type) && node->node_type != START_NODE) {
+    InlinePrintType(node->data_type);
     Print(" ");
   }
 
@@ -133,7 +133,7 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     Print("%s", NodeTypeTranslation(node->node_type));
   }
 
-  if (node->value.type.specifier != T_NONE && node->node_type != START_NODE) {
+  if (node->data_type.specifier != T_NONE && node->node_type != START_NODE) {
     Print(" | ");
     InlinePrintValue(node->value);
   }
@@ -157,7 +157,7 @@ static void InlinePrintNodeSummary(AST_Node *node) {
          NodeTypeTranslation(node->node_type));
   InlinePrintToken(node->token);
   Print(" {");
-  InlinePrintType(node->value.type);
+  InlinePrintType(node->data_type);
   Print("}");
 }
 
@@ -165,7 +165,7 @@ void PrintNode(AST_Node *node) {
   Print("%16s Node ", NodeTypeTranslation(node->node_type));
   Print("'%.*s'", node->token.length, node->token.position_in_source);
   Print(" {");
-  InlinePrintType(node->value.type);
+  InlinePrintType(node->data_type);
   Print("} | Value: ");
   PrintValue(node->value);
   Print("\n");

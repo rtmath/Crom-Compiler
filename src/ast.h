@@ -63,6 +63,7 @@ typedef enum {
 typedef struct AST_Node {
   NodeType node_type;
   Token token;
+  Type  data_type;
   Value value;
 
   struct AST_Node *left;

@@ -9,6 +9,10 @@
 static int symbol_guid = 0;
 static Symbol NOT_FOUND = {
   .symbol_id = -1,
+  .data_type = {
+    .category = TC_NONE,
+    .specifier = T_NONE,
+  },
   .declaration_state = DECL_NONE,
   .token = {
     .type = ERROR,
@@ -17,7 +21,10 @@ static Symbol NOT_FOUND = {
     .on_line = -1,
   },
   .value = {
-    .type = {0},
+    .type = {
+      .category = TC_NONE,
+      .specifier = T_NONE,
+    },
     .as.uinteger = 0,
   },
 };
@@ -44,6 +51,7 @@ void DeleteSymbolTable(SymbolTable *st) {
 Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   Symbol s = {
     .symbol_id = -1,
+    .data_type = type,
     .declaration_state = d,
     .token = token,
     .value = (Value){
@@ -77,7 +85,7 @@ Symbol AddTo(SymbolTable *st, Symbol s) {
   Symbol existing_symbol = RetrieveFrom(st, s.token);
   if (existing_symbol.token.type != ERROR) {
     existing_symbol.declaration_state = s.declaration_state;
-    existing_symbol.value.type = s.value.type;
+    existing_symbol.data_type = s.data_type;
     existing_symbol.token = s.token;
 
     Symbol updated_symbol = SetSymbol(st, existing_symbol);
@@ -114,7 +122,7 @@ bool IsIn(SymbolTable *st, Token t) {
 }
 
 void AddParams(SymbolTable *st, Symbol function_symbol) {
-  FnParam *next = function_symbol.value.type.params.next;
+  FnParam *next = function_symbol.data_type.params.next;
 
   while (next != NULL) {
     AddTo(st, NewSymbol(next->token, next->type, DECL_DEFINED));
@@ -134,7 +142,7 @@ Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds) {
   return AddTo(st, s);
 }
 
-Symbol SetValue(SymbolTable *st, Token t, Value v) {
+Symbol SetSymbolValue(SymbolTable *st, Token t, Value v) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
     Print("SetValue(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
@@ -145,14 +153,14 @@ Symbol SetValue(SymbolTable *st, Token t, Value v) {
   return AddTo(st, s);
 }
 
-Symbol SetValueType(SymbolTable *st, Token t, Type type) {
+Symbol SetSymbolDataType(SymbolTable *st, Token t, Type type) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
     Print("SetValueType(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
     return NOT_FOUND;
   }
 
-  s.value.type = type;
+  s.data_type = type;
   return AddTo(st, s);
 }
 
@@ -179,19 +187,19 @@ void PrintSymbol(Symbol s) {
   Print("%d: %.*s\n", s.symbol_id, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   Print(" ");
-  InlinePrintType(s.value.type);
+  InlinePrintType(s.data_type);
   Print("\n");
   PrintValue(s.value);
 }
 
 void InlinePrintSymbol(Symbol s) {
   Print("Symbol %2d: '%.*s' ", s.symbol_id, s.token.length, s.token.position_in_source);
-  InlinePrintType(s.value.type);
+  InlinePrintType(s.data_type);
   Print(" [");
   InlinePrintDeclarationState(s.declaration_state);
   Print("]");
   if (DEFINED(s)) {
-    Print(" = ");
+    Print(" | ");
     InlinePrintValue(s.value);
   }
 }

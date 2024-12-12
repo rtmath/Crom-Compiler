@@ -518,7 +518,7 @@ static AST_Node *Identifier(bool can_assign) {
       ERROR(ERR_UNDEFINED, identifier_token);
     }
 
-    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, identifier_symbol.value.type);
+    return NewNodeFromToken(POSTFIX_INCREMENT_NODE, NULL, NULL, NULL, identifier_token, identifier_symbol.data_type);
   }
 
   if (Match(MINUS_MINUS)) {
@@ -526,7 +526,7 @@ static AST_Node *Identifier(bool can_assign) {
       ERROR(ERR_UNDEFINED, identifier_token);
     }
 
-    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, identifier_symbol.value.type);
+    return NewNodeFromToken(POSTFIX_DECREMENT_NODE, NULL, NULL, NULL, identifier_token, identifier_symbol.data_type);
   }
 
   if (Match(EQUALS)) {
@@ -534,10 +534,10 @@ static AST_Node *Identifier(bool can_assign) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier_token);
     }
 
-    if (TypeIs_Array(identifier_symbol.value.type) &&
-        !TypeIs_String(identifier_symbol.value.type)) {
+    if (TypeIs_Array(identifier_symbol.data_type) &&
+        !TypeIs_String(identifier_symbol.data_type)) {
       if (Match(LCURLY)) {
-        AST_Node *initializer_list = InitializerList(identifier_symbol.value.type);
+        AST_Node *initializer_list = InitializerList(identifier_symbol.data_type);
         identifier_symbol = SetDecl(SYMBOL_TABLE(), identifier_token, DECL_DEFINED);
         return NewNodeFromSymbol(ASSIGNMENT_NODE, initializer_list, array_index, NULL, identifier_symbol);
       } else if (array_index != NULL) {
@@ -547,7 +547,7 @@ static AST_Node *Identifier(bool can_assign) {
       }
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, identifier_symbol.value.type, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, identifier_symbol.data_type, DECL_DEFINED));
     return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), array_index, NULL, stored_symbol);
   }
 
@@ -562,7 +562,7 @@ static AST_Node *Identifier(bool can_assign) {
     return terse_assignment;
   }
 
-  if (TypeIs_Struct(identifier_symbol.value.type) && Match(PERIOD)) {
+  if (TypeIs_Struct(identifier_symbol.data_type) && Match(PERIOD)) {
     return StructMemberAccess(identifier_token);
   }
 
@@ -574,7 +574,7 @@ static AST_Node *Identifier(bool can_assign) {
   return NewNodeFromToken(
     (DECLARED(identifier_symbol)) ? DECLARATION_NODE
                                   : IDENTIFIER_NODE,
-    NULL, array_index, NULL, identifier_token, identifier_symbol.value.type
+    NULL, array_index, NULL, identifier_token, identifier_symbol.data_type
   );
 }
 
@@ -716,9 +716,9 @@ static AST_Node *Statement(bool) {
   AST_Node *expr_result = Expression(_);
 
   // Allow optional semicolon after Enum, Struct and Function definitions
-  if (TypeIs_Enum(expr_result->value.type)   ||
-      TypeIs_Struct(expr_result->value.type) ||
-      TypeIs_Function(expr_result->value.type))
+  if (TypeIs_Enum(expr_result->data_type)   ||
+      TypeIs_Struct(expr_result->data_type) ||
+      TypeIs_Function(expr_result->data_type))
   {
     Match(SEMICOLON);
   } else {
@@ -818,7 +818,7 @@ static AST_Node *Return(bool) {
     expr = Expression(_);
   }
 
-  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? NewType(VOID) : expr->value.type);
+  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? NewType(VOID) : expr->data_type);
 }
 
 static AST_Node *Parens(bool) {
@@ -875,7 +875,7 @@ static AST_Node *EnumListEntry(bool can_assign) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier_token);
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.value.type, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.data_type, DECL_DEFINED));
     return NewNodeFromSymbol(ENUM_ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
@@ -891,20 +891,23 @@ static void EnumBlock(AST_Node **enum_name) {
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     empty_body = false;
 
-    if (IsIn(SYMBOL_TABLE(), Parser.next)) {
-      ERROR(ERR_REDECLARED, Parser.next);
-    }
-
     Consume(IDENTIFIER, "EnumBlock(): Expected IDENTIFIER, got '%s' instead.",
             TokenTypeTranslation(Parser.next.type));
-    AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, NewType(ENUM_LITERAL), DECL_DEFINED));
+    Token enum_identifier = Parser.current;
+
+    if (IsIn(SYMBOL_TABLE(), enum_identifier)) {
+      ERROR(ERR_REDECLARED, enum_identifier);
+    }
+
+    AddTo(SYMBOL_TABLE(), NewSymbol(enum_identifier, NewType(ENUM_LITERAL), DECL_DEFINED));
 
     (*current)->left = EnumListEntry(ASSIGNABLE);
     (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
 
     current = &(*current)->right;
-
-    Match(COMMA);
+    if (!NextTokenIs(RCURLY)) {
+      Consume(COMMA, "Expected COMMA, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
+    }
   }
 
   Consume(RCURLY, "EnumBlock(): Expected '}' after ENUM block, got %s", TokenTypeTranslation(Parser.current.type));
@@ -949,7 +952,7 @@ static AST_Node *StructMemberAccess(Token struct_name) {
 
   Consume(IDENTIFIER, "StructMemberAccess(): Expected identifier", "");
   Token field_name = Parser.current;
-  if (!StructContainsMember(struct_symbol.value.type, field_name)) {
+  if (!StructContainsMember(struct_symbol.data_type, field_name)) {
     ERROR(ERR_UNDEFINED, field_name);
   }
 
@@ -970,7 +973,7 @@ static AST_Node *StructMemberAccess(Token struct_name) {
   EndScope();
 
   AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoType());
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.value.type);
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.data_type);
 }
 
 static void StructBody(AST_Node **struct_name) {
@@ -1008,11 +1011,11 @@ static void StructBody(AST_Node **struct_name) {
     Token member_token = Parser.current;
     Type member_type = (is_array) ? NewArrayType(type_token.type, array_size) : NewType(type_token.type);
 
-    if (StructContainsMember((*struct_name)->value.type, member_token)) {
+    if (StructContainsMember((*struct_name)->data_type, member_token)) {
       ERROR(ERR_REDECLARED, member_token);
     }
 
-    AddMemberToStruct(&(*struct_name)->value.type, member_type, member_token);
+    AddMemberToStruct(&(*struct_name)->data_type, member_type, member_token);
 
     (*current)->left = NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, NULL, NULL, NULL, member_token, member_type);
     (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
@@ -1098,13 +1101,13 @@ static AST_Node *FunctionParams(Token function_name) {
     Token member_name = Parser.current;
     Type member_type = (is_array) ? NewArrayType(type_token.type, 0) : NewType(type_token.type);
 
-    if (FunctionHasParam(function.value.type, member_name) && !DECLARED(function)) {
+    if (FunctionHasParam(function.data_type, member_name) && !DECLARED(function)) {
       ERROR(ERR_REDECLARED, member_name);
     }
 
-    AddParamToFunction(&function.value.type, member_type, member_name);
+    AddParamToFunction(&function.data_type, member_type, member_name);
 
-    (*current)->value.type = member_type;
+    (*current)->data_type = member_type;
     (*current)->token = member_name;
 
     if (Match(COMMA) || !NextTokenIs(RPAREN)) {
@@ -1176,7 +1179,7 @@ static AST_Node *FunctionDeclaration(Token function_name) {
   }
 
   if (!DECLARED(function)) {
-    function.value.type.specifier = return_type->value.type.specifier;
+    function.data_type.specifier = return_type->data_type.specifier;
   }
 
   function.declaration_state = (body == NULL) ? DECL_DECLARED : DECL_DEFINED;
@@ -1220,7 +1223,7 @@ static AST_Node *FunctionCall(Token function_name) {
 
   Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE(), function_name);
 
-  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, fn_definition.value.type);
+  return NewNodeFromToken(FUNCTION_CALL_NODE, NULL, args, NULL, function_name, fn_definition.data_type);
 }
 
 static AST_Node *Literal(bool) {
