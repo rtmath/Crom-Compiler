@@ -160,6 +160,12 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
     case ERR_UNKNOWN: {
       // This maybe shouldn't be handled in this function
     } break;
+    case ERR_COMPILER: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_INTERPRETER: {
+      // This maybe shouldn't be handled in this function
+    } break;
   }
 
   Print("\n");
