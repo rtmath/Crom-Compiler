@@ -159,7 +159,7 @@ static void BeginScope() {
 static void EndScope() {
   if (Scope.depth == 0) {
     SetErrorCode(ERR_PEBCAK);
-    COMPILER_ERROR("EndScope(): Please don't EndScope() when depth is 0.");
+    COMPILER_ERROR("EndedScope at 0 depth.");
   }
 
   DeleteSymbolTable(Scope.locals[Scope.depth]);
@@ -375,15 +375,13 @@ static void ConsumeAnyTerseAssignment(const char *msg, ...) {
   va_end(args);
 }
 
-void InitParser(SymbolTable **st) {
-  *st = NewSymbolTable();
-
+void InitParser(SymbolTable *st) {
   Scope.depth = 0;
-  Scope.locals[Scope.depth] = *st;
+  Scope.locals[Scope.depth] = st;
 
   /* Two calls to Advance() will prime the parser, such that
    * Parser.current will still be zeroed out, and
-   * Parser.next will hold the First Token(TM) from the lexer.
+   * Parser.next will hold the first Token from the lexer.
    * The first call to Advance() from inside Parse() will then
    * set Parser.current to the First Token, and Parser.next to
    * look ahead one token, and parsing will proceed normally. */

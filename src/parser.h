@@ -4,7 +4,7 @@
 #include "ast.h"
 #include "symbol_table.h"
 
-void InitParser(SymbolTable **symbol_table);
+void InitParser(SymbolTable *symbol_table);
 AST_Node *ParserBuildAST();
 
 #endif

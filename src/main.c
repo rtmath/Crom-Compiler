@@ -16,8 +16,8 @@ int main(int argc, char **argv) {
   char *contents = NULL;
   ReadFile(filename, &contents);
 
-  SymbolTable *st = NULL;
-  AST_Node *compiled_code = Compile(filename, contents, &st);
+  SymbolTable *st = NewSymbolTable();
+  AST_Node *compiled_code = Compile(filename, contents, st);
 
   Interpret(compiled_code, st);
 
