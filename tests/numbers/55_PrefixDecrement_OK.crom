@@ -1,0 +1,4 @@
+//OK
+
+i64 check = 10;
+--check;
