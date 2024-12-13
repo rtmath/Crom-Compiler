@@ -71,6 +71,7 @@ Type NewFunctionType(TokenType t);
 
 void InlinePrintType(Type t);
 void PrintType(Type t);
+const char *TypeCategoryTranslation(Type t);
 const char *TypeTranslation(Type t);
 
 bool TypesMatchExactly(Type t1, Type t2);

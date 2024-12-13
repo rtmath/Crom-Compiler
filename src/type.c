@@ -139,6 +139,15 @@ void PrintType(Type t) {
   Print("\n");
 }
 
+const char *TypeCategoryTranslation(Type t) {
+  switch (t.category) {
+    case TC_NONE: return "NONE";
+    case TC_ARRAY: return "ARRAY";
+    case TC_FUNCTION: return "FUNCTION";
+    default: return "NOT FOUND";
+  }
+}
+
 const char *TypeTranslation(Type t) {
   switch (t.specifier) {
     case T_NONE: return "NONE";
