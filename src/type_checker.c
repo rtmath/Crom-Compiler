@@ -158,7 +158,15 @@ static void Assignment(AST_Node *identifier) {
   }
 
   if (NodeIs_TerseAssignment(identifier)) {
-    // Treat terse assignment node actual type as the identifier's type
+    if (!TypeIs_Numeric(value->data_type)) {
+      ERROR_MSG(ERR_TYPE_DISAGREEMENT, value->token, "Left hand side must be numeric");
+    }
+
+    if (identifier->right == NULL ||
+        !TypeIs_Numeric(identifier->right->data_type)) {
+      ERROR_MSG(ERR_TYPE_DISAGREEMENT, identifier->right->token, "Right hand side must be numeric");
+    }
+
     SetNodeDataType(identifier, value->data_type);
   }
 
