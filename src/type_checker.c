@@ -413,6 +413,10 @@ static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = (node)->left;
 
   if (node->token.type == LOGICAL_NOT) {
+    if (!TypeIs_Bool(check_node->data_type)) {
+      ERROR_MSG(ERR_TYPE_DISAGREEMENT, check_node->token, "Operand must be type BOOL");
+    }
+
     node->data_type = node->left->data_type;
     return;
   }
@@ -509,11 +513,11 @@ static void BinaryLogicalOp(AST_Node *node) {
     case LOGICAL_AND:
     case LOGICAL_OR: {
       if (!TypeIs_Bool(node->left->data_type)) {
-        ERROR_FMT(ERR_UNEXPECTED, node->left->token, "Expected BOOL, got '%s'", TypeTranslation(node->left->data_type));
+        ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Expected BOOL, got '%s'", TypeTranslation(node->left->data_type));
       }
 
       if (!TypeIs_Bool(node->right->data_type)) {
-        ERROR_FMT(ERR_UNEXPECTED, node->right->token, "Expected BOOL, got '%s'", TypeTranslation(node->right->data_type));
+        ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Expected BOOL, got '%s'", TypeTranslation(node->right->data_type));
       }
     } break;
 
