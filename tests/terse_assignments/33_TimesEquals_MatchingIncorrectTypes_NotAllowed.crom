@@ -1,0 +1,4 @@
+// ERR_TYPE_DISAGREEMENT
+
+char check  = 'n';
+     check *= 'o';

@@ -1,0 +1,4 @@
+// ERR_TYPE_DISAGREEMENT
+
+i64 check = 10;
+check -= false;
