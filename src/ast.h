@@ -75,6 +75,8 @@ AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node
 AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, Type type);
 AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Symbol symbol);
 
+void SetNodeDataType(AST_Node *node, Type t);
+
 const char *NodeTypeTranslation(NodeType t);
 
 void PrintAST(AST_Node *root);

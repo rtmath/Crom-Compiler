@@ -9,16 +9,12 @@
 
 #define ROOM_FOR_NULL_BYTE 1
 
-#define BASE_10 10
-#define BASE_16 16
-#define BASE_2  2
-
-int64_t  TokenToInt64(Token t, int base);
-uint64_t TokenToUint64(Token t, int base);
+int64_t  TokenToInt64(Token t);
+uint64_t TokenToUint64(Token t);
 double   TokenToDouble(Token t);
 
-bool Int64Overflow(Token t, int base);
-bool Uint64Overflow(Token t, int base);
+bool Int64Overflow(Token t);
+bool Uint64Overflow(Token t);
 bool DoubleOverflow(Token t);
 bool DoubleUnderflow(Token t);
 

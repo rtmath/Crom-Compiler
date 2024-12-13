@@ -6,10 +6,6 @@
 #include "error.h"
 #include "value.h"
 
-#define BASE_DECIMAL 10
-#define BASE_HEX 16
-#define BASE_BINARY 2
-
 static char *ExtractString(Token token) {
   char *str = malloc(sizeof(char) * (token.length + ROOM_FOR_NULL_BYTE));
   for (int i = 0; i < token.length; i++) {
@@ -21,34 +17,27 @@ static char *ExtractString(Token token) {
 }
 
 Value NewValue(Type type, Token token) {
-  const int base =
-    (token.type == HEX_LITERAL)
-    ? BASE_HEX
-    : (token.type == BINARY_LITERAL)
-      ? BASE_BINARY
-      : BASE_DECIMAL;
-
   Value ret_val = { 0 };
 
   if (TypeIs_None(type)) {
     return ret_val;
 
   } else if (TypeIs_Int(type)) {
-    if (Int64Overflow(token, base)) {
+    if (Int64Overflow(token)) {
       ERROR(ERR_OVERFLOW, token);
       return (Value){ .type = NoType(), .as.integer = 0 };
     }
 
-    int64_t integer = TokenToInt64(token, base);
+    int64_t integer = TokenToInt64(token);
     return NewIntValue(integer);
 
   } else if (TypeIs_Uint(type)) {
-    if (Uint64Overflow(token, base)) {
+    if (Uint64Overflow(token)) {
       ERROR(ERR_OVERFLOW, token);
       return (Value){ .type = NoType(), .as.uinteger = 0 };
     }
 
-    uint64_t unsignedint = TokenToUint64(token, base);
+    uint64_t unsignedint = TokenToUint64(token);
     return NewUintValue(unsignedint);
 
   } else if (TypeIs_Float(type)) {

@@ -11,13 +11,6 @@
 #include "io.h"
 #include "lexer.h"
 
-/* Forward Declarations */
-static SymbolTable *SYMBOL_TABLE();
-static AST_Node *StructMemberAccess(Token struct_name);
-static AST_Node *FunctionDeclaration(Token function_name);
-static AST_Node *FunctionCall(Token identifier);
-static AST_Node *InitializerList(Type expected_type);
-
 struct {
   Token current;
   Token next;
@@ -46,7 +39,14 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
-/* Rules table Forward Declarations */
+/* === Forward Declarations  === */
+static SymbolTable *SYMBOL_TABLE();
+static AST_Node *StructMemberAccess(Token struct_name);
+static AST_Node *FunctionDeclaration(Token function_name);
+static AST_Node *FunctionCall(Token identifier);
+static AST_Node *InitializerList(Type expected_type);
+
+/* === Forward Declarations for Rules Table === */
 #define _ false
 #define ASSIGNABLE true
 
@@ -145,7 +145,7 @@ static ParseRule Rules[] = {
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
 };
 
-/*= == Scope Related === */
+/* === Scope Related === */
 static struct {
   int depth;
   SymbolTable *locals[10]; // TODO: figure out actual size or make dynamic array
@@ -433,7 +433,7 @@ static AST_Node *TypeSpecifier(bool) {
 
   if (Match(LBRACKET)) {
     if (Match(INT_LITERAL)) {
-      array_size = TokenToInt64(Parser.current, BASE_10);
+      array_size = TokenToInt64(Parser.current);
     }
 
     Consume(RBRACKET, "TypeSpecifier(): Expected ] after '%s', got '%s' instead.",
@@ -547,8 +547,9 @@ static AST_Node *Identifier(bool can_assign) {
       }
     }
 
+    AST_Node *expr = Expression(_);
     Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, identifier_symbol.data_type, DECL_DEFINED));
-    return NewNodeFromSymbol(ASSIGNMENT_NODE, Expression(_), array_index, NULL, stored_symbol);
+    return NewNodeFromSymbol(ASSIGNMENT_NODE, expr, array_index, NULL, stored_symbol);
   }
 
   if (NextTokenIsTerseAssignment()) {
@@ -998,7 +999,7 @@ static void StructBody(AST_Node **struct_name) {
     if (Match(LBRACKET)) {
       if (!NextTokenIs(RBRACKET)) {
         Consume(INT_LITERAL, "StructBody(): Expected INT_LITERAL, got '%s'", Parser.next);
-        array_size = TokenToInt64(Parser.current, 10);
+        array_size = TokenToInt64(Parser.current);
       }
       Consume(RBRACKET, "StructBody(): Expected ']' after '['");
       is_array = true;
@@ -1227,7 +1228,9 @@ static AST_Node *FunctionCall(Token function_name) {
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, NewType(Parser.current.type));
+  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, (Parser.current.type == STRING_LITERAL)
+                                                                             ? NewArrayType(Parser.current.type, Parser.current.length)
+                                                                             : NewType(Parser.current.type));
 }
 
 AST_Node *ParserBuildAST() {

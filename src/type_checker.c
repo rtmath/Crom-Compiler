@@ -9,54 +9,25 @@
 
 #include <stdio.h>
 
+/* === Globals === */
 static SymbolTable *SYMBOL_TABLE;
 static Type *in_function;
 
-bool TypeIsConvertible(AST_Node *from, AST_Node *target_type);
-Type ShrinkToSmallestContainingType(AST_Node *node);
+/* === Forward Declarations === */
 static void CheckTypesRecurse(AST_Node *node);
 
-/* === HELPERS === */
-static int GetBase(AST_Node* node) {
-  return (node->token.type == HEX_LITERAL)
-           ? BASE_16
-           : (node->token.type == BINARY_LITERAL)
-               ? BASE_2
-               : BASE_10;
-}
-
-void VerifyTypeIs(Type type, AST_Node *node) {
-  if (TypesMatchExactly(node->data_type, type)) return;
-
-  ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->token, "Expected type '%s', got type '%s'", TypeTranslation(type), TypeTranslation(node->data_type));
-}
-
-void ActualizeType(AST_Node *node, Type t) {
-  node->data_type = t;
-}
-
-void ShrinkAndActualizeType(AST_Node *node) {
-  ActualizeType(node, ShrinkToSmallestContainingType(node));
-
-  if (NodeIs_EnumEntry(node))
-  {
-    SetSymbolDataType(SYMBOL_TABLE, node->token, node->data_type);
-  }
-}
-
+/* === Helpers === */
 bool Overflow(AST_Node *from, AST_Node *target_type) {
   ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type->data_type));
-  return false;
+  return false; // The return type is unused as ERROR_FMT will call Exit(), but this suppresses -Wreturn-type warnings at the call site
 }
 
 bool CanConvertToInt(AST_Node *from, AST_Node *target_type) {
-  const int from_base = GetBase(from);
-
-  if (Int64Overflow(from->token, from_base)) {
-    return Overflow(from, target_type);
+  if (Int64Overflow(from->token)) {
+    ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type->data_type));
   }
 
-  int64_t from_value = TokenToInt64(from->token, from_base);
+  int64_t from_value = TokenToInt64(from->token);
 
   if (TypeIs_I8(target_type->data_type)) {
     if (from_value >= INT8_MIN && from_value <= INT8_MAX) return true;
@@ -82,18 +53,16 @@ bool CanConvertToInt(AST_Node *from, AST_Node *target_type) {
 }
 
 bool CanConvertToUint(AST_Node *from, AST_Node *target_type) {
-  const int from_base = GetBase(from);
-
-  if (Uint64Overflow(from->token, from_base)) {
+  if (Uint64Overflow(from->token)) {
     return Overflow(from, target_type);
   }
 
   if (TypeIs_Signed(from->data_type)) {
-    int64_t check_negative = TokenToInt64(from->token, from_base);
+    int64_t check_negative = TokenToInt64(from->token);
     if (check_negative < 0) return Overflow(from, target_type);
   }
 
-  uint64_t from_value = TokenToUint64(from->token, from_base);
+  uint64_t from_value = TokenToUint64(from->token);
 
   if (TypeIs_U8(target_type->data_type)) {
     if (from_value <= UINT8_MAX) return true;
@@ -169,72 +138,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 
   return false;
 }
-
-Type ShrinkToSmallestContainingType(AST_Node *node) {
-  const int base = GetBase(node);
-
-  if (TypeIs_Int(node->data_type)) {
-    if (Int64Overflow(node->token, base)) {
-      SetErrorCode(ERR_OVERFLOW);
-      return NoType();
-    }
-
-    int64_t value = TokenToInt64(node->token, base);
-    return SmallestContainingIntType(value);
-
-  } else if (TypeIs_Uint(node->data_type)) {
-    if (Uint64Overflow(node->token, base)) {
-      SetErrorCode(ERR_OVERFLOW);
-      return NoType();
-    }
-
-    uint64_t value = TokenToUint64(node->token, base);
-    return SmallestContainingUintType(value);
-
-  } else if (TypeIs_Float(node->data_type)) {
-    if (DoubleOverflow(node->token)) {
-      SetErrorCode(ERR_OVERFLOW);
-      return NoType();
-    }
-
-    if (DoubleUnderflow(node->token)) {
-      SetErrorCode(ERR_UNDERFLOW);
-      return NoType();
-    }
-    double d = TokenToDouble(node->token);
-    return SmallestContainingFloatType(d);
-
-  }
-
-  if (TypeIs_Bool(node->data_type)) {
-    return NewType(BOOL);
-  }
-
-  if (TypeIs_Char(node->data_type)) {
-    return NewType(CHAR);
-  }
-
-  if (TypeIs_String(node->data_type)) {
-    return NewType(STRING);
-  }
-
-  SetErrorCode(ERR_PEBCAK);
-  COMPILER_ERROR_FMTMSG("ShrinkToSmallestContainingType(): Invalid type '%s'", TypeTranslation(node->data_type));
-  return NoType();
-}
-/* === END HELPERS === */
-
-static void String(AST_Node *str) {
-  Type t = str->data_type;
-
-  t.category = TC_ARRAY;
-  t.array_size = str->token.length;
-  ActualizeType(str, t);
-}
-
-static void Declaration(AST_Node *identifier) {
-  ActualizeType(identifier, identifier->data_type);
-}
+/* === End Helpers === */
 
 static void Assignment(AST_Node *identifier) {
   if (!TypeIs_Array(identifier->data_type) && identifier->middle != NULL) {
@@ -255,45 +159,40 @@ static void Assignment(AST_Node *identifier) {
 
   if (NodeIs_TerseAssignment(identifier)) {
     // Treat terse assignment node actual type as the identifier's type
-    ActualizeType(identifier, value->data_type);
+    SetNodeDataType(identifier, value->data_type);
   }
 
-  bool types_are_compatible = TypeIsConvertible(value, identifier);
-
-  if (types_are_compatible) {
-    if (TypeIs_String(identifier->data_type)) {
-      // For strings, propagate the type information from child node
-      // to parent in order to get the length of the string
-      ActualizeType(identifier, value->data_type);
-    } else {
-      // Otherwise actualize the ostensible declared type of the identifier
-      ActualizeType(identifier, identifier->data_type);
+  if (!TypeIsConvertible(value, identifier)) {
+    if (TypeIs_Enum(value->data_type)) {
+      ERROR(ERR_IMPROPER_ASSIGNMENT, identifier->token);
     }
 
-    // Synchronize information between nodes
-    bool assignment_to_array_slot = (TypeIs_Array(identifier->data_type) && !TypeIs_Array(value->data_type));
-    ActualizeType(value, identifier->data_type);
-    if (assignment_to_array_slot) {
-      value->data_type.category = TC_NONE;
-    }
-
-    if (NodeIs_Identifier(value)) {
-      Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
-      identifier->value = s.value;
-    }
-
-    return;
+    ERROR_FMT(ERR_TYPE_DISAGREEMENT, identifier->token,
+              "Type disagreement between '%.*s' (%s) and (%s)",
+              identifier->token.length, identifier->token.position_in_source,
+              TypeTranslation(identifier->data_type),
+              TypeTranslation(identifier->left->data_type));
   }
 
-  if (TypeIs_Enum(value->data_type)) {
-    ERROR(ERR_IMPROPER_ASSIGNMENT, identifier->token);
+  if (TypeIs_String(identifier->data_type)) {
+    // For strings, propagate the type information from child node
+    // to parent in order to get the length of the string
+    SetNodeDataType(identifier, value->data_type);
   }
 
-  ERROR_FMT(ERR_TYPE_DISAGREEMENT, identifier->token,
-            "Type disagreement between '%.*s' (%s) and (%s)",
-            identifier->token.length, identifier->token.position_in_source,
-            TypeTranslation(identifier->data_type),
-            TypeTranslation(identifier->left->data_type));
+  // Synchronize information between nodes
+  bool assignment_to_array_slot = (TypeIs_Array(identifier->data_type) && !TypeIs_Array(value->data_type));
+  if (assignment_to_array_slot) {
+    value->data_type.category = TC_NONE;
+  }
+
+  if (NodeIs_Identifier(value)) {
+    Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
+    identifier->value = s.value;
+  }
+
+  return;
+
 }
 
 static void Identifier(AST_Node *identifier) {
@@ -304,22 +203,18 @@ static void Identifier(AST_Node *identifier) {
       symbol = NewSymbol(param->token, param->type, DECL_DEFINED);
     }
   }
-  Type t = symbol.data_type;
 
   if (!NodeIs_NULL(identifier->middle) &&
       NodeIs_ArraySubscript(identifier->middle) &&
       TypeIs_String(identifier->data_type)) {
-    t = NewType(CHAR);
+    SetNodeDataType(identifier, NewType(CHAR));
   }
-
-  ActualizeType(identifier, t);
 }
 
 static void Literal(AST_Node *node) {
   if (node->token.type == HEX_LITERAL ||
       node->token.type == BINARY_LITERAL) {
       node->value = NewValue(node->data_type, node->token);
-      ShrinkAndActualizeType(node);
     return;
   }
 
@@ -329,12 +224,10 @@ static void Literal(AST_Node *node) {
       TypeIs_Bool(node->data_type)  ||
       TypeIs_Char(node->data_type))
   {
-    ShrinkAndActualizeType(node);
     node->value = NewValue(node->data_type, node->token);
     return;
 
   } else if (TypeIs_String(node->data_type)) {
-    String(node);
     node->value = NewValue(node->data_type, node->token);
     return;
 
@@ -344,19 +237,13 @@ static void Literal(AST_Node *node) {
   }
 }
 
-static void IncrementOrDecrement(AST_Node *node) {
-  (NodeIs_PrefixIncrement(node) || NodeIs_PrefixDecrement(node))
-    ? ActualizeType(node, node->left->data_type)
-    : ActualizeType(node, node->data_type);
-}
-
 static void Return(AST_Node* node) {
   if (TypeIs_Void(node->data_type)) {
     node->data_type.specifier = T_VOID;
     return;
   }
 
-  ActualizeType(node, node->left->data_type);
+  SetNodeDataType(node, node->left->data_type);
 }
 
 static bool IsDeadEnd(AST_Node *node) {
@@ -433,8 +320,6 @@ static void Function(AST_Node *node) {
 
     if (NodeIs_Return((*check)->left)) {
       if (TypeIsConvertible((*check)->left, return_type)) {
-        ActualizeType(node, node->data_type);
-
         if (!IsDeadEnd((*check)->right)) {
           ERROR(ERR_UNREACHABLE_CODE, (*check)->right->left->token);
         }
@@ -520,7 +405,6 @@ static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = (node)->left;
 
   if (node->token.type == LOGICAL_NOT) {
-    VerifyTypeIs(NewType(BOOL), check_node);
     node->data_type = node->left->data_type;
     return;
   }
@@ -572,7 +456,7 @@ static void BinaryArithmeticOp(AST_Node *node) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Can't convert from type %s to %s", TypeTranslation(node->right->data_type), TypeTranslation(node->data_type));
   }
 
-  ActualizeType(node->right, node->data_type);
+  SetNodeDataType(node->right, node->data_type);
 }
 
 static void BinaryLogicalOp(AST_Node *node) {
@@ -599,9 +483,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (TypeIs_Int(node->left->data_type) &&
           TypeIs_Uint(node->right->data_type))
       {
-        if (TypeIsConvertible(node->right, node->left)) {
-          ActualizeType(node->right, node->left->data_type);
-        } else {
+        if (!TypeIsConvertible(node->right, node->left)) {
           ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Can't convert from %s to %s", TypeTranslation(node->right->data_type), TypeTranslation(node->left->data_type));
         }
       }
@@ -610,14 +492,10 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (TypeIs_Uint(node->left->data_type) &&
           TypeIs_Int(node->right->data_type))
       {
-        if (TypeIsConvertible(node->left, node->right)) {
-          ActualizeType(node->left, node->right->data_type);
-        } else {
+        if (!TypeIsConvertible(node->left, node->right)) {
           ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Can't convert from type %s to %s",  TypeTranslation(node->right->data_type), TypeTranslation(node->left->data_type));
         }
       }
-
-      ActualizeType(node, node->data_type);
     } break;
 
     case LOGICAL_AND:
@@ -629,8 +507,6 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (!TypeIs_Bool(node->right->data_type)) {
         ERROR_FMT(ERR_UNEXPECTED, node->right->token, "Expected BOOL, got '%s'", TypeTranslation(node->right->data_type));
       }
-
-      ActualizeType(node, node->data_type);
     } break;
 
     default: {
@@ -652,13 +528,6 @@ static void BinaryBitwiseOp(AST_Node *node) {
   if (!TypeIs_Uint(right_value->data_type)) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, right_value->token, "Expected UINT, got '%s'", TypeTranslation(right_value->data_type));
   }
-
-  Type largest_containing_type =
-    (left_value->data_type.specifier > right_value->data_type.specifier)
-      ? left_value->data_type
-      : right_value->data_type;
-
-  ActualizeType(node, largest_containing_type);
 }
 
 static void InitializerList(AST_Node *node) {
@@ -678,7 +547,7 @@ static void InitializerList(AST_Node *node) {
     current = &(*current)->right;
   } while (*current != NULL && (*current)->left != NULL);
 
-  ActualizeType(node, (node)->left->data_type);
+  SetNodeDataType(node, (node)->left->data_type);
 }
 
 static void EnumListRecurse(AST_Node *node, int implicit_value) {
@@ -695,7 +564,6 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
       ERROR_MSG(ERR_IMPROPER_ASSIGNMENT, value->token, "Assignment to enum identifier must be of type INT");
     }
 
-    ShrinkAndActualizeType(list_entry);
     SetSymbolValue(SYMBOL_TABLE, list_entry->token, list_entry->left->value);
 
     implicit_value = (list_entry->left->value.as.integer + 1);
@@ -703,7 +571,6 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
 
   if (NodeIs_EnumEntry(list_entry)) {
     list_entry->value = NewIntValue(implicit_value);
-    ShrinkAndActualizeType(list_entry);
     SetSymbolValue(SYMBOL_TABLE, list_entry->token, list_entry->value);
 
     implicit_value++;
@@ -714,7 +581,6 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
 
 static void HandleEnum(AST_Node *node) {
   EnumListRecurse(node, 0);
-  ActualizeType(node, node->data_type);
 }
 
 static void StructMemberAccess(AST_Node *struct_identifier) {
@@ -728,7 +594,7 @@ static void StructMemberAccess(AST_Node *struct_identifier) {
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE, struct_identifier->token);
   StructMember *member = GetStructMember(struct_symbol.data_type, member_node->token);
 
-  ActualizeType(struct_identifier, member->type);
+  SetNodeDataType(struct_identifier, member->type);
 }
 
 static void CheckTypesRecurse(AST_Node *node) {
@@ -753,6 +619,9 @@ static void CheckTypesRecurse(AST_Node *node) {
     case LITERAL_NODE: {
       Literal(node);
     } break;
+    case IDENTIFIER_NODE: {
+      Identifier(node);
+    } break;
     case UNARY_OP_NODE: {
       UnaryOp(node);
     } break;
@@ -765,33 +634,17 @@ static void CheckTypesRecurse(AST_Node *node) {
     case BINARY_BITWISE_NODE: {
       BinaryBitwiseOp(node);
     } break;
-    case IDENTIFIER_NODE: {
-      Identifier(node);
-    } break;
-    case ARRAY_SUBSCRIPT_NODE: {
-      ShrinkAndActualizeType(node);
-    } break;
-    case STRUCT_DECLARATION_NODE:
-    case DECLARATION_NODE: {
-      Declaration(node);
-    } break;
     case TERSE_ASSIGNMENT_NODE:
     case ASSIGNMENT_NODE: {
       Assignment(node);
     } break;
-    case PREFIX_INCREMENT_NODE:
-    case PREFIX_DECREMENT_NODE:
-    case POSTFIX_INCREMENT_NODE:
-    case POSTFIX_DECREMENT_NODE: {
-      IncrementOrDecrement(node);
+    case FUNCTION_NODE: {
+      Function(node);
     } break;
     case FUNCTION_ARGUMENT_NODE:
     case FUNCTION_PARAM_NODE:
     case FUNCTION_RETURN_TYPE_NODE: {
-      ActualizeType(node, node->data_type);
-    } break;
-    case FUNCTION_NODE: {
-      Function(node);
+      SetNodeDataType(node, node->data_type);
     } break;
     case FUNCTION_CALL_NODE: {
       //FunctionCall(node);
@@ -805,7 +658,18 @@ static void CheckTypesRecurse(AST_Node *node) {
     case ARRAY_INITIALIZER_LIST_NODE: {
       InitializerList(node);
     } break;
+    case PREFIX_INCREMENT_NODE:
+    case PREFIX_DECREMENT_NODE: {
+      SetNodeDataType(node, node->left->data_type);
+    } break;
+
+    case ARRAY_SUBSCRIPT_NODE:
+    case STRUCT_DECLARATION_NODE:
+    case DECLARATION_NODE:
+    case POSTFIX_INCREMENT_NODE:
+    case POSTFIX_DECREMENT_NODE:
     default: {
+      // Use declared type, no action required
     } break;
   }
 

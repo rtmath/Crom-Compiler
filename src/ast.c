@@ -98,6 +98,10 @@ AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle
   return n;
 }
 
+void SetNodeDataType(AST_Node *node, Type t) {
+  node->data_type = t;
+}
+
 static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
   #define NUM_INDENT_SPACES 4
 

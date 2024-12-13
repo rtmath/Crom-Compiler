@@ -11,7 +11,25 @@
 #include "common.h"
 #include "error.h"
 
-int64_t TokenToInt64(Token t, int base) {
+static int GetBase(Token t) {
+#define BASE_10 10
+#define BASE_16 16
+#define BASE_2  2
+
+  return (t.type == HEX_LITERAL)
+           ? BASE_16
+           : (t.type == BINARY_LITERAL)
+               ? BASE_2
+               : BASE_10;
+
+#undef BASE_10
+#undef BASE_16
+#undef BASE_2
+}
+
+int64_t TokenToInt64(Token t) {
+  int base = GetBase(t);
+
   errno = 0;
   long long value = strtoll(t.position_in_source, NULL, base);
   if (errno != 0) {
@@ -22,7 +40,9 @@ int64_t TokenToInt64(Token t, int base) {
   return value;
 }
 
-uint64_t TokenToUint64(Token t, int base) {
+uint64_t TokenToUint64(Token t) {
+  int base = GetBase(t);
+
   errno = 0;
   unsigned long long value = strtoull(t.position_in_source, NULL, base);
   if (errno != 0) {
@@ -44,14 +64,18 @@ double TokenToDouble(Token t) {
   return value;
 }
 
-bool Int64Overflow(Token t, int base) {
+bool Int64Overflow(Token t) {
+  int base = GetBase(t);
+
   errno = 0;
   long long value = strtoll(t.position_in_source, NULL, base);
   return (errno == ERANGE && (value == LLONG_MAX ||
                               value == LLONG_MIN));
 }
 
-bool Uint64Overflow(Token t, int base) {
+bool Uint64Overflow(Token t) {
+  int base = GetBase(t);
+
   errno = 0;
   unsigned long long value = strtoull(t.position_in_source, NULL, base);
   return (errno == ERANGE && value == ULLONG_MAX);
