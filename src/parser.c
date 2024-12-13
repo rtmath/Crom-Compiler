@@ -1228,9 +1228,10 @@ static AST_Node *FunctionCall(Token function_name) {
 }
 
 static AST_Node *Literal(bool) {
-  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, (Parser.current.type == STRING_LITERAL)
-                                                                             ? NewArrayType(Parser.current.type, Parser.current.length)
-                                                                             : NewType(Parser.current.type));
+  Type t = (Parser.current.type == STRING_LITERAL)
+             ? NewArrayType(Parser.current.type, Parser.current.length)
+             : NewType(Parser.current.type);
+  return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, t);
 }
 
 AST_Node *ParserBuildAST() {
