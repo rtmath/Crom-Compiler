@@ -1,0 +1,4 @@
+// ERR_TYPE_DISAGREEMENT
+
+f32 f = 3.14;
+f32 check = f--;

@@ -597,6 +597,24 @@ static void StructMemberAccess(AST_Node *struct_identifier) {
   SetNodeDataType(struct_identifier, member->type);
 }
 
+static void PrefixIncOrDec(AST_Node *node) {
+  AST_Node *check_value = node->left;
+  if (check_value == NULL) return;
+  if (!TypeIs_Int(check_value->data_type) &&
+      !TypeIs_Uint(check_value->data_type)) {
+    ERROR(ERR_TYPE_DISAGREEMENT, check_value->token);
+  }
+
+  SetNodeDataType(node, node->left->data_type);
+}
+
+static void PostfixIncOrDec(AST_Node *node) {
+  if (!TypeIs_Int(node->data_type) &&
+      !TypeIs_Uint(node->data_type)) {
+    ERROR(ERR_TYPE_DISAGREEMENT, node->token);
+  }
+}
+
 static void CheckTypesRecurse(AST_Node *node) {
   if (NodeIs_EnumIdentifier(node)) {
     HandleEnum(node);
@@ -660,14 +678,16 @@ static void CheckTypesRecurse(AST_Node *node) {
     } break;
     case PREFIX_INCREMENT_NODE:
     case PREFIX_DECREMENT_NODE: {
-      SetNodeDataType(node, node->left->data_type);
+      PrefixIncOrDec(node);
+    } break;
+    case POSTFIX_INCREMENT_NODE:
+    case POSTFIX_DECREMENT_NODE: {
+      PostfixIncOrDec(node);
     } break;
 
     case ARRAY_SUBSCRIPT_NODE:
     case STRUCT_DECLARATION_NODE:
     case DECLARATION_NODE:
-    case POSTFIX_INCREMENT_NODE:
-    case POSTFIX_DECREMENT_NODE:
     default: {
       // Use declared type, no action required
     } break;
