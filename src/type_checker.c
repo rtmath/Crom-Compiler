@@ -123,6 +123,11 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     return CanConvertToFloat(from, target_type);
   }
 
+  if (TypeIs_Float(from->data_type)) {
+    // Disallow implicit float->integer conversion
+    return false;
+  }
+
   if (!TypeIs_Signed(target_type->data_type)) {
     return CanConvertToUint(from, target_type);
   }
@@ -136,9 +141,6 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 /* === End Helpers === */
 
 static void InitializerList(AST_Node *list, AST_Node *target_type) {
-  PrintNode(target_type);
-  PrintNode(list);
-
   AST_Node **current = &list;
 
   int num_literals_in_list = 0;
