@@ -28,10 +28,13 @@ static int GetBase(Token t) {
 }
 
 int64_t TokenToInt64(Token t) {
+  bool literal_is_negative = (t.position_in_source - 1)[0] == '-';
   int base = GetBase(t);
 
   errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, base);
+  long long value = strtoll((literal_is_negative)
+                              ? t.position_in_source - 1
+                              : t.position_in_source, NULL, base);
   if (errno != 0) {
     SetErrorCode(ERR_OVERFLOW);
     COMPILER_ERROR("TokenToInt64() overflow");
@@ -65,10 +68,13 @@ double TokenToDouble(Token t) {
 }
 
 bool Int64Overflow(Token t) {
+  bool literal_is_negative = (t.position_in_source - 1)[0] == '-';
   int base = GetBase(t);
 
   errno = 0;
-  long long value = strtoll(t.position_in_source, NULL, base);
+  long long value = strtoll((literal_is_negative)
+                              ? t.position_in_source - 1
+                              : t.position_in_source, NULL, base);
   return (errno == ERANGE && (value == LLONG_MAX ||
                               value == LLONG_MIN));
 }

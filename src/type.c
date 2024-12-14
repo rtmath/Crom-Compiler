@@ -33,10 +33,10 @@ Type _NewType(TokenType t, int array_size) {
     case F64:
     case FLOAT_LITERAL: return _Type(T_F64, _, array_size);
 
-    case INT_LITERAL:
     case BINARY_LITERAL:
     case HEX_LITERAL: return _Type(T_U64, _, array_size);
 
+    case INT_LITERAL:
     case ENUM_LITERAL: return _Type(T_I64, _, array_size);
 
     case BOOL:
