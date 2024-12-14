@@ -1,0 +1,3 @@
+// ERR_TYPE_DISAGREEMENT
+
+i16[4] check = { 5, 7.14 };

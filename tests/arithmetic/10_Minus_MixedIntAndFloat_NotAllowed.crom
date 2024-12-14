@@ -1,0 +1,6 @@
+// ERR_TYPE_DISAGREEMENT
+
+u32 a = 10;
+f32 b = 7.0;
+
+a - b;

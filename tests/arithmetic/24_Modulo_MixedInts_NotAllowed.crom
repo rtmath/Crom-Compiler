@@ -1,0 +1,6 @@
+// ERR_TYPE_DISAGREEMENT
+
+i8  a = 17;
+u16 b = 9;
+
+a % b;

@@ -1,0 +1,6 @@
+// ERR_TYPE_DISAGREEMENT
+
+u8 a = 8;
+i8 b = 2;
+
+a + b;
