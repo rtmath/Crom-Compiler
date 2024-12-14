@@ -57,11 +57,6 @@ bool CanConvertToUint(AST_Node *from, AST_Node *target_type) {
     return Overflow(from, target_type);
   }
 
-  if (TypeIs_Signed(from->data_type)) {
-    int64_t check_negative = TokenToInt64(from->token);
-    if (check_negative < 0) return Overflow(from, target_type);
-  }
-
   uint64_t from_value = TokenToUint64(from->token);
 
   if (TypeIs_U8(target_type->data_type)) {
@@ -228,11 +223,12 @@ static void Assignment(AST_Node *identifier) {
 
   if (NodeIs_Identifier(value)) {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
-    identifier->value = s.value;
+    identifier->data_type = s.data_type;
   }
 
-  return;
+  SetNodeDataType(value, identifier->data_type);
 
+  return;
 }
 
 static void Identifier(AST_Node *identifier) {
@@ -248,32 +244,6 @@ static void Identifier(AST_Node *identifier) {
       NodeIs_ArraySubscript(identifier->middle) &&
       TypeIs_String(identifier->data_type)) {
     SetNodeDataType(identifier, NewType(CHAR));
-  }
-}
-
-static void Literal(AST_Node *node) {
-  if (node->token.type == HEX_LITERAL ||
-      node->token.type == BINARY_LITERAL) {
-      node->value = NewValue(node->data_type, node->token);
-    return;
-  }
-
-  if (TypeIs_Int(node->data_type)   ||
-      TypeIs_Uint(node->data_type)  ||
-      TypeIs_Float(node->data_type) ||
-      TypeIs_Bool(node->data_type)  ||
-      TypeIs_Char(node->data_type))
-  {
-    node->value = NewValue(node->data_type, node->token);
-    return;
-
-  } else if (TypeIs_String(node->data_type)) {
-    node->value = NewValue(node->data_type, node->token);
-    return;
-
-  } else {
-    SetErrorCode(ERR_PEBCAK);
-    COMPILER_ERROR_FMTMSG("Literal(): Case '%s' not implemented yet", TypeTranslation(node->data_type));
   }
 }
 
@@ -470,22 +440,17 @@ static void UnaryOp(AST_Node *node) {
     }
 
     if (TypeIs_Int(check_node->data_type)) {
-      node->value = NewIntValue(-(node->left->value.as.integer));
-      node->data_type = node->value.type;
+      node->data_type = check_node->data_type;
       return;
     }
 
     if (TypeIs_Uint(check_node->data_type)) {
-      Value int_conversion = NewIntValue(-(node->left->value.as.uinteger));
-      node->value = int_conversion;
-      node->data_type = node->value.type;
-      check_node->data_type = node->value.type;
+      ERROR(ERR_TYPE_DISAGREEMENT, check_node->token);
       return;
     }
 
     if (TypeIs_Float(check_node->data_type)) {
-      node->value = NewFloatValue(-(node->left->value.as.floating));
-      node->data_type = node->value.type;
+      node->data_type = check_node->data_type;
       return;
     }
 
@@ -568,13 +533,22 @@ static void BinaryBitwiseOp(AST_Node *node) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, left_value->token, "Expected UINT, got '%s'", TypeTranslation(left_value->data_type));
   }
 
+  if (node->token.type == BITWISE_LEFT_SHIFT ||
+      node->token.type == BITWISE_RIGHT_SHIFT) {
+    if (!TypeIs_Int(right_value->data_type) && !TypeIs_Uint(right_value->data_type)) {
+      ERROR(ERR_TYPE_DISAGREEMENT, right_value->token);
+    }
+
+    return;
+  }
+
   // Check right node individually for incorrect type
   if (!TypeIs_Uint(right_value->data_type)) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, right_value->token, "Expected UINT, got '%s'", TypeTranslation(right_value->data_type));
   }
 }
 
-static void EnumListRecurse(AST_Node *node, int implicit_value) {
+static void EnumListRecurse(AST_Node *node) {
   AST_Node *list_entry = (node)->left;
 
   if (list_entry == NULL) return;
@@ -587,24 +561,13 @@ static void EnumListRecurse(AST_Node *node, int implicit_value) {
     {
       ERROR_MSG(ERR_IMPROPER_ASSIGNMENT, value->token, "Assignment to enum identifier must be of type INT");
     }
-
-    SetSymbolValue(SYMBOL_TABLE, list_entry->token, list_entry->left->value);
-
-    implicit_value = (list_entry->left->value.as.integer + 1);
   }
 
-  if (NodeIs_EnumEntry(list_entry)) {
-    list_entry->value = NewIntValue(implicit_value);
-    SetSymbolValue(SYMBOL_TABLE, list_entry->token, list_entry->value);
-
-    implicit_value++;
-  }
-
-  EnumListRecurse(node->right, implicit_value);
+  EnumListRecurse(node->right);
 }
 
 static void HandleEnum(AST_Node *node) {
-  EnumListRecurse(node, 0);
+  EnumListRecurse(node);
 }
 
 static void StructMemberAccess(AST_Node *struct_identifier) {
@@ -658,9 +621,6 @@ static void CheckTypesRecurse(AST_Node *node) {
   }
 
   switch(node->node_type) {
-    case LITERAL_NODE: {
-      Literal(node);
-    } break;
     case IDENTIFIER_NODE: {
       Identifier(node);
     } break;
@@ -706,6 +666,7 @@ static void CheckTypesRecurse(AST_Node *node) {
       PostfixIncOrDec(node);
     } break;
 
+    case LITERAL_NODE:
     case ARRAY_SUBSCRIPT_NODE:
     case STRUCT_DECLARATION_NODE:
     case DECLARATION_NODE:
