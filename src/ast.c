@@ -216,6 +216,10 @@ bool NodeIs_ArraySubscript(AST_Node *n) {
   return n->node_type == ARRAY_SUBSCRIPT_NODE;
 }
 
+bool NodeIs_ArrayInitializerList(AST_Node *n) {
+  return n->node_type == ARRAY_INITIALIZER_LIST_NODE;
+}
+
 bool NodeIs_TerseAssignment(AST_Node *n) {
   return n->node_type == TERSE_ASSIGNMENT_NODE;
 }

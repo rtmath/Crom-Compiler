@@ -140,6 +140,33 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 }
 /* === End Helpers === */
 
+static void InitializerList(AST_Node *list, AST_Node *target_type) {
+  PrintNode(target_type);
+  PrintNode(list);
+
+  AST_Node **current = &list;
+
+  int num_literals_in_list = 0;
+
+  while (*current != NULL && (*current)->left != NULL) {
+    AST_Node *value = (*current)->left;
+    if (!TypeIsConvertible(value, target_type)) {
+      ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(target_type->data_type));
+    }
+
+    if (!TypeIsConvertible(value, list)) {
+      ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(list->data_type));
+    }
+
+    num_literals_in_list++;
+    if (num_literals_in_list > target_type->data_type.array_size) {
+      ERROR_FMT(ERR_TOO_MANY, value->token, "Too many elements (%d) in initializer list (array size is %d)", num_literals_in_list, target_type->data_type.array_size);
+    }
+
+    current = &(*current)->right;
+  }
+}
+
 static void Assignment(AST_Node *identifier) {
   if (!TypeIs_Array(identifier->data_type) && identifier->middle != NULL) {
     ERROR_FMT(ERR_IMPROPER_ASSIGNMENT, identifier->token, "'%.*s' is not an array", identifier->token.length, identifier->token.position_in_source);
@@ -168,6 +195,11 @@ static void Assignment(AST_Node *identifier) {
     }
 
     SetNodeDataType(identifier, value->data_type);
+  }
+
+  if (NodeIs_ArrayInitializerList(value)) {
+    InitializerList(value, identifier);
+    return;
   }
 
   if (!TypeIsConvertible(value, identifier)) {
@@ -542,26 +574,6 @@ static void BinaryBitwiseOp(AST_Node *node) {
   }
 }
 
-static void InitializerList(AST_Node *node) {
-  AST_Node **current = &node;
-
-  int num_literals_in_list = 0;
-  do {
-    if (!TypeIsConvertible((*current)->left, node)) {
-      ERROR_FMT(ERR_TYPE_DISAGREEMENT, (*current)->left->token, "Can't convert from %s to %s", TypeTranslation((*current)->left->data_type), TypeTranslation(node->data_type));
-    }
-
-    num_literals_in_list++;
-    if (num_literals_in_list > node->data_type.array_size) {
-      ERROR_FMT(ERR_TOO_MANY, (*current)->left->token, "Too many elements (%d) in initializer list (array size is %d)", num_literals_in_list, node->data_type.array_size);
-    }
-
-    current = &(*current)->right;
-  } while (*current != NULL && (*current)->left != NULL);
-
-  SetNodeDataType(node, (node)->left->data_type);
-}
-
 static void EnumListRecurse(AST_Node *node, int implicit_value) {
   AST_Node *list_entry = (node)->left;
 
@@ -684,9 +696,6 @@ static void CheckTypesRecurse(AST_Node *node) {
     } break;
     case STRUCT_IDENTIFIER_NODE: {
       StructMemberAccess(node);
-    } break;
-    case ARRAY_INITIALIZER_LIST_NODE: {
-      InitializerList(node);
     } break;
     case PREFIX_INCREMENT_NODE:
     case PREFIX_DECREMENT_NODE: {

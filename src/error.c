@@ -35,11 +35,14 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_EMPTY_BODY:           return "EMPTY BODY";
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
     case ERR_LEXER_ERROR:          return "LEXER ERROR";
+    case ERR_MISSING_SIZE:         return "MISSING SIZE";
     case ERR_MISSING_SEMICOLON:    return "MISSING SEMICOLON";
     case ERR_MISSING_RETURN:       return "MISSING RETURN";
     case ERR_PEBCAK:               return "PEBCAK";
     case ERR_MISC:                 return "MISC";
     case ERR_UNKNOWN:              return "UNKNOWN";
+    case ERR_COMPILER:             return "COMPILER";
+    case ERR_INTERPRETER:          return "INTERPRETER";
     default:                       return "Unhandled ErrorCodeTranslation case";
   }
 }
@@ -61,10 +64,13 @@ ErrorCode ErrorCodeLookup(char *str) {
   if (StringsMatch(str, "ERR_EMPTY_BODY")) return ERR_EMPTY_BODY;
   if (StringsMatch(str, "ERR_UNREACHABLE_CODE")) return ERR_UNREACHABLE_CODE;
   if (StringsMatch(str, "ERR_LEXER_ERROR")) return ERR_LEXER_ERROR;
+  if (StringsMatch(str, "ERR_MISSING_SIZE")) return ERR_MISSING_SIZE;
   if (StringsMatch(str, "ERR_MISSING_SEMICOLON")) return ERR_MISSING_SEMICOLON;
   if (StringsMatch(str, "ERR_MISSING_RETURN")) return ERR_MISSING_RETURN;
   if (StringsMatch(str, "ERR_PEBCAK")) return ERR_PEBCAK;
   if (StringsMatch(str, "ERR_MISC")) return ERR_MISC;
+  if (StringsMatch(str, "ERR_COMPILER")) return ERR_COMPILER;
+  if (StringsMatch(str, "ERR_INTERPRETER")) return ERR_INTERPRETER;
 
   Print("ErrorCodeLookup(): No match for '%s'\n", str);
   return ERR_UNKNOWN;
@@ -144,6 +150,9 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
     } break;
     case ERR_LEXER_ERROR: {
       Print("Encountered error token: '%.*s'", token.length, token.position_in_source);
+    } break;
+    case ERR_MISSING_SIZE: {
+      Print("Expected array size");
     } break;
     case ERR_MISSING_SEMICOLON: {
       Print("Expected semicolon");

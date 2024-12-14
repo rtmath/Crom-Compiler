@@ -432,9 +432,15 @@ static AST_Node *TypeSpecifier(bool) {
   long array_size = 0;
 
   if (Match(LBRACKET)) {
-    if (Match(INT_LITERAL)) {
-      array_size = TokenToInt64(Parser.current);
+    if (Match(MINUS)) {
+      ERROR_MSG(ERR_IMPROPER_DECLARATION, Parser.current, "Array size can't be negative.");
     }
+
+    if (!Match(INT_LITERAL)) {
+      ERROR(ERR_MISSING_SIZE, Parser.next);
+    }
+
+    array_size = TokenToInt64(Parser.current);
 
     Consume(RBRACKET, "TypeSpecifier(): Expected ] after '%s', got '%s' instead.",
             TokenTypeTranslation(Parser.current.type),
@@ -1071,7 +1077,7 @@ static AST_Node *InitializerList(Type expected_type) {
   Consume(RCURLY, "InitializerList(): Expected '}' after Initializer List", "");
 
   if (n == NULL) {
-    ERROR_MSG(ERR_IMPROPER_ASSIGNMENT, Parser.current, "Initializer List cannot be empty");
+    ERROR_MSG(ERR_EMPTY_BODY, Parser.current, "Initializer List cannot be empty");
   }
 
   return n;

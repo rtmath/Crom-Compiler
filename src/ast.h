@@ -87,6 +87,7 @@ bool NodeIs_Untyped(AST_Node *n);
 bool NodeIs_Start(AST_Node *n);
 bool NodeIs_Chain(AST_Node *n);
 bool NodeIs_ArraySubscript(AST_Node *n);
+bool NodeIs_ArrayInitializerList(AST_Node *n);
 bool NodeIs_Identifier(AST_Node *n);
 bool NodeIs_TerseAssignment(AST_Node *n);
 bool NodeIs_EnumAssignment(AST_Node *n);
