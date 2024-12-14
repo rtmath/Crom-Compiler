@@ -234,6 +234,10 @@ static void Assignment(AST_Node *identifier) {
 }
 
 static void Identifier(AST_Node *identifier) {
+  if (!TypeIs_Array(identifier->data_type) && identifier->middle != NULL) {
+    ERROR_FMT(ERR_IMPROPER_ACCESS, identifier->token, "'%.*s' is not an array", identifier->token.length, identifier->token.position_in_source);
+  }
+
   Symbol symbol = RetrieveFrom(SYMBOL_TABLE, identifier->token);
   if (symbol.token.type == ERROR && in_function != NULL) {
     FnParam *param = GetFunctionParam(*in_function, identifier->token);
