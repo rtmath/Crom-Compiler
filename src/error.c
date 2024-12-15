@@ -29,6 +29,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_IMPROPER_DECLARATION: return "IMPROPER DECLARATION";
     case ERR_IMPROPER_ASSIGNMENT:  return "IMPROPER ASSIGNMENT";
     case ERR_IMPROPER_ACCESS:      return "IMPROPER ACCESS";
+    case ERR_IMPROPER_VOID:        return "IMPROPER VOID";
     case ERR_OVERFLOW:             return "OVERFLOW";
     case ERR_UNDERFLOW:            return "UNDERFLOW";
     case ERR_TOO_MANY:             return "TOO MANY";
@@ -59,6 +60,7 @@ ErrorCode ErrorCodeLookup(char *str) {
   if (StringsMatch(str, "ERR_IMPROPER_DECLARATION")) return ERR_IMPROPER_DECLARATION;
   if (StringsMatch(str, "ERR_IMPROPER_ASSIGNMENT")) return ERR_IMPROPER_ASSIGNMENT;
   if (StringsMatch(str, "ERR_IMPROPER_ACCESS")) return ERR_IMPROPER_ACCESS;
+  if (StringsMatch(str, "ERR_IMPROPER_VOID")) return ERR_IMPROPER_VOID;
   if (StringsMatch(str, "ERR_OVERFLOW")) return ERR_OVERFLOW;
   if (StringsMatch(str, "ERR_UNDERFLOW")) return ERR_UNDERFLOW;
   if (StringsMatch(str, "ERR_TOO_MANY")) return ERR_TOO_MANY;
@@ -133,6 +135,9 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
       Print("Improper assignment to identifier '.*s'", token.length, token.position_in_source);
     } break;
     case ERR_IMPROPER_ACCESS: {
+      // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_IMPROPER_VOID: {
       // This maybe shouldn't be handled in this function
     } break;
     case ERR_OVERFLOW: {
