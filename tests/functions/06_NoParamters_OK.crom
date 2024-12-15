@@ -1,0 +1,5 @@
+// OK
+
+Five() :: i64 {
+  return 5;
+}

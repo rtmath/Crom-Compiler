@@ -1,0 +1,5 @@
+// ERR_MISSING_RETURN
+
+Add(i64 x, i64 y) :: i64 {
+
+}

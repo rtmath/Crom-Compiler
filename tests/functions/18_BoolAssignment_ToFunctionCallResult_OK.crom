@@ -1,0 +1,7 @@
+// OK
+
+True() :: bool {
+  return true;
+}
+
+bool check = True();

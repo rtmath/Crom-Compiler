@@ -1,0 +1,3 @@
+// ERR_IMPROPER_VOID
+
+void x = 10;

@@ -455,7 +455,7 @@ static AST_Node *TypeSpecifier(bool) {
           TokenTypeTranslation(Parser.next.type));
 
   if (type_token.type == VOID) {
-    ERROR_MSG(ERR_IMPROPER_DECLARATION, Parser.current, "Cannot use VOID as a type declaration");
+    ERROR_MSG(ERR_IMPROPER_VOID, Parser.current, "Cannot use VOID as a type declaration");
   }
 
   if (IsIn(SYMBOL_TABLE(), Parser.current)) {
@@ -1094,7 +1094,7 @@ static AST_Node *FunctionParams(Token function_name) {
     Token type_token = Parser.current;
 
     if (type_token.type == VOID) {
-      ERROR_MSG(ERR_IMPROPER_DECLARATION, Parser.current, "Cannot declare a function parameter VOID");
+      ERROR_MSG(ERR_IMPROPER_VOID, Parser.current, "Cannot declare a function parameter VOID");
     }
 
     bool is_array = false;
@@ -1216,6 +1216,11 @@ static AST_Node *FunctionCall(Token function_name) {
       Token literal = Parser.current;
 
       (*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, NULL, NULL, NULL, literal, NewType(literal.type));
+    } else if (Match(MINUS) || Match(PLUS_PLUS) || Match(MINUS_MINUS)) {
+      AST_Node *unary_expr = Unary(_);
+      (*current) = NewNodeFromToken(FUNCTION_ARGUMENT_NODE, unary_expr, NULL, NULL, unary_expr->token, NewType(unary_expr->left->token.type));
+    } else {
+      ERROR_FMT(ERR_UNEXPECTED, Parser.next, "Unexpected token '%.*s'", Parser.next.length, Parser.next.position_in_source);
     }
 
     if (Match(COMMA)) {

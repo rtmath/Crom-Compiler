@@ -1,0 +1,7 @@
+// OK
+
+BitwiseOR(u8 x, u8 y) :: u8 {
+  return x | y;
+}
+
+u8 check = BitwiseOR(155, 7);

@@ -46,7 +46,7 @@ Type _NewType(TokenType t, int array_size) {
     case CHAR_LITERAL: return _Type(T_CHAR, _, array_size);
 
     case STRING:
-    case STRING_LITERAL: return _Type(T_STRING, _, array_size);
+    case STRING_LITERAL: return _Type(T_STRING, TC_ARRAY, array_size);
 
     case VOID: return _Type(T_VOID, _, array_size);
     case ENUM: return _Type(T_ENUM, _, array_size);

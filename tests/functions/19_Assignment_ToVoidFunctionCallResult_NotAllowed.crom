@@ -1,0 +1,7 @@
+// ERR_TYPE_DISAGREEMENT
+
+Print() :: void {
+
+}
+
+i64 x = Print();

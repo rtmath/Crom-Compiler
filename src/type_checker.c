@@ -108,7 +108,8 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   bool types_match = TypesMatchExactly(from->data_type, target_type->data_type) ||
                      TypesAreInt(from->data_type, target_type->data_type)       ||
                      TypesAreUint(from->data_type, target_type->data_type)      ||
-                     TypesAreFloat(from->data_type, target_type->data_type);
+                     TypesAreFloat(from->data_type, target_type->data_type)     ||
+                     (TypeIs_Function(from->data_type) && (from->data_type.specifier == target_type->data_type.specifier));
   bool types_are_not_numbers = !(TypeIs_Numeric(from->data_type) && TypeIs_Numeric(target_type->data_type));
 
   if (!types_match && types_are_not_numbers) return false;
@@ -349,8 +350,9 @@ static void Function(AST_Node *node) {
          * segfaults without this check. The 'missing return' error will
          * trigger appropriately after the do-while loop finishes. */
       } else {
-        ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->left->token,
-                  "%s(): Can't convert from return type %s to %s",
+        ERROR_FMT(ERR_TYPE_DISAGREEMENT,
+                  (*check)->left->left->token,
+                  "%.*s(): Can't convert from return type %s to %s",
                   node->token.length, node->token.position_in_source,
                   TypeTranslation((*check)->left->data_type),
                   TypeTranslation(return_type->data_type));

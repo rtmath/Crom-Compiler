@@ -1,0 +1,9 @@
+// ERR_UNEXPECTED
+
+Add(i64 x, i64 y) :: i64 {
+  return x + y;
+}
+
+Add(10, 16) :: i64 {
+  return x + 5;
+}

@@ -1,0 +1,7 @@
+// OK
+
+Add(i64 x, i64 y) :: i64;
+
+Add(i64 x, i64 y) :: i64 {
+  return x + y;
+}

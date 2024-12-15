@@ -1,0 +1,5 @@
+// ERR_UNDECLARED
+
+AddFive(x) :: i64 {
+  return x + 5;
+}

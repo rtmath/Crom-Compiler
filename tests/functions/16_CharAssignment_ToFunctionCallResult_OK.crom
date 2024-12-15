@@ -1,0 +1,7 @@
+// OK
+
+ToLower(char c) :: char {
+  return c;
+}
+
+char check = ToLower('A');

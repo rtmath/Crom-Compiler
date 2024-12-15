@@ -1,0 +1,7 @@
+// OK
+
+Pi() :: f32 {
+  return 3.14;
+}
+
+f32 check = Pi();

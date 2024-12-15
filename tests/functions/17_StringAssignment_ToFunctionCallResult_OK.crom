@@ -1,0 +1,7 @@
+// OK
+
+Constant() :: string {
+  return "String";
+}
+
+string check = Constant();

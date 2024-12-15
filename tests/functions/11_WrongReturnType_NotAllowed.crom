@@ -1,0 +1,5 @@
+// ERR_TYPE_DISAGREEMENT
+
+Print(string s) :: void {
+  return s;
+}
