@@ -1,0 +1,3 @@
+// ERR_UNEXPECTED
+
+if (true) i64 i = 10;

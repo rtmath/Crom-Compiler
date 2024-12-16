@@ -610,6 +610,18 @@ static void PostfixIncOrDec(AST_Node *node) {
   }
 }
 
+static void IfStmt(AST_Node *node) {
+  if (!TypeIs_Bool(node->left->data_type)) {
+    ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Predicate must be boolean, got type '%s' instead", TypeTranslation(node->left->data_type));
+  }
+}
+
+static void WhileStmt(AST_Node *node) {
+  if (!TypeIs_Bool(node->left->data_type)) {
+    ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Predicate must be boolean, got type '%s' instead", TypeTranslation(node->left->data_type));
+  }
+}
+
 static void CheckTypesRecurse(AST_Node *node) {
   if (NodeIs_EnumIdentifier(node)) {
     HandleEnum(node);
@@ -658,6 +670,12 @@ static void CheckTypesRecurse(AST_Node *node) {
     } break;
     case FUNCTION_CALL_NODE: {
       //FunctionCall(node);
+    } break;
+    case IF_NODE: {
+      IfStmt(node);
+    } break;
+    case WHILE_NODE: {
+      WhileStmt(node);
     } break;
     case RETURN_NODE: {
       Return(node);

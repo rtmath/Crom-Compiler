@@ -1,0 +1,7 @@
+// ERR_UNDECLARED
+
+if (false) {
+
+} else if (check) {
+
+}

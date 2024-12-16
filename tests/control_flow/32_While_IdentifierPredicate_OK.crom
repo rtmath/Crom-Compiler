@@ -1,0 +1,7 @@
+// OK
+
+bool b = true;
+
+while (b) {
+  break;
+}

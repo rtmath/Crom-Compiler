@@ -11,6 +11,8 @@
 #include "io.h"
 #include "lexer.h"
 
+static bool IN_LOOP = false;
+
 struct {
   Token current;
   Token next;
@@ -50,6 +52,8 @@ static AST_Node *InitializerList(Type expected_type);
 #define _ false
 #define ASSIGNABLE true
 
+#define PREVENT_ASSIGNMENT true
+
 static AST_Node *TypeSpecifier(bool unused);
 static AST_Node *Identifier(bool can_assign);
 static AST_Node *Unary(bool unused);
@@ -57,7 +61,7 @@ static AST_Node *Binary(bool unused);
 static AST_Node *TerseAssignment(bool unused);
 static AST_Node *Parens(bool unused);
 static AST_Node *Block(bool unused);
-static AST_Node *Expression(bool unused);
+static AST_Node *Expression(bool prevent_assignment);
 static AST_Node *Statement(bool unused);
 static AST_Node *IfStmt(bool unused);
 static AST_Node *WhileStmt(bool unused);
@@ -389,7 +393,7 @@ void InitParser(SymbolTable *st) {
   Advance();
 }
 
-static AST_Node *Parse(int PrecedenceLevel) {
+static AST_Node *Parse(int PrecedenceLevel, bool prevent_assignment) {
   if (PrecedenceLevel == PREC_EOF) return NULL;
   Advance();
 
@@ -400,7 +404,7 @@ static AST_Node *Parse(int PrecedenceLevel) {
     ERROR(ERR_UNEXPECTED, Parser.current);
   }
 
-  bool can_assign = PrecedenceLevel <= ASSIGNMENT;
+  bool can_assign = !prevent_assignment && PrecedenceLevel <= ASSIGNMENT;
   AST_Node *prefix_node = prefix_rule(can_assign);
 
   while (PrecedenceLevel <= Rules[Parser.next.type].precedence) {
@@ -575,7 +579,7 @@ static AST_Node *Identifier(bool can_assign) {
 
   // Check for invalid syntax like "i64 i + 1;"
   if (DECLARED(identifier_symbol) && !NextTokenIs(SEMICOLON)) {
-    ERROR(ERR_MISSING_SEMICOLON, Parser.next);
+    ERROR(ERR_UNINITIALIZED, identifier_token);
   }
 
   return NewNodeFromToken(
@@ -592,7 +596,7 @@ static AST_Node *Unary(bool) {
 
   Token operator_token = Parser.current;
   Token token_after_operator = Parser.next; // for error messages
-  AST_Node *parse_result = Parse(UNARY);
+  AST_Node *parse_result = Parse(UNARY, _);
 
   switch(operator_token.type) {
     case PLUS_PLUS: {
@@ -639,7 +643,7 @@ static AST_Node *Binary(bool) {
   }
 
   Precedence precedence = Rules[Parser.current.type].precedence;
-  AST_Node *parse_result = Parse(precedence + 1);
+  AST_Node *parse_result = Parse(precedence + 1, _);
 
   switch(operator_token.type) {
     case PLUS:
@@ -674,7 +678,7 @@ static AST_Node *TerseAssignment(bool) {
   Token operator_token = Parser.current;
 
   Precedence precedence = Rules[Parser.current.type].precedence;
-  AST_Node *parse_result = Parse(precedence + 1);
+  AST_Node *parse_result = Parse(precedence + 1, _);
 
   switch(operator_token.type) {
     case PLUS_EQUALS:
@@ -711,8 +715,8 @@ static AST_Node *Block(bool) {
   return n;
 }
 
-static AST_Node *Expression(bool) {
-  return Parse((Precedence)1);
+static AST_Node *Expression(bool prevent_assignment) {
+  return Parse((Precedence)1, prevent_assignment);
 }
 
 static AST_Node *Statement(bool) {
@@ -739,7 +743,8 @@ static AST_Node *Statement(bool) {
 static AST_Node *IfStmt(bool) {
   Consume(LPAREN, "IfStmt(): Expected '(' after IF token, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
-  AST_Node *condition = Expression(_);
+  if (NextTokenIs(RPAREN)) ERROR(ERR_EMPTY_PREDICATE, Parser.next);
+  AST_Node *condition = Expression(PREVENT_ASSIGNMENT);
   Consume(RPAREN, "IfStmt(): Expected ')' after IF condition, got '%s' instead",
       TokenTypeTranslation(Parser.next.type));
 
@@ -775,9 +780,17 @@ static AST_Node *TernaryIfStmt(AST_Node *condition) {
 }
 
 static AST_Node *WhileStmt(bool) {
-  AST_Node *condition = Expression(_);
+  Consume(LPAREN, "WhileStmt(): Expected '(' after While, got '%s'", TokenTypeTranslation(Parser.next.type));
+  if (NextTokenIs(RPAREN)) ERROR(ERR_EMPTY_PREDICATE, Parser.next);
+  AST_Node *condition = Expression(PREVENT_ASSIGNMENT);
+  Consume(RPAREN, "WhileStmt(): Expected ')' after While condition, got '%s'", TokenTypeTranslation(Parser.next.type));
+
   Consume(LCURLY, "WhileStmt(): Expected '{' after While condition, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+
+  IN_LOOP = true;
   AST_Node *block = Block(_);
+  IN_LOOP = false;
+
   Match(SEMICOLON);
   return NewNode(WHILE_NODE, condition, NULL, block, NoType());
 }
@@ -791,7 +804,11 @@ static AST_Node *ForStmt(bool) {
 
   Consume(RPAREN, "ForStmt(): Expected ')' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   Consume(LCURLY, "ForStmt(): Expected '{' after For, got '%s' instead", TokenTypeTranslation(Parser.next.type));
+
+  IN_LOOP = true;
   AST_Node *body = Block(_);
+  IN_LOOP = false;
+
   AST_Node **find_last_body_statement = &body;
 
   while ((*find_last_body_statement)->right != NULL) find_last_body_statement = &(*find_last_body_statement)->right;
@@ -803,18 +820,12 @@ static AST_Node *ForStmt(bool) {
 }
 
 static AST_Node *Break(bool) {
-  Consume(SEMICOLON,
-          "Break(): Expected ';' after Break, got '%s' instead",
-          TokenTypeTranslation(Parser.next.type));
-
+  if (!IN_LOOP) ERROR(ERR_INVALID_BREAK, Parser.current);
   return NewNode(BREAK_NODE, NULL, NULL, NULL, NoType());
 }
 
 static AST_Node *Continue(bool) {
-  Consume(SEMICOLON,
-          "Continue(): Expected ';' after Continue, got '%s' instead",
-          TokenTypeTranslation(Parser.next.type));
-
+  if (!IN_LOOP) ERROR(ERR_INVALID_CONTINUE, Parser.current);
   return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoType());
 }
 

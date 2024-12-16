@@ -1,0 +1,7 @@
+// ERR_TYPE_DISAGREEMENT
+
+f32 check = 3.14;
+
+for (i64 i = 0; check; i++) {
+
+}

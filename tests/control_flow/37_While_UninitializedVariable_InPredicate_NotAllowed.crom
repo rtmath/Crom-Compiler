@@ -1,0 +1,7 @@
+// ERR_UNINITIALIZED
+
+bool check;
+
+while(check) {
+
+}

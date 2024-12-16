@@ -30,10 +30,13 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_IMPROPER_ASSIGNMENT:  return "IMPROPER ASSIGNMENT";
     case ERR_IMPROPER_ACCESS:      return "IMPROPER ACCESS";
     case ERR_IMPROPER_VOID:        return "IMPROPER VOID";
+    case ERR_INVALID_BREAK:        return "INVALID BREAK";
+    case ERR_INVALID_CONTINUE:     return "INVALID CONTINUE";
     case ERR_OVERFLOW:             return "OVERFLOW";
     case ERR_UNDERFLOW:            return "UNDERFLOW";
     case ERR_TOO_MANY:             return "TOO MANY";
     case ERR_TOO_FEW:              return "TOO FEW";
+    case ERR_EMPTY_PREDICATE:      return "EMPTY PREDICATE";
     case ERR_EMPTY_BODY:           return "EMPTY BODY";
     case ERR_UNREACHABLE_CODE:     return "UNREACHABLE CODE";
     case ERR_LEXER_ERROR:          return "LEXER ERROR";
@@ -61,10 +64,13 @@ ErrorCode ErrorCodeLookup(char *str) {
   if (StringsMatch(str, "ERR_IMPROPER_ASSIGNMENT")) return ERR_IMPROPER_ASSIGNMENT;
   if (StringsMatch(str, "ERR_IMPROPER_ACCESS")) return ERR_IMPROPER_ACCESS;
   if (StringsMatch(str, "ERR_IMPROPER_VOID")) return ERR_IMPROPER_VOID;
+  if (StringsMatch(str, "ERR_INVALID_BREAK")) return ERR_INVALID_BREAK;
+  if (StringsMatch(str, "ERR_INVALID_CONTINUE")) return ERR_INVALID_CONTINUE;
   if (StringsMatch(str, "ERR_OVERFLOW")) return ERR_OVERFLOW;
   if (StringsMatch(str, "ERR_UNDERFLOW")) return ERR_UNDERFLOW;
   if (StringsMatch(str, "ERR_TOO_MANY")) return ERR_TOO_MANY;
   if (StringsMatch(str, "ERR_TOO_FEW")) return ERR_TOO_FEW;
+  if (StringsMatch(str, "ERR_EMPTY_PREDICATE")) return ERR_EMPTY_PREDICATE;
   if (StringsMatch(str, "ERR_EMPTY_BODY")) return ERR_EMPTY_BODY;
   if (StringsMatch(str, "ERR_UNREACHABLE_CODE")) return ERR_UNREACHABLE_CODE;
   if (StringsMatch(str, "ERR_LEXER_ERROR")) return ERR_LEXER_ERROR;
@@ -132,13 +138,19 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
       Print("Improper declaration");
     } break;
     case ERR_IMPROPER_ASSIGNMENT: {
-      Print("Improper assignment to identifier '.*s'", token.length, token.position_in_source);
+      Print("Improper assignment to identifier '%.*s'", token.length, token.position_in_source);
     } break;
     case ERR_IMPROPER_ACCESS: {
       // This maybe shouldn't be handled in this function
     } break;
     case ERR_IMPROPER_VOID: {
       // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_INVALID_BREAK: {
+      Print("Break cannot be used outside of a loop");
+    } break;
+    case ERR_INVALID_CONTINUE: {
+      Print("Continue cannot be used outside of a loop");
     } break;
     case ERR_OVERFLOW: {
       Print("Overflow");
@@ -151,6 +163,9 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
     } break;
     case ERR_TOO_FEW: {
       // This maybe shouldn't be handled in this function
+    } break;
+    case ERR_EMPTY_PREDICATE: {
+      Print("Predicate cannot be empty");
     } break;
     case ERR_EMPTY_BODY: {
       Print("Body cannot be empty");

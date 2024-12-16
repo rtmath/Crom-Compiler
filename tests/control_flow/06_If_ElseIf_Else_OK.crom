@@ -1,0 +1,9 @@
+// OK
+
+if (false) {
+  i64 x = 1;
+} else if (false) {
+  i64 y = 2;
+} else {
+  i64 z = 3;
+}

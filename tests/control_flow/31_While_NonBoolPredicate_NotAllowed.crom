@@ -1,0 +1,5 @@
+// ERR_TYPE_DISAGREEMENT
+
+while (100) {
+  break;
+}

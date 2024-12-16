@@ -1,0 +1,7 @@
+// ERR_EMPTY_PREDICATE
+
+if (false) {
+
+} else if () {
+
+}

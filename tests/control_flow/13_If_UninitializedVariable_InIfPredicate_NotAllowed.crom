@@ -1,0 +1,7 @@
+// ERR_UNINITIALIZED
+
+bool check;
+
+if (check) {
+
+}

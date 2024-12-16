@@ -1,0 +1,7 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+i64 x = 100;
+
+if (x = 20) {
+
+}

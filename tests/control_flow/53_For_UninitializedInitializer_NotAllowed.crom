@@ -1,0 +1,5 @@
+// ERR_UNINITIALIZED
+
+for (i64 i; i < 10; i++) {
+
+}

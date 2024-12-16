@@ -1,0 +1,11 @@
+// OK
+
+i64 check = 0;
+
+while (check++ < 10) {
+  break;
+}
+
+while (++check < 10) {
+  break;
+}

@@ -1,0 +1,5 @@
+// ERR_EMPTY_PREDICATE
+
+while () {
+  break;
+}

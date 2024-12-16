@@ -1,0 +1,7 @@
+// OK
+
+bool should_enter = true;
+
+if (should_enter) {
+  i64 x = 5;
+}

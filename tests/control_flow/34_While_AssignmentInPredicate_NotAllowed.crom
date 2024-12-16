@@ -1,0 +1,7 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+i64 i;
+
+while (i = 10) {
+  break;
+}

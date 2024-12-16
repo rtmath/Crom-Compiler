@@ -1,0 +1,7 @@
+// ERR_UNEXPECTED
+
+if (false) {
+
+} else if (false) {
+
+} else

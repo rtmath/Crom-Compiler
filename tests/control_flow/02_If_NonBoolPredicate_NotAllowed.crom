@@ -1,0 +1,5 @@
+// ERR_TYPE_DISAGREEMENT
+
+if (1) {
+  f32 pi = 3.14;
+}

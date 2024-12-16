@@ -1,0 +1,9 @@
+// ERR_TYPE_DISAGREEMENT
+
+f32 f = 3.14;
+
+if (false) {
+
+} else if (f) {
+
+}
