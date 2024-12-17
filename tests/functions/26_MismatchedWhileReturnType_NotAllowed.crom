@@ -1,0 +1,7 @@
+// ERR_TYPE_DISAGREEMENT
+
+Foo() :: void {
+  while (true) {
+    return 3.14;
+  }
+}

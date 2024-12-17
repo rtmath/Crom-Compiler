@@ -1,0 +1,9 @@
+// ERR_TYPE_DISAGREEMENT
+
+Check() :: f32 {
+  for (i64 i = 0; i < 10; i++) {
+    return 10;
+  }
+
+  return 10;
+}

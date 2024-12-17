@@ -1,0 +1,5 @@
+// ERR_UNEXPECTED
+
+(true)
+  ? { i64 x = 10; }
+  : { i64 y = 15; }

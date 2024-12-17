@@ -69,12 +69,13 @@ static Symbol GetSymbol(SymbolTable *st, int symbol_id) {
 }
 
 static Symbol SetSymbol(SymbolTable *st, Symbol s) {
-  DA_SET(Symbol, st->symbols, s.symbol_id, s);
-  return DA_GET(st->symbols, s.symbol_id);
+  DA_SET(Symbol, st->symbols, s.st_index, s);
+  return DA_GET(st->symbols, s.st_index);
 }
 
 static Symbol AddSymbol(SymbolTable *st, Symbol s) {
   s.declared_on_line = s.token.on_line;
+  s.st_index = st->symbols.count;
   DA_ADD(Symbol, st->symbols, s);
   return DA_GET(st->symbols, st->symbols.count - 1);
 }

@@ -34,6 +34,7 @@ typedef enum {
   ARRAY_INITIALIZER_LIST_NODE,
 
   IF_NODE,
+  TERNARY_IF_NODE,
   WHILE_NODE,
   FOR_NODE,
   BREAK_NODE,
@@ -94,6 +95,7 @@ bool NodeIs_EnumAssignment(AST_Node *n);
 bool NodeIs_EnumIdentifier(AST_Node *n);
 bool NodeIs_EnumEntry(AST_Node *n);
 bool NodeIs_StructMember(AST_Node *n);
+bool NodeIs_TernaryIf(AST_Node *n);
 bool NodeIs_If(AST_Node *n);
 bool NodeIs_For(AST_Node *n);
 bool NodeIs_While(AST_Node *n);

@@ -1,0 +1,5 @@
+// ERR_UNEXPECTED
+
+(true)
+  ? i64 i = 10; i++;
+  : i64 i = 15;

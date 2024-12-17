@@ -776,7 +776,7 @@ static AST_Node *TernaryIfStmt(AST_Node *condition) {
   Consume(COLON, "TernaryIfStmt(): Expected ':' after Ternary Statement, got '%s' instead", TokenTypeTranslation(Parser.next.type));
   AST_Node *if_false = Expression(_);
 
-  return NewNode(IF_NODE, condition, if_true, if_false, NoType());
+  return NewNode(TERNARY_IF_NODE, condition, if_true, if_false, NoType());
 }
 
 static AST_Node *WhileStmt(bool) {
@@ -798,6 +798,8 @@ static AST_Node *WhileStmt(bool) {
 static AST_Node *ForStmt(bool) {
   Consume(LPAREN, "ForStmt(): Expected '(' after For, got '%s instead", TokenTypeTranslation(Parser.next.type));
 
+  BeginScope();
+
   AST_Node *initialization = Statement(_);
   AST_Node *condition = Statement(_);
   AST_Node *after_loop = Expression(_);
@@ -808,6 +810,8 @@ static AST_Node *ForStmt(bool) {
   IN_LOOP = true;
   AST_Node *body = Block(_);
   IN_LOOP = false;
+
+  EndScope();
 
   AST_Node **find_last_body_statement = &body;
 
@@ -821,12 +825,12 @@ static AST_Node *ForStmt(bool) {
 
 static AST_Node *Break(bool) {
   if (!IN_LOOP) ERROR(ERR_INVALID_BREAK, Parser.current);
-  return NewNode(BREAK_NODE, NULL, NULL, NULL, NoType());
+  return NewNodeFromToken(BREAK_NODE, NULL, NULL, NULL, Parser.current, NoType());
 }
 
 static AST_Node *Continue(bool) {
   if (!IN_LOOP) ERROR(ERR_INVALID_CONTINUE, Parser.current);
-  return NewNode(CONTINUE_NODE, NULL, NULL, NULL, NoType());
+  return NewNodeFromToken(CONTINUE_NODE, NULL, NULL, NULL, Parser.current, NoType());
 }
 
 static AST_Node *Return(bool) {
@@ -836,11 +840,11 @@ static AST_Node *Return(bool) {
     expr = Expression(_);
   }
 
-  return NewNode(RETURN_NODE, expr, NULL, NULL, (expr == NULL) ? NewType(VOID) : expr->data_type);
+  return NewNodeFromToken(RETURN_NODE, expr, NULL, NULL, Parser.current, (expr == NULL) ? NewType(VOID) : expr->data_type);
 }
 
 static AST_Node *Parens(bool) {
-  AST_Node *parse_result = Expression(_);
+  AST_Node *parse_result = Expression(PREVENT_ASSIGNMENT);
   Consume(RPAREN, "Parens(): Missing ')' after expression");
 
   if (NextTokenIs(QUESTION_MARK)) {

@@ -1,0 +1,11 @@
+// ERR_TYPE_DISAGREEMENT
+
+Check() :: i8 {
+  if (false) {
+    return 8;
+  } else if (true) {
+    return 3.14;
+  }
+
+  return 10;
+}

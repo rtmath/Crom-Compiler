@@ -1,4 +1,4 @@
-// ERR_MISSING_RETURN
+// ERR_TYPE_DISAGREEMENT
 
 Add(i64 x, i64 y) :: i64 {
 

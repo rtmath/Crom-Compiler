@@ -1,0 +1,11 @@
+// OK
+
+Check() :: i64 {
+  for (i64 i = 0; i < 10; i++) {
+    if (i * 2 == 50) {
+      return i;
+    }
+  }
+
+  return 10;
+}

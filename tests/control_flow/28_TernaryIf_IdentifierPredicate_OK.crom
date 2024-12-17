@@ -1,0 +1,5 @@
+// OK
+
+bool b = false;
+
+(b) ? true : false;

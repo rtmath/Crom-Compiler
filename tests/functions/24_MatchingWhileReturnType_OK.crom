@@ -1,0 +1,14 @@
+// OK
+
+Function() :: void {
+  while (true) {
+    return;
+  }
+}
+
+`
+Function2() :: u8 {
+  while (true) {
+    return b'10001000';
+  }
+}

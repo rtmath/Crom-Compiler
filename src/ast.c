@@ -240,6 +240,10 @@ bool NodeIs_StructMember(AST_Node *n) {
   return n->node_type == STRUCT_MEMBER_IDENTIFIER_NODE;
 }
 
+bool NodeIs_TernaryIf(AST_Node *n) {
+  return n->node_type == TERNARY_IF_NODE;
+}
+
 bool NodeIs_If(AST_Node *n) {
   return n->node_type == IF_NODE;
 }

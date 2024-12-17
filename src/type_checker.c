@@ -116,9 +116,12 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
   if (types_match && types_are_not_numbers) return true;
 
   if (NodeIs_Identifier(from) ||
-      NodeIs_Return(from)) {
+      NodeIs_Return(from) ||
+      NodeIs_TernaryIf(from)) {
     return types_match;
   }
+
+  if (TypeIs_Void(from->data_type) && TypeIs_Void(target_type->data_type)) return true;
 
   if (TypeIs_Float(target_type->data_type)) {
     return CanConvertToFloat(from, target_type);
@@ -271,6 +274,7 @@ static bool IsDeadEnd(AST_Node *node) {
           NodeIs_NULL(node->right));
 }
 
+// TODO: Refactor
 static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   AST_Node **current = &node;
 
@@ -310,7 +314,20 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
     }
 
     if (NodeIs_Return((*current)->left)) {
-      if (!TypeIsConvertible((*current)->left->left, return_type)) {
+      bool missing_return = (*current)->left->left == NULL;
+
+      if ((TypeIs_Void((*current)->left->data_type) || missing_return) &&
+          !TypeIs_Void(return_type->data_type)) {
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*current)->left->token, "Void return in non-void function");
+      }
+
+      if (!TypeIs_Void((*current)->left->data_type) &&
+          TypeIs_Void(return_type->data_type)) {
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*current)->left->token, "Non-void return in void function");
+      }
+
+      if (!missing_return &&
+          !TypeIsConvertible((*current)->left->left, return_type)) {
         ERROR_FMT(ERR_TYPE_DISAGREEMENT, (*current)->left->left->token,
                   "Can't convert from %s to %s",
                   TypeTranslation((*current)->left->data_type),
@@ -323,6 +340,7 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   } while(!IsDeadEnd(*current));
 }
 
+// TODO: Refactor
 static void Function(AST_Node *node) {
   AST_Node *return_type = node->left;
   AST_Node *body = node->right;
@@ -336,19 +354,23 @@ static void Function(AST_Node *node) {
     }
 
     if (NodeIs_Return((*check)->left)) {
-      if (TypeIsConvertible((*check)->left, return_type)) {
-        if (!IsDeadEnd((*check)->right)) {
-          ERROR(ERR_UNREACHABLE_CODE, (*check)->right->left->token);
-        }
+      bool void_return = TypeIs_Void((*check)->left->data_type);
 
-        return;
-      } else if (TypeIs_Void((*check)->left->data_type)) {
+      if (void_return && TypeIs_Void(return_type->data_type)) {
         /* Do nothing
          *
          * This case occurs when a non-void function has no return in the body.
          * The parser inserts a void return node into the body and this function
          * segfaults without this check. The 'missing return' error will
          * trigger appropriately after the do-while loop finishes. */
+      } else if (void_return && !TypeIs_Void(return_type->data_type)) {
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*check)->left->token, "Void return in non-void function");
+      } else if (TypeIsConvertible((*check)->left, return_type)) {
+        if (!IsDeadEnd((*check)->right)) {
+          ERROR(ERR_UNREACHABLE_CODE, (*check)->right->left->token);
+        }
+
+        return;
       } else {
         ERROR_FMT(ERR_TYPE_DISAGREEMENT,
                   (*check)->left->left->token,
@@ -616,6 +638,17 @@ static void IfStmt(AST_Node *node) {
   }
 }
 
+static void TernaryIfStmt(AST_Node *node) {
+  if (!TypeIs_Bool(node->left->data_type)) {
+    ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Predicate must be boolean, got type '%s' instead", TypeTranslation(node->left->data_type));
+  }
+
+  // TODO: Check node types
+  SetNodeDataType(node, node->middle->data_type);
+
+  PrintNode(node);
+}
+
 static void WhileStmt(AST_Node *node) {
   if (!TypeIs_Bool(node->left->data_type)) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Predicate must be boolean, got type '%s' instead", TypeTranslation(node->left->data_type));
@@ -673,6 +706,9 @@ static void CheckTypesRecurse(AST_Node *node) {
     } break;
     case IF_NODE: {
       IfStmt(node);
+    } break;
+    case TERNARY_IF_NODE: {
+      TernaryIfStmt(node);
     } break;
     case WHILE_NODE: {
       WhileStmt(node);

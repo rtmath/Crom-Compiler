@@ -20,6 +20,7 @@ enum DeclarationState {
 
 typedef struct {
   int symbol_id;
+  int st_index;
 
   enum DeclarationState declaration_state;
   Token token;

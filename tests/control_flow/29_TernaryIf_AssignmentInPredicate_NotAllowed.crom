@@ -1,0 +1,5 @@
+// ERR_IMPROPER_ASSIGNMENT
+
+bool b = false;
+
+(b = true) ? true : false;

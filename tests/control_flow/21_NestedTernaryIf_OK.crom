@@ -1,0 +1,7 @@
+// OK
+
+i64 check = (false)
+              ? 1
+              : (false)
+                  ? 2
+                  : 3;
