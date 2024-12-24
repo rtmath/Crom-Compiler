@@ -19,6 +19,7 @@ typedef enum {
 
   ASSIGNMENT_NODE,
   TERSE_ASSIGNMENT_NODE,
+  INITIALIZER_LIST_NODE,
 
   // TODO: Disambiguate naming
   STRUCT_DECLARATION_NODE,       // the Struct Name (struct Weekday { ... })
@@ -31,7 +32,6 @@ typedef enum {
   ENUM_ASSIGNMENT_NODE, // e.g. Monday = 5
 
   ARRAY_SUBSCRIPT_NODE,
-  ARRAY_INITIALIZER_LIST_NODE,
 
   IF_NODE,
   TERNARY_IF_NODE,
@@ -88,7 +88,7 @@ bool NodeIs_Untyped(AST_Node *n);
 bool NodeIs_Start(AST_Node *n);
 bool NodeIs_Chain(AST_Node *n);
 bool NodeIs_ArraySubscript(AST_Node *n);
-bool NodeIs_ArrayInitializerList(AST_Node *n);
+bool NodeIs_InitializerList(AST_Node *n);
 bool NodeIs_Identifier(AST_Node *n);
 bool NodeIs_TerseAssignment(AST_Node *n);
 bool NodeIs_EnumAssignment(AST_Node *n);

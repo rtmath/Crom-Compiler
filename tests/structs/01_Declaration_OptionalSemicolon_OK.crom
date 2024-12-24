@@ -2,4 +2,4 @@
 
 struct Check {
   i64 i;
-};
+}

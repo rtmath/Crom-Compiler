@@ -15,6 +15,7 @@ static const char* const _NodeTypeTranslation[] =
 
   [ASSIGNMENT_NODE] = "Assignment",
   [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
+  [INITIALIZER_LIST_NODE] = "Array Initializer List",
 
   [STRUCT_DECLARATION_NODE] = "Struct Declaration",
   [STRUCT_IDENTIFIER_NODE] = "Struct Identifier",
@@ -25,7 +26,6 @@ static const char* const _NodeTypeTranslation[] =
   [ENUM_ASSIGNMENT_NODE] = "Enum Assignment",
 
   [ARRAY_SUBSCRIPT_NODE] = "Array Subscript",
-  [ARRAY_INITIALIZER_LIST_NODE] = "Array Initializer List",
 
   [IF_NODE] = "If",
   [WHILE_NODE] = "While",
@@ -216,8 +216,8 @@ bool NodeIs_ArraySubscript(AST_Node *n) {
   return n->node_type == ARRAY_SUBSCRIPT_NODE;
 }
 
-bool NodeIs_ArrayInitializerList(AST_Node *n) {
-  return n->node_type == ARRAY_INITIALIZER_LIST_NODE;
+bool NodeIs_InitializerList(AST_Node *n) {
+  return n->node_type == INITIALIZER_LIST_NODE;
 }
 
 bool NodeIs_TerseAssignment(AST_Node *n) {

@@ -17,100 +17,100 @@ static Type *in_function;
 static void CheckTypesRecurse(AST_Node *node);
 
 /* === Helpers === */
-bool Overflow(AST_Node *from, AST_Node *target_type) {
-  ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type->data_type));
+bool Overflow(AST_Node *from, Type target_type) {
+  ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type));
   return false; // The return type is unused as ERROR_FMT will call Exit(), but this suppresses -Wreturn-type warnings at the call site
 }
 
-bool CanConvertToInt(AST_Node *from, AST_Node *target_type) {
+bool CanConvertToInt(AST_Node *from, Type target_type) {
   if (Int64Overflow(from->token)) {
-    ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type->data_type));
+    ERROR_FMT(ERR_OVERFLOW, from->token, "Literal value overflows target type '%s'", TypeTranslation(target_type));
   }
 
   int64_t from_value = TokenToInt64(from->token);
 
-  if (TypeIs_I8(target_type->data_type)) {
+  if (TypeIs_I8(target_type)) {
     if (from_value >= INT8_MIN && from_value <= INT8_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_I16(target_type->data_type)) {
+  } else if (TypeIs_I16(target_type)) {
     if (from_value >= INT16_MIN && from_value <= INT16_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_I32(target_type->data_type)) {
+  } else if (TypeIs_I32(target_type)) {
     if (from_value >= INT32_MIN && from_value <= INT32_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_I64(target_type->data_type)) {
+  } else if (TypeIs_I64(target_type)) {
     if (from_value >= INT64_MIN && from_value <= INT64_MAX) return true;
     return Overflow(from, target_type);
 
   } else {
     SetErrorCode(ERR_PEBCAK);
-    COMPILER_ERROR_FMTMSG("CanConverToInt(): Invalid type '%s'", TypeTranslation(target_type->data_type));
+    COMPILER_ERROR_FMTMSG("CanConverToInt(): Invalid type '%s'", TypeTranslation(target_type));
     return false;
   }
 }
 
-bool CanConvertToUint(AST_Node *from, AST_Node *target_type) {
+bool CanConvertToUint(AST_Node *from, Type target_type) {
   if (Uint64Overflow(from->token)) {
     return Overflow(from, target_type);
   }
 
   uint64_t from_value = TokenToUint64(from->token);
 
-  if (TypeIs_U8(target_type->data_type)) {
+  if (TypeIs_U8(target_type)) {
     if (from_value <= UINT8_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_U16(target_type->data_type)) {
+  } else if (TypeIs_U16(target_type)) {
     if (from_value <= UINT16_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_U32(target_type->data_type)) {
+  } else if (TypeIs_U32(target_type)) {
     if (from_value <= UINT32_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_U64(target_type->data_type)) {
+  } else if (TypeIs_U64(target_type)) {
     if (from_value <= UINT64_MAX) return true;
     return Overflow(from, target_type);
 
   } else {
     SetErrorCode(ERR_PEBCAK);
-    COMPILER_ERROR_FMTMSG("CanConvertToUint(): Invalid type '%s'\n", TypeTranslation(target_type->data_type));
+    COMPILER_ERROR_FMTMSG("CanConvertToUint(): Invalid type '%s'\n", TypeTranslation(target_type));
     return false;
   }
 }
 
-bool CanConvertToFloat(AST_Node *from, AST_Node *target_type) {
+bool CanConvertToFloat(AST_Node *from, Type target_type) {
   if (DoubleOverflow(from->token)) {
     return Overflow(from, target_type);
   }
 
   double from_value = TokenToDouble(from->token);
 
-  if (TypeIs_F32(target_type->data_type)) {
+  if (TypeIs_F32(target_type)) {
     if (from_value >= -FLT_MAX && from_value <= FLT_MAX) return true;
     return Overflow(from, target_type);
 
-  } else if (TypeIs_F64(target_type->data_type)) {
+  } else if (TypeIs_F64(target_type)) {
     if (from_value >= -DBL_MAX && from_value <= DBL_MAX) return true;
     return Overflow(from, target_type);
 
   } else {
     SetErrorCode(ERR_PEBCAK);
-    COMPILER_ERROR_FMTMSG("CanConvertToFloat(): Invalid type '%s'\n", TypeTranslation(target_type->data_type));
+    COMPILER_ERROR_FMTMSG("CanConvertToFloat(): Invalid type '%s'\n", TypeTranslation(target_type));
     return false;
   }
 }
 
-bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
-  bool types_match = TypesMatchExactly(from->data_type, target_type->data_type) ||
-                     TypesAreInt(from->data_type, target_type->data_type)       ||
-                     TypesAreUint(from->data_type, target_type->data_type)      ||
-                     TypesAreFloat(from->data_type, target_type->data_type)     ||
-                     (TypeIs_Function(from->data_type) && (from->data_type.specifier == target_type->data_type.specifier));
-  bool types_are_not_numbers = !(TypeIs_Numeric(from->data_type) && TypeIs_Numeric(target_type->data_type));
+bool TypeIsConvertible(AST_Node *from, Type target_type) {
+  bool types_match = TypesMatchExactly(from->data_type, target_type) ||
+                     TypesAreInt(from->data_type, target_type)       ||
+                     TypesAreUint(from->data_type, target_type)      ||
+                     TypesAreFloat(from->data_type, target_type)     ||
+                     (TypeIs_Function(from->data_type) && (from->data_type.specifier == target_type.specifier));
+  bool types_are_not_numbers = !(TypeIs_Numeric(from->data_type) && TypeIs_Numeric(target_type));
 
   if (!types_match && types_are_not_numbers) return false;
   if (types_match && types_are_not_numbers) return true;
@@ -121,9 +121,9 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     return types_match;
   }
 
-  if (TypeIs_Void(from->data_type) && TypeIs_Void(target_type->data_type)) return true;
+  if (TypeIs_Void(from->data_type) && TypeIs_Void(target_type)) return true;
 
-  if (TypeIs_Float(target_type->data_type)) {
+  if (TypeIs_Float(target_type)) {
     return CanConvertToFloat(from, target_type);
   }
 
@@ -132,11 +132,11 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
     return false;
   }
 
-  if (!TypeIs_Signed(target_type->data_type)) {
+  if (!TypeIs_Signed(target_type)) {
     return CanConvertToUint(from, target_type);
   }
 
-  if (TypeIs_Signed(target_type->data_type)) {
+  if (TypeIs_Signed(target_type)) {
     return CanConvertToInt(from, target_type);
   }
 
@@ -144,7 +144,7 @@ bool TypeIsConvertible(AST_Node *from, AST_Node *target_type) {
 }
 /* === End Helpers === */
 
-static void InitializerList(AST_Node *list, AST_Node *target_type) {
+static void ArrayInitializerList(AST_Node *list, Type target_type) {
   AST_Node **current = &list;
 
   int num_literals_in_list = 0;
@@ -152,19 +152,36 @@ static void InitializerList(AST_Node *list, AST_Node *target_type) {
   while (*current != NULL && (*current)->left != NULL) {
     AST_Node *value = (*current)->left;
     if (!TypeIsConvertible(value, target_type)) {
-      ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(target_type->data_type));
+      ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(target_type));
     }
 
-    if (!TypeIsConvertible(value, list)) {
+    if (!TypeIsConvertible(value, list->data_type)) {
       ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(list->data_type));
     }
 
     num_literals_in_list++;
-    if (num_literals_in_list > target_type->data_type.array_size) {
-      ERROR_FMT(ERR_TOO_MANY, value->token, "Too many elements (%d) in initializer list (array size is %d)", num_literals_in_list, target_type->data_type.array_size);
+    if (num_literals_in_list > target_type.array_size) {
+      ERROR_FMT(ERR_TOO_MANY, value->token, "Too many elements (%d) in initializer list (array size is %d)", num_literals_in_list, target_type.array_size);
     }
 
     current = &(*current)->right;
+  }
+}
+
+static void StructInitializerList(AST_Node *list, Type target_type) {
+  StructMember **current_member = &target_type.members.next;
+  AST_Node **current_value = &list;
+
+  while (*current_value != NULL && (*current_value)->left != NULL) {
+    AST_Node *value = (*current_value)->left;
+    if (*current_member == NULL) ERROR_MSG(ERR_TOO_MANY, value->token, "Too many elements in initializer list");
+
+    if (!TypeIsConvertible(value, (*current_member)->type)) {
+      ERROR_FMT(ERR_TYPE_DISAGREEMENT, value->token, "Can't convert from %s to %s", TypeTranslation(value->data_type), TypeTranslation(target_type));
+    }
+
+    current_value = &(*current_value)->right;
+    current_member = &(*current_member)->next;
   }
 }
 
@@ -198,12 +215,16 @@ static void Assignment(AST_Node *identifier) {
     SetNodeDataType(identifier, value->data_type);
   }
 
-  if (NodeIs_ArrayInitializerList(value)) {
-    InitializerList(value, identifier);
+  if (NodeIs_InitializerList(value)) {
+    if (TypeIs_Struct(identifier->data_type)) {
+      StructInitializerList(value, identifier->data_type);
+    } else {
+      ArrayInitializerList(value, identifier->data_type);
+    }
     return;
   }
 
-  if (!TypeIsConvertible(value, identifier)) {
+  if (!TypeIsConvertible(value, identifier->data_type)) {
     if (TypeIs_Enum(value->data_type)) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier->token);
     }
@@ -327,7 +348,7 @@ static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
       }
 
       if (!missing_return &&
-          !TypeIsConvertible((*current)->left->left, return_type)) {
+          !TypeIsConvertible((*current)->left->left, return_type->data_type)) {
         ERROR_FMT(ERR_TYPE_DISAGREEMENT, (*current)->left->left->token,
                   "Can't convert from %s to %s",
                   TypeTranslation((*current)->left->data_type),
@@ -365,7 +386,7 @@ static void Function(AST_Node *node) {
          * trigger appropriately after the do-while loop finishes. */
       } else if (void_return && !TypeIs_Void(return_type->data_type)) {
         ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*check)->left->token, "Void return in non-void function");
-      } else if (TypeIsConvertible((*check)->left, return_type)) {
+      } else if (TypeIsConvertible((*check)->left, return_type->data_type)) {
         if (!IsDeadEnd((*check)->right)) {
           ERROR(ERR_UNREACHABLE_CODE, (*check)->right->left->token);
         }
@@ -491,7 +512,7 @@ static void UnaryOp(AST_Node *node) {
 static void BinaryArithmeticOp(AST_Node *node) {
   node->data_type = node->left->data_type;
 
-  if (!TypeIsConvertible(node->right, node)) {
+  if (!TypeIsConvertible(node->right, node->data_type)) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Can't convert from type %s to %s", TypeTranslation(node->right->data_type), TypeTranslation(node->data_type));
   }
 
@@ -522,7 +543,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (TypeIs_Int(node->left->data_type) &&
           TypeIs_Uint(node->right->data_type))
       {
-        if (!TypeIsConvertible(node->right, node->left)) {
+        if (!TypeIsConvertible(node->right, node->left->data_type)) {
           ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Can't convert from %s to %s", TypeTranslation(node->right->data_type), TypeTranslation(node->left->data_type));
         }
       }
@@ -531,7 +552,7 @@ static void BinaryLogicalOp(AST_Node *node) {
       if (TypeIs_Uint(node->left->data_type) &&
           TypeIs_Int(node->right->data_type))
       {
-        if (!TypeIsConvertible(node->left, node->right)) {
+        if (!TypeIsConvertible(node->left, node->right->data_type)) {
           ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Can't convert from type %s to %s",  TypeTranslation(node->right->data_type), TypeTranslation(node->left->data_type));
         }
       }

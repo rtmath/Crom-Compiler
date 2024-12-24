@@ -1,0 +1,7 @@
+// ERR_UNEXPECTED
+
+struct S {
+  i64 i;
+}
+
+i64 x = S.;

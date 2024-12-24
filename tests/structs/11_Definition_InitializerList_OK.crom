@@ -1,0 +1,8 @@
+// OK
+
+struct Vector2 {
+  i64 x;
+  i64 y;
+}
+
+struct Vector2 v = { 10, 15 };

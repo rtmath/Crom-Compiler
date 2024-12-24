@@ -544,6 +544,13 @@ static AST_Node *Identifier(bool can_assign) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier_token);
     }
 
+    if (TypeIs_Struct(identifier_symbol.data_type)) {
+      Consume(LCURLY, "Identifier(): Expected { after struct assignment");
+      AST_Node *initializer_list = InitializerList(identifier_symbol.data_type);
+      identifier_symbol = SetDecl(SYMBOL_TABLE(), identifier_token, DECL_DEFINED);
+      return NewNodeFromSymbol(ASSIGNMENT_NODE, initializer_list, NULL, NULL, identifier_symbol);
+    }
+
     if (TypeIs_Array(identifier_symbol.data_type) &&
         !TypeIs_String(identifier_symbol.data_type)) {
       if (Match(LCURLY)) {
@@ -966,9 +973,12 @@ static AST_Node *StructMemberAccess(Token struct_name) {
   AST_Node *expr = NULL;
   AST_Node *array_index = NULL;
   Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_name);
+
+  /* TODO: Do I need this?
   if (!DEFINED(struct_symbol)) {
     ERROR(ERR_UNDEFINED, Parser.next);
   }
+  */
 
   BeginScope();
 
@@ -988,8 +998,8 @@ static AST_Node *StructMemberAccess(Token struct_name) {
   }
 
   Symbol field_symbol = RetrieveFrom(SYMBOL_TABLE(), field_name);
-  if (!DEFINED(field_symbol)) {
-    ERROR(ERR_UNDEFINED, field_name);
+  if (!DECLARED(field_symbol)) {
+    ERROR(ERR_UNDECLARED, field_name);
   }
 
   EndScope();
@@ -1055,11 +1065,29 @@ static void StructBody(AST_Node **struct_name) {
   }
 }
 
+static AST_Node *StructTypeSpecifier(Token struct_identifier) {
+  if (!IsIn(SYMBOL_TABLE(), struct_identifier)) {
+    ERROR(ERR_UNDECLARED, struct_identifier);
+  }
+
+  Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_identifier);
+
+  Consume(IDENTIFIER, "Expected variable name");
+  AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, struct_symbol.data_type, DECL_DECLARED));
+
+  return Identifier(ASSIGNABLE);
+}
+
 static AST_Node *Struct() {
   Consume(IDENTIFIER, "Struct(): Expected IDENTIFIER after Type '%s, got '%s instead",
           TokenTypeTranslation(Parser.current.type),
           TokenTypeTranslation(Parser.next.type));
   Token identifier_token = Parser.current;
+
+  if (!NextTokenIs(LCURLY)) {
+    // Assume this is type specifier if next token isn't '{'
+    return StructTypeSpecifier(identifier_token);
+  }
 
   if (IsIn(SYMBOL_TABLE(), identifier_token)) {
     ERROR(ERR_REDECLARED, identifier_token);
@@ -1070,6 +1098,7 @@ static AST_Node *Struct() {
   StructBody(&struct_identifier);
 
   SetDecl(SYMBOL_TABLE(), identifier_symbol.token, DECL_DEFINED);
+  SetSymbolDataType(SYMBOL_TABLE(), identifier_symbol.token, struct_identifier->data_type);
 
   return struct_identifier;
 }
@@ -1079,7 +1108,7 @@ static AST_Node *InitializerList(Type expected_type) {
   AST_Node **current = &n;
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
-    if (n == NULL) n = NewNode(ARRAY_INITIALIZER_LIST_NODE, NULL, NULL, NULL, expected_type);
+    if (n == NULL) n = NewNode(INITIALIZER_LIST_NODE, NULL, NULL, NULL, expected_type);
 
     (*current)->left = Expression(_);
     (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());

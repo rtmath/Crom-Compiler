@@ -1,5 +1,6 @@
 // ERR_MISSING_SEMICOLON
 
 struct S {
-  f32 check = 4.5;
+  i64 i
+  i64 check
 };
