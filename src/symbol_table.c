@@ -135,7 +135,7 @@ void AddParams(SymbolTable *st, Symbol function_symbol) {
 Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    Print("SetDecl(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
+    Print("SetDecl(): Token '%.*s' not found in symbol table\n", t.length, t.position_in_source);
     return NOT_FOUND;
   }
 
@@ -146,7 +146,7 @@ Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds) {
 Symbol SetSymbolValue(SymbolTable *st, Token t, Value v) {
   Symbol s = RetrieveFrom(st, t);
   if (s.token.type == ERROR) {
-    Print("SetValue(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
+    Print("SetValue(): Token '%.*s' not found in symbol table\n", t.length, t.position_in_source);
     return NOT_FOUND;
   }
 

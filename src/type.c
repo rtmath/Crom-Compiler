@@ -125,7 +125,19 @@ void InlinePrintType(Type t) {
     case T_BOOL: Print("bool"); break;
 
     case T_ENUM: Print("enum"); break;
-    case T_STRUCT: Print("struct"); break;
+    case T_STRUCT: {
+      if (t.specifier == T_STRUCT) {
+        StructMember *member = t.members.next;
+
+        if (member != NULL) Print(" { ");
+        while (member != NULL) {
+          InlinePrintType(member->type);
+          Print(" ");
+          member = member->next;
+        }
+        if (t.members.next != NULL) Print("}");
+      }
+    } break;
     case T_VOID: Print("void"); break;
   }
 
@@ -354,7 +366,6 @@ bool StructContainsMember(Type struct_type, Token member_name) {
 
   return matching_member != NULL;
 }
-
 
 void AddMemberToStruct(Type *struct_type, Type member_type, Token member_name) {
   StructMember *check = struct_type->members.next;
