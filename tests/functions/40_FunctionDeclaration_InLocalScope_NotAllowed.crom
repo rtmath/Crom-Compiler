@@ -1,0 +1,5 @@
+// ERR_IMPROPER_DECLARATION
+
+while (false) {
+  Check(i64 x, i64 y) :: i64;
+}

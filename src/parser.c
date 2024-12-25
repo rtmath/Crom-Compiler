@@ -710,6 +710,7 @@ static AST_Node *Block(bool) {
   AST_Node *n = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
   AST_Node **current = &n;
 
+  BeginScope();
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
     (*current)->left = Statement(_);
     (*current)->right = NewNode(CHAIN_NODE, NULL, NULL, NULL, NoType());
@@ -718,6 +719,7 @@ static AST_Node *Block(bool) {
   }
 
   Consume(RCURLY, "Block(): Expected '}' after Block, got '%s' instead.", TokenTypeTranslation(Parser.next.type));
+  EndScope();
 
   return n;
 }

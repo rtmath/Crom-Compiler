@@ -144,6 +144,16 @@ bool TypeIsConvertible(AST_Node *from, Type target_type) {
 }
 /* === End Helpers === */
 
+static void Literal(AST_Node *n) {
+  if (TypeIs_Int(n->data_type) && Int64Overflow(n->token)) {
+    SetNodeDataType(n, NewType(U64));
+  }
+
+  if (TypeIs_Uint(n->data_type) && Uint64Overflow(n->token)) {
+    Overflow(n, NewType(U64));
+  }
+}
+
 static void ArrayInitializerList(AST_Node *list, Type target_type) {
   AST_Node **current = &list;
 
@@ -496,7 +506,7 @@ static void UnaryOp(AST_Node *node) {
     }
 
     if (TypeIs_Uint(check_node->data_type)) {
-      ERROR(ERR_TYPE_DISAGREEMENT, check_node->token);
+      ERROR_MSG(ERR_TYPE_DISAGREEMENT, check_node->token, "Uint not allowed with unary '-'");
       return;
     }
 
@@ -748,8 +758,9 @@ static void CheckTypesRecurse(AST_Node *node) {
     case POSTFIX_DECREMENT_NODE: {
       PostfixIncOrDec(node);
     } break;
-
-    case LITERAL_NODE:
+    case LITERAL_NODE: {
+      Literal(node);
+    } break;
     case ARRAY_SUBSCRIPT_NODE:
     case STRUCT_DECLARATION_NODE:
     case DECLARATION_NODE:
