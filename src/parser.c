@@ -969,23 +969,16 @@ static AST_Node *Enum(bool) {
   return enum_name;
 }
 
-static AST_Node *StructMemberAccess(Token struct_name) {
+static AST_Node *StructMemberAccess(Token identifier) {
   AST_Node *expr = NULL;
   AST_Node *array_index = NULL;
-  Symbol struct_symbol = RetrieveFrom(SYMBOL_TABLE(), struct_name);
-
-  /* TODO: Do I need this?
-  if (!DEFINED(struct_symbol)) {
-    ERROR(ERR_UNDEFINED, Parser.next);
-  }
-  */
-
-  BeginScope();
+  Symbol identifier_symbol = RetrieveFrom(SYMBOL_TABLE(), identifier);
+  Symbol parent_type = GetSymbolById(SYMBOL_TABLE(), identifier_symbol.parent_struct_symbol_id_ref);
 
   Consume(IDENTIFIER, "StructMemberAccess(): Expected identifier", "");
-  Token field_name = Parser.current;
-  if (!StructContainsMember(struct_symbol.data_type, field_name)) {
-    ERROR(ERR_UNDEFINED, field_name);
+  Token member_name = Parser.current;
+  if (!StructContainsMember(parent_type.data_type, member_name)) {
+    ERROR(ERR_UNDECLARED, member_name);
   }
 
   if (Match(LBRACKET)) {
@@ -994,18 +987,12 @@ static AST_Node *StructMemberAccess(Token struct_name) {
 
   if (Match(EQUALS)) {
     expr = Expression(_);
-    SetDecl(SYMBOL_TABLE(), field_name, DECL_DEFINED);
   }
 
-  Symbol field_symbol = RetrieveFrom(SYMBOL_TABLE(), field_name);
-  if (!DECLARED(field_symbol)) {
-    ERROR(ERR_UNDECLARED, field_name);
-  }
+  StructMember *member = GetStructMember(parent_type.data_type, member_name);
 
-  EndScope();
-
-  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, struct_name, NoType());
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, field_name, field_symbol.data_type);
+  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, identifier, NoType());
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, member_name, member->type);
 }
 
 static void StructBody(AST_Node **struct_name) {
@@ -1074,6 +1061,8 @@ static AST_Node *StructTypeSpecifier(Token struct_identifier) {
 
   Consume(IDENTIFIER, "Expected variable name");
   AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, struct_symbol.data_type, DECL_DECLARED));
+
+  SetSymbolParentStruct(SYMBOL_TABLE(), Parser.current, struct_symbol);
 
   return Identifier(ASSIGNABLE);
 }

@@ -1,0 +1,8 @@
+// ERR_TYPE_DISAGREEMENT
+
+struct Vector2 {
+  i64 x;
+  i64 y;
+}
+
+struct Vector2 check = { 10, 3.14 };

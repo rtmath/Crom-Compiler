@@ -1,0 +1,9 @@
+// ERR_TOO_MANY
+
+struct Vector3 {
+  i64 x;
+  i64 y;
+  i64 z;
+}
+
+struct Vector3 check = { 1, 2, 3, 4 };

@@ -21,6 +21,7 @@ enum DeclarationState {
 typedef struct {
   int symbol_id;
   int st_index;
+  int parent_struct_symbol_id_ref;
 
   enum DeclarationState declaration_state;
   Token token;
@@ -40,6 +41,7 @@ Symbol NewSymbol(Token token, Type type, enum DeclarationState d);
 
 Symbol AddTo(SymbolTable *st, Symbol s);
 Symbol RetrieveFrom(SymbolTable *st, Token t);
+Symbol GetSymbolById(SymbolTable *st, int id);
 bool IsIn(SymbolTable *st, Token t);
 
 void RegisterFnParam(SymbolTable *st, Symbol function_name, Symbol param);
@@ -48,6 +50,7 @@ void AddParams(SymbolTable *st, Symbol function_symbol);
 Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds);
 Symbol SetSymbolValue(SymbolTable *st, Token t, Value v);
 Symbol SetSymbolDataType(SymbolTable *st, Token t, Type type);
+Symbol SetSymbolParentStruct(SymbolTable *st, Token t, Symbol parent_struct);
 
 void PrintSymbol(Symbol s);
 void InlinePrintSymbol(Symbol s);

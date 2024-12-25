@@ -1,0 +1,10 @@
+// ERR_UNDECLARED
+
+struct Vector2 {
+  i64 x;
+  i64 y;
+}
+
+struct Vector2 check = { 10, 15 };
+
+check.z = 20;

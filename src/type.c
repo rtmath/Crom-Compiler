@@ -324,15 +324,15 @@ StructMember *GetStructMember(Type struct_type, Token member_name) {
   StructMember *check = struct_type.members.next;
 
   while (check != NULL) {
-    char *name= CopyStringL(struct_type.members.next->token.position_in_source,
-                            struct_type.members.next->token.length);
+    char *name= CopyStringL(check->token.position_in_source,
+                            check->token.length);
 
     if (strcmp(ident, name) == 0) {
       matching_member = struct_type.members.next;
       break;
     }
 
-    check = (*check).next;
+    check = check->next;
 
     free(name);
   }
@@ -349,15 +349,15 @@ bool StructContainsMember(Type struct_type, Token member_name) {
   StructMember *check = struct_type.members.next;
 
   while (check != NULL) {
-    char *name= CopyStringL(struct_type.members.next->token.position_in_source,
-                            struct_type.members.next->token.length);
+    char *name= CopyStringL(check->token.position_in_source,
+                            check->token.length);
 
     if (strcmp(ident, name) == 0) {
-      matching_member = struct_type.members.next;
+      matching_member = check;
       break;
     }
 
-    check = (*check).next;
+    check = check->next;
 
     free(name);
   }

@@ -9,16 +9,19 @@
 static int symbol_guid = 0;
 static Symbol NOT_FOUND = {
   .symbol_id = -1,
-  .data_type = {
-    .category = TC_NONE,
-    .specifier = T_NONE,
-  },
+  .st_index = -1,
+  .parent_struct_symbol_id_ref = -1,
+
   .declaration_state = DECL_NONE,
   .token = {
     .type = ERROR,
     .position_in_source = "No symbol found in Symbol Table",
     .length = 31,
     .on_line = -1,
+  },
+  .data_type = {
+    .category = TC_NONE,
+    .specifier = T_NONE,
   },
   .value = {
     .type = {
@@ -51,9 +54,12 @@ void DeleteSymbolTable(SymbolTable *st) {
 Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   Symbol s = {
     .symbol_id = -1,
-    .data_type = type,
+    .st_index = -1,
+    .parent_struct_symbol_id_ref = -1,
+
     .declaration_state = d,
     .token = token,
+    .data_type = type,
     .value = (Value){
       .type = type,
       .as.uinteger = 0,
@@ -88,6 +94,7 @@ Symbol AddTo(SymbolTable *st, Symbol s) {
     existing_symbol.declaration_state = s.declaration_state;
     existing_symbol.data_type = s.data_type;
     existing_symbol.token = s.token;
+    existing_symbol.parent_struct_symbol_id_ref = s.parent_struct_symbol_id_ref;
 
     Symbol updated_symbol = SetSymbol(st, existing_symbol);
     return updated_symbol;
@@ -109,6 +116,10 @@ Symbol RetrieveFrom(SymbolTable *st, Token t) {
   }
 
   return NOT_FOUND;
+}
+
+Symbol GetSymbolById(SymbolTable *st, int id) {
+  return GetSymbol(st, id);
 }
 
 bool IsIn(SymbolTable *st, Token t) {
@@ -162,6 +173,17 @@ Symbol SetSymbolDataType(SymbolTable *st, Token t, Type type) {
   }
 
   s.data_type = type;
+  return AddTo(st, s);
+}
+
+Symbol SetSymbolParentStruct(SymbolTable *st, Token t, Symbol parent_struct) {
+  Symbol s = RetrieveFrom(st, t);
+  if (s.token.type == ERROR) {
+    Print("SetSymbolParentStruct(): Token '%.*s' not found in symbol table", t.length, t.position_in_source);
+    return NOT_FOUND;
+  }
+
+  s.parent_struct_symbol_id_ref = parent_struct.symbol_id;
   return AddTo(st, s);
 }
 

@@ -1,0 +1,3 @@
+// ERR_UNDECLARED
+
+struct Vector2 v = { 10, 20 };
