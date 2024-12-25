@@ -305,87 +305,78 @@ static bool IsDeadEnd(AST_Node *node) {
           NodeIs_NULL(node->right));
 }
 
-// TODO: Refactor
 static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   AST_Node **current = &node;
 
-  do {
-    if (!NodeIs_NULL((*current)->left)) {
-      switch((*current)->left->node_type) {
-        case IF_NODE:
-        case WHILE_NODE:
-        case FOR_NODE: {
-          TypeCheckNestedReturns((*current)->left, return_type);
-        } break;
-        default: break;
-      }
+  while(!IsDeadEnd(*current)) {
+    AST_Node *left = (*current)->left;
+    AST_Node *middle = (*current)->middle;
+    AST_Node *right = (*current)->right;
+
+    if (!NodeIs_NULL(left) &&
+        ((NodeIs_If(left)    ||
+          NodeIs_While(left) ||
+          NodeIs_For(left)))) {
+          TypeCheckNestedReturns(left, return_type);
     }
 
-    if (!NodeIs_NULL((*current)->middle)) {
-      switch((*current)->middle->node_type) {
-        case IF_NODE:
-        case WHILE_NODE:
-        case FOR_NODE:
-        case CHAIN_NODE: {
-          TypeCheckNestedReturns((*current)->middle, return_type);
-        } break;
-        default: break;
-      }
+    if (!NodeIs_NULL(middle) &&
+        ((NodeIs_If(middle)    ||
+          NodeIs_While(middle) ||
+          NodeIs_For(middle)   ||
+          NodeIs_Chain(middle)))) {
+          TypeCheckNestedReturns(middle, return_type);
     }
 
-    if (!NodeIs_NULL((*current)->right)) {
-      switch((*current)->right->node_type) {
-        case IF_NODE:
-        case WHILE_NODE:
-        case FOR_NODE: {
-          TypeCheckNestedReturns((*current)->right, return_type);
-        } break;
-        default: break;
-      }
+    if (!NodeIs_NULL(right) &&
+        ((NodeIs_If(right)    ||
+          NodeIs_While(right) ||
+          NodeIs_For(right)))) {
+          TypeCheckNestedReturns(right, return_type);
     }
 
-    if (NodeIs_Return((*current)->left)) {
-      bool missing_return = (*current)->left->left == NULL;
+    if (NodeIs_Return(left)) {
+      bool missing_return = left->left == NULL;
 
-      if ((TypeIs_Void((*current)->left->data_type) || missing_return) &&
+      if ((TypeIs_Void(left->data_type) || missing_return) &&
           !TypeIs_Void(return_type->data_type)) {
-        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*current)->left->token, "Void return in non-void function");
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, left->token, "Void return in non-void function");
       }
 
-      if (!TypeIs_Void((*current)->left->data_type) &&
+      if (!TypeIs_Void(left->data_type) &&
           TypeIs_Void(return_type->data_type)) {
-        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*current)->left->token, "Non-void return in void function");
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, left->token, "Non-void return in void function");
       }
 
       if (!missing_return &&
-          !TypeIsConvertible((*current)->left->left, return_type->data_type)) {
-        ERROR_FMT(ERR_TYPE_DISAGREEMENT, (*current)->left->left->token,
+          !TypeIsConvertible(left->left, return_type->data_type)) {
+        ERROR_FMT(ERR_TYPE_DISAGREEMENT, left->left->token,
                   "Can't convert from %s to %s",
-                  TypeTranslation((*current)->left->data_type),
+                  TypeTranslation(left->data_type),
                   TypeTranslation(return_type->data_type));
       }
     }
 
-    current = &(*current)->right;
-
-  } while(!IsDeadEnd(*current));
+    current = &right;
+  }
 }
 
-// TODO: Refactor
 static void Function(AST_Node *node) {
   AST_Node *return_type = node->left;
   AST_Node *body = node->right;
   AST_Node **check = &body;
 
-  do {
-    if (NodeIs_If((*check)->left)    ||
-        NodeIs_While((*check)->left) ||
-        NodeIs_For((*check)->left)) {
-      TypeCheckNestedReturns((*check)->left, return_type);
+  while (!IsDeadEnd(*check)) {
+    AST_Node *left = (*check)->left;
+    AST_Node *right = (*check)->right;
+    if (NodeIs_If(left)    ||
+        NodeIs_While(left) ||
+        NodeIs_For(left)) {
+      TypeCheckNestedReturns(left, return_type);
     }
 
-    if (NodeIs_Return((*check)->left)) {
-      bool void_return = TypeIs_Void((*check)->left->data_type);
+    if (NodeIs_Return(left)) {
+      bool void_return = TypeIs_Void(left->data_type);
 
       if (void_return && TypeIs_Void(return_type->data_type)) {
         /* Do nothing
@@ -395,25 +386,26 @@ static void Function(AST_Node *node) {
          * segfaults without this check. The 'missing return' error will
          * trigger appropriately after the do-while loop finishes. */
       } else if (void_return && !TypeIs_Void(return_type->data_type)) {
-        ERROR_MSG(ERR_TYPE_DISAGREEMENT, (*check)->left->token, "Void return in non-void function");
-      } else if (TypeIsConvertible((*check)->left, return_type->data_type)) {
-        if (!IsDeadEnd((*check)->right)) {
-          ERROR(ERR_UNREACHABLE_CODE, (*check)->right->left->token);
-        }
+        ERROR_MSG(ERR_TYPE_DISAGREEMENT, left->token, "Void return in non-void function");
 
+      } else if (TypeIsConvertible(left, return_type->data_type)) {
+        if (!IsDeadEnd(right)) {
+          ERROR(ERR_UNREACHABLE_CODE, right->left->token);
+        }
         return;
+
       } else {
         ERROR_FMT(ERR_TYPE_DISAGREEMENT,
-                  (*check)->left->left->token,
+                  left->left->token,
                   "%.*s(): Can't convert from return type %s to %s",
                   node->token.length, node->token.position_in_source,
-                  TypeTranslation((*check)->left->data_type),
+                  TypeTranslation(left->data_type),
                   TypeTranslation(return_type->data_type));
       }
     }
 
-    check = &(*check)->right;
-  } while (!IsDeadEnd(*check));
+    check = &right;
+  };
 
   if (TypeIs_Void(return_type->data_type)) {
     node->data_type.specifier = T_VOID;
@@ -421,56 +413,6 @@ static void Function(AST_Node *node) {
     ERROR(ERR_MISSING_RETURN, node->token);
   }
 }
-
-/*
-static void FunctionCall(AST_Node *node) {
-  AST_Node **current = &(node)->middle;
-  Symbol fn_definition = RetrieveFrom(SYMBOL_TABLE, node->token);
-
-  for (int i = 0; i < fn_definition.fn_param_count; i++) {
-    AST_Node *argument = *current;
-    if (argument == NULL) {
-      ERROR_AT_TOKEN(
-        (*current)->token,
-        "%.*s(): Missing '%.*s' argument\n",
-        node->token.length,
-        node->token.position_in_source,
-        fn_definition.fn_param_list[i].param_token.length,
-        fn_definition.fn_param_list[i].param_token.position_in_source
-      );
-      SetErrorCode(ERR_TOO_FEW);
-    }
-
-    // TypeIsConvertible deals with AST_Nodes but fn_params aren't an AST_Node
-    AST_Node *wrapped_param = NewNodeFromToken(UNTYPED_NODE, NULL, NULL, NULL,
-      fn_definition.fn_param_list[i].param_token,
-      fn_definition.fn_param_list[i].type
-    );
-
-    if (!TypeIsConvertible(argument, wrapped_param)) {
-      ERROR_AT_TOKEN(argument->token,
-                     "%.*s(): Can't convert type from '%s' to '%s'\n",
-                     node->token.length,
-                     node->token.position_in_source,
-                     TypeTranslation(argument->value.type),
-                     TypeTranslation(wrapped_param->value.type));
-      SetErrorCode(ERR_TYPE_DISAGREEMENT);
-    }
-
-    current = &(*current)->right;
-  }
-
-  if ((*current) != NULL) {
-    ERROR_AT_TOKEN((*current)->token,
-                   "%.*s(): Too many arguments",
-                   node->token.length,
-                   node->token.position_in_source);
-    SetErrorCode(ERR_TOO_MANY);
-  }
-
-  ActualizeType(node, node->value.type);
-}
-*/
 
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = (node)->left;
@@ -674,7 +616,10 @@ static void TernaryIfStmt(AST_Node *node) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->left->token, "Predicate must be boolean, got type '%s' instead", TypeTranslation(node->left->data_type));
   }
 
-  // TODO: Check node types
+  if (!TypesMatchExactly(node->middle->data_type, node->right->data_type)) {
+    ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Branches have different types (If true: '%s', if false: '%s')", TypeTranslation(node->middle->data_type), TypeTranslation(node->right->data_type));
+  };
+
   SetNodeDataType(node, node->middle->data_type);
 
   PrintNode(node);
@@ -732,9 +677,6 @@ static void CheckTypesRecurse(AST_Node *node) {
     case FUNCTION_RETURN_TYPE_NODE: {
       SetNodeDataType(node, node->data_type);
     } break;
-    case FUNCTION_CALL_NODE: {
-      //FunctionCall(node);
-    } break;
     case IF_NODE: {
       IfStmt(node);
     } break;
@@ -767,11 +709,6 @@ static void CheckTypesRecurse(AST_Node *node) {
     default: {
       // Use declared type, no action required
     } break;
-  }
-
-  if (!NodeIs_Start(node) &&
-      !NodeIs_Chain(node)) {
-    //PrintNode(node);
   }
 }
 
