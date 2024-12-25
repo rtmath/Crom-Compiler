@@ -4,11 +4,14 @@ Function() :: void {
   while (true) {
     return;
   }
+
+  return;
 }
 
-`
 Function2() :: u8 {
   while (true) {
-    return b'10001000';
+    return `10001000`;
   }
+
+  return `11001100`;
 }

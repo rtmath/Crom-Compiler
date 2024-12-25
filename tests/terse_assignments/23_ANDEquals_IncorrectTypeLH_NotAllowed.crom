@@ -1,4 +1,4 @@
 // ERR_TYPE_DISAGREEMENT
 
 bool x  = true;
-     x &= b'00101000';
+     x &= `00101000`;

@@ -1,4 +1,4 @@
 // ERR_TYPE_DISAGREEMENT
 
-u8 check   = b'10011001';
+u8 check   = `10011001`;
    check <<= true;

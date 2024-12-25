@@ -132,10 +132,7 @@ static Token Hex() {
 }
 
 static Token Binary() {
-  Advance(); // consume the Peek()'d "'"
-
-  // Forget the "b'" from the start of the lexeme
-  Lexer.start = Lexer.end;
+  Lexer.start = Lexer.end; // Shave the '`' from the start of the lexeme
 
   while (Peek() == '0' || Peek() == '1') Advance();
 
@@ -143,11 +140,11 @@ static Token Binary() {
     return MakeErrorToken("Binary Literal cannot be more than 64 bits wide");
   }
 
-  if (Peek() != '\'') return MakeErrorToken("Expected \"\'\" after Binary Literal");
-  Advance(); // consume the Peek()'d "'"
+  if (Peek() != '`') return MakeErrorToken("Expected \'`\' after Binary Literal");
+  Advance(); // consume the Peek()'d "`"
 
   Token t = MakeToken(BINARY_LITERAL);
-  t.length--; // Shave the "'" from the end of the lexeme
+  t.length--; // Shave the "`" from the end of the lexeme
 
   return t;
 }
@@ -209,12 +206,6 @@ static bool LexemeEquals(const char *str, int len) {
          (memcmp(Lexer.start, str, len) == 0);
 }
 
-static Token SkipToEOF() {
-  while (Peek() != '\0') Advance();
-
-  return MakeToken(TOKEN_EOF);
-}
-
 static TokenType IdentifierType() {
   if (LexemeEquals( "i8", 2)) return I8;
   if (LexemeEquals("i16", 3)) return I16;
@@ -270,7 +261,6 @@ Token ScanToken() {
   if (c == '0' && Peek() == 'x') return Hex();
   if (IsNumber(c)) return Number();
 
-  if (c == 'b' && Peek() == '\'') return Binary();
   if (IsAlpha(c)) return Identifier();
 
   switch (c) {
@@ -298,7 +288,7 @@ Token ScanToken() {
     case '/': return MakeToken(Match('=') ? DIVIDE_EQUALS : DIVIDE);
     case '%': return MakeToken(Match('=') ? MODULO_EQUALS : MODULO);
     case '~': return MakeToken(BITWISE_NOT);
-    case '`': return SkipToEOF();
+    case '`': return Binary();
     case '^': return MakeToken(Match('=') ? BITWISE_XOR_EQUALS : BITWISE_XOR);
     case '&': return MakeToken(Match('=')
                                ? BITWISE_AND_EQUALS
