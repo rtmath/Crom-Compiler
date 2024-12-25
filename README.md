@@ -33,4 +33,33 @@ Some existing and planned features include:
 - [ ] Code generation
 - [ ] Optimization
 
+---
 
+### Syntax examples
+
+```
+// Structs and functions
+struct Vector2 {
+  i64 x;
+  i64 y;
+}
+
+V2Add(struct Vector2 a, struct Vector2 b) :: struct Vector2 {
+  struct Vector2 sum = { a.x + b.x, a.y + b.y };
+  return sum;
+}
+
+struct Vector2 position = { 100, 200 };
+struct Vector2 velocity = { 10, -5 };
+
+position = V2Add(position, velocity);
+
+```
+
+```
+// Binary literals
+u8 a = `1000 1000`;
+u8 b = `0111 0111`;
+
+bool equal = (a | b) == `1111 1111`;
+```
