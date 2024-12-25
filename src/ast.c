@@ -15,7 +15,7 @@ static const char* const _NodeTypeTranslation[] =
 
   [ASSIGNMENT_NODE] = "Assignment",
   [TERSE_ASSIGNMENT_NODE] = "Terse Assignment",
-  [INITIALIZER_LIST_NODE] = "Array Initializer List",
+  [INITIALIZER_LIST_NODE] = "Initializer List",
 
   [STRUCT_DECLARATION_NODE] = "Struct Declaration",
   [STRUCT_IDENTIFIER_NODE] = "Struct Identifier",
