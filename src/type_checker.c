@@ -260,7 +260,7 @@ static void Assignment(AST_Node *identifier) {
 
   if (NodeIs_Identifier(value)) {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
-    identifier->data_type = s.data_type;
+    SetNodeDataType(identifier, s.data_type);
   }
 
   SetNodeDataType(value, identifier->data_type);
@@ -480,7 +480,7 @@ static void UnaryOp(AST_Node *node) {
       ERROR_MSG(ERR_TYPE_DISAGREEMENT, check_node->token, "Operand must be type BOOL");
     }
 
-    node->data_type = node->left->data_type;
+    SetNodeDataType(node, node->left->data_type);
     return;
   }
 
@@ -489,7 +489,7 @@ static void UnaryOp(AST_Node *node) {
       ERROR_MSG(ERR_TYPE_DISAGREEMENT, check_node->token, "Operand must be of type Uint");
     }
 
-    node->data_type = node->left->data_type;
+    SetNodeDataType(node, node->left->data_type);
     return;
   }
 
@@ -501,7 +501,7 @@ static void UnaryOp(AST_Node *node) {
     }
 
     if (TypeIs_Int(check_node->data_type)) {
-      node->data_type = check_node->data_type;
+      SetNodeDataType(node, check_node->data_type);
       return;
     }
 
@@ -511,7 +511,7 @@ static void UnaryOp(AST_Node *node) {
     }
 
     if (TypeIs_Float(check_node->data_type)) {
-      node->data_type = check_node->data_type;
+      SetNodeDataType(node, check_node->data_type);
       return;
     }
 
@@ -520,7 +520,7 @@ static void UnaryOp(AST_Node *node) {
 }
 
 static void BinaryArithmeticOp(AST_Node *node) {
-  node->data_type = node->left->data_type;
+  SetNodeDataType(node, node->left->data_type);
 
   if (!TypeIsConvertible(node->right, node->data_type)) {
     ERROR_FMT(ERR_TYPE_DISAGREEMENT, node->right->token, "Can't convert from type %s to %s", TypeTranslation(node->right->data_type), TypeTranslation(node->data_type));

@@ -61,7 +61,7 @@ AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node
   AST_Node *n = calloc(1, sizeof(AST_Node));
 
   n->node_type = node_type;
-  n->data_type = type;
+  SetNodeDataType(n, type);
 
   n->left = left;
   n->middle = middle;
@@ -75,7 +75,7 @@ AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle,
 
   n->token = token;
   n->node_type = node_type;
-  n->data_type = type;
+  SetNodeDataType(n, type);
 
   n->left = left;
   n->middle = middle;
@@ -89,7 +89,7 @@ AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle
 
   n->token = symbol.token;
   n->node_type = node_type;
-  n->data_type = symbol.data_type;
+  SetNodeDataType(n, symbol.data_type);
 
   n->left = left;
   n->middle = middle;
