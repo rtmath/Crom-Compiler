@@ -94,6 +94,7 @@ Symbol AddTo(SymbolTable *st, Symbol s) {
     existing_symbol.declaration_state = s.declaration_state;
     existing_symbol.data_type = s.data_type;
     existing_symbol.token = s.token;
+    existing_symbol.value = s.value;
     existing_symbol.parent_struct_symbol_id_ref = s.parent_struct_symbol_id_ref;
 
     Symbol updated_symbol = SetSymbol(st, existing_symbol);

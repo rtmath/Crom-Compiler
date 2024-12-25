@@ -8,7 +8,6 @@
 #include "interpreter.h"
 #include "symbol_table.h"
 
-#if 0
 /* === Global === */
 static AST_Node *function_definitions[100]; // TODO: Dynamic array?
 static int fdi = 0;
@@ -36,7 +35,7 @@ static void BeginScope() {
 }
 
 static void EndScope() {
-  if (Scope.depth == 0) ERROR_AND_EXIT("How'd you end scope at depth 0?");
+  if (Scope.depth == 0) COMPILER_ERROR("How'd you end scope at depth 0?");
 
   DeleteSymbolTable(Scope.locals[Scope.depth]);
   Scope.locals[Scope.depth] = NULL;
@@ -45,7 +44,7 @@ static void EndScope() {
 /* === End Scope Related === */
 
 void Literal(AST_Node *n) {
-  n->value = NewValue(n->value.type, n->token);
+  n->value = NewValue(n->data_type, n->token);
 }
 
 void Identifier(AST_Node *n) {
@@ -54,13 +53,13 @@ void Identifier(AST_Node *n) {
   if (TypeIs_String(stored_symbol.value.type)) {
     if (!NodeIs_NULL(n->middle) && NodeIs_ArraySubscript(n->middle)) {
       // Extract char from a "str[i]"-type thing
-      int64_t index = TokenToInt64(n->middle->token, 10);
+      int64_t index = TokenToInt64(n->middle->token);
       n->value = NewCharValue(stored_symbol.value.as.string[index]);
     } else {
       n->value = stored_symbol.value;
     }
   } else if (TypeIs_Array(stored_symbol.value.type)) {
-    int subscript = TokenToInt64(n->middle->token, 10);
+    int subscript = TokenToInt64(n->middle->token);
     n->value = stored_symbol.value.as.array[subscript];
   } else {
     n->value = stored_symbol.value;
@@ -112,8 +111,8 @@ void Assignment(AST_Node *n) {
     symbol.value = n->left->value;
   }
 
-  AddTo(SYMBOL_TABLE(), symbol);
-  n->value = symbol.value;
+  Symbol updated_symbol = AddTo(SYMBOL_TABLE(), symbol);
+  n->value = updated_symbol.value;
 }
 
 void TerseAssignment(AST_Node *n) {
@@ -150,7 +149,7 @@ void TerseAssignment(AST_Node *n) {
     default: Print("TerseAssignment(): Not implemented yet\n");
   }
 
-  SetValue(SYMBOL_TABLE(), identifier->token, n->value);
+  SetSymbolValue(SYMBOL_TABLE(), identifier->token, n->value);
 }
 
 void Unary(AST_Node *n) {
@@ -298,9 +297,7 @@ void FunctionCall(AST_Node *n) {
   }
 
   if (fn_def == NULL) {
-    ERROR_AND_EXIT_FMTMSG(
-      "FunctionCall(): Couldn't find function definition for %.*s()",
-      n->token.length, n->token.position_in_source);
+    INTERPRETER_ERROR_FMTMSG("FunctionCall(): Couldn't find function definition for %.*s()", n->token.length, n->token.position_in_source);
   }
 
   BeginScope();
@@ -398,7 +395,7 @@ void PrefixDecrement(AST_Node *n) {
 }
 
 void PostfixDecrement(AST_Node *n) {
-  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
+  Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->token);
   n->value = s.value;
 
   if (TypeIs_Int(s.value.type)) {
@@ -476,9 +473,4 @@ void Interpret(AST_Node *root, SymbolTable *st) {
   Scope.locals[Scope.depth] = st;
 
   InterpretRecurse(root);
-}
-#endif
-
-void Interpret(AST_Node *root, SymbolTable *st) {
-  PrintAST(root);
 }

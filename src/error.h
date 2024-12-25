@@ -63,6 +63,7 @@ void ErrorVAList(const char *file, int line, const char *func_name, ErrorCode er
 #define COMPILER_ERROR(msg) ErrorAndExit(__FILE__, __LINE__, ERR_COMPILER, msg)
 #define COMPILER_ERROR_FMTMSG(fmt, ...) ErrorAndExit_Variadic(__FILE__, __LINE__, ERR_COMPILER, fmt, __VA_ARGS__)
 #define INTERPRETER_ERROR(msg) ErrorAndExit(__FILE__, __LINE__, ERR_INTERPRETER, msg)
+#define INTERPRETER_ERROR_FMTMSG(fmt, ...) ErrorAndExit_Variadic(__FILE__, __LINE__, ERR_INTERPRETER, fmt, __VA_ARGS__)
 
 void ErrorAndExit(const char *src_filename, int line_number, ErrorCode error_code, const char *msg);
 void ErrorAndExit_Variadic(const char *src_filename, int line_number, ErrorCode error_code, const char *fmt_string, ...);
