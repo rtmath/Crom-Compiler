@@ -134,11 +134,7 @@ static Token Hex() {
 static Token Binary() {
   Lexer.start = Lexer.end; // Shave the '`' from the start of the lexeme
 
-  while (Peek() == '0' || Peek() == '1') Advance();
-
-  if (LexemeLength() > (64)) {
-    return MakeErrorToken("Binary Literal cannot be more than 64 bits wide");
-  }
+  while (Peek() == '0' || Peek() == '1' || Peek() == ' ') Advance();
 
   if (Peek() != '`') return MakeErrorToken("Expected \'`\' after Binary Literal");
   Advance(); // consume the Peek()'d "`"
