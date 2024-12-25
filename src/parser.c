@@ -993,8 +993,7 @@ static AST_Node *StructMemberAccess(Token identifier) {
 
   StructMember *member = GetStructMember(parent_type.data_type, member_name);
 
-  AST_Node *parent_struct = NewNodeFromToken(STRUCT_IDENTIFIER_NODE, NULL, NULL, NULL, identifier, NoType());
-  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, parent_struct, member_name, member->type);
+  return NewNodeFromToken(STRUCT_MEMBER_IDENTIFIER_NODE, expr, array_index, NULL, member_name, member->type);
 }
 
 static void StructBody(AST_Node **struct_name) {
