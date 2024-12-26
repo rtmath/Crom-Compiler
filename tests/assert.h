@@ -9,5 +9,6 @@ typedef struct {
 void Assert(int expected_code, int actual_code, char *file_name, char *group_name);
 void PrintAssertionResults(char *group_name);
 void PrintResults(TestResults t, const char *test_group_name);
+void PrintResultTotals();
 
 #endif

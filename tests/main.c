@@ -50,4 +50,6 @@ int main() {
 
     PrintAssertionResults(group_name);
   }
+
+  PrintResultTotals();
 }

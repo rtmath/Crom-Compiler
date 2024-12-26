@@ -15,6 +15,9 @@ HashTable *ht;
 char *error_msgs[MAX_ERROR_MESSAGES];
 int emi = 0;
 
+static int total_succeeded;
+static int total_failed;
+
 static void LogError(const char *msg, ...) {
   if (emi < MAX_ERROR_MESSAGES) {
     char *str = malloc(sizeof(char) * MAX_ERROR_MSG_SIZE);
@@ -33,8 +36,10 @@ static void LogResults(bool predicate, const char *file_name) {
 
   if (predicate) {
     tr.succeeded++;
+    total_succeeded++;
   } else {
     tr.failed++;
+    total_failed++;
   }
 
   SetResults(ht, file_name, tr);
@@ -88,4 +93,15 @@ void PrintResults(TestResults t, const char *test_group_name) {
 
     emi = 0;
   }
+}
+
+void PrintResultTotals() {
+  bool error_occurred = total_succeeded < total_succeeded + total_failed;
+
+  const char *coloration = (error_occurred)
+                              ? "\x1b[31m"  // Set color: Red
+                              : "\x1b[34m"; // Set color: Blue
+  const char *stop_coloration = "\x1b[39m"; // Set color: Default
+
+  printf("%s%22d / %3d total assertions succeeded.%s\n", coloration, total_succeeded, total_succeeded + total_failed, stop_coloration);
 }
