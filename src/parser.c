@@ -547,6 +547,10 @@ static AST_Node *Identifier(bool can_assign) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier_token);
     }
 
+    if (TypeIs_EnumMember(identifier_symbol.data_type)) {
+      ERROR_MSG(ERR_IMPROPER_ASSIGNMENT, identifier_token, "Enum Member cannot be assigned to after declaration");
+    }
+
     if (TypeIs_Struct(identifier_symbol.data_type)) {
       Consume(LCURLY, "Identifier(): Expected { after struct assignment");
       AST_Node *initializer_list = InitializerList(identifier_symbol.data_type);
@@ -909,7 +913,7 @@ static AST_Node *EnumListEntry(bool can_assign) {
       ERROR(ERR_IMPROPER_ASSIGNMENT, identifier_token);
     }
 
-    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, symbol.data_type, DECL_DEFINED));
+    Symbol stored_symbol = AddTo(SYMBOL_TABLE(), NewSymbol(identifier_token, EnumMemberType(symbol.data_type), DECL_DEFINED));
     return NewNodeFromSymbol(ENUM_ASSIGNMENT_NODE, Expression(_), NULL, NULL, stored_symbol);
   }
 
@@ -978,7 +982,7 @@ static AST_Node *StructMemberAccess(Token identifier) {
   AST_Node *expr = NULL;
   AST_Node *array_index = NULL;
   Symbol identifier_symbol = RetrieveFrom(SYMBOL_TABLE(), identifier);
-  Symbol parent_type = GetSymbolById(SYMBOL_TABLE(), identifier_symbol.parent_struct_symbol_id_ref);
+  Symbol parent_type = GetSymbolById(SYMBOL_TABLE(), identifier_symbol.parent_struct_symbol_guid_ref);
 
   Consume(IDENTIFIER, "StructMemberAccess(): Expected identifier", "");
   Token member_name = Parser.current;

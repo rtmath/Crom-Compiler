@@ -99,6 +99,11 @@ Type NewFunctionType(TokenType t) {
   return type;
 }
 
+Type EnumMemberType(Type t) {
+  t.category = TC_ENUM_MEMBER;
+  return t;
+}
+
 void InlinePrintType(Type t) {
   if (t.category == TC_FUNCTION) {
     Print("Fn::");
@@ -156,6 +161,7 @@ const char *TypeCategoryTranslation(Type t) {
     case TC_NONE: return "NONE";
     case TC_ARRAY: return "ARRAY";
     case TC_FUNCTION: return "FUNCTION";
+    case TC_ENUM_MEMBER: return "ENUM MEMBER";
     default: return "NOT FOUND";
   }
 }
@@ -298,6 +304,10 @@ bool TypeIs_Bool(Type t) {
 
 bool TypeIs_Enum(Type t) {
   return t.specifier == T_ENUM;
+}
+
+bool TypeIs_EnumMember(Type t) {
+  return t.category == TC_ENUM_MEMBER;
 }
 
 bool TypeIs_Struct(Type t) {

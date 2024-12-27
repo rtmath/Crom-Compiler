@@ -19,9 +19,9 @@ enum DeclarationState {
 #define DEFINED(symbol)       (symbol.declaration_state == DECL_DEFINED)
 
 typedef struct {
-  int symbol_id;
+  int symbol_guid;
   int st_index;
-  int parent_struct_symbol_id_ref;
+  int parent_struct_symbol_guid_ref;
 
   enum DeclarationState declaration_state;
   Token token;

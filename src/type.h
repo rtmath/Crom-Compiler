@@ -10,6 +10,7 @@ enum TypeCategory {
   TC_NONE,
   TC_ARRAY,
   TC_FUNCTION,
+  TC_ENUM_MEMBER,
 };
 
 enum TypeSpecifier {
@@ -68,6 +69,7 @@ Type NoType();
 Type NewType(TokenType t);
 Type NewArrayType(TokenType t, int size);
 Type NewFunctionType(TokenType t);
+Type EnumMemberType(Type t);
 
 void InlinePrintType(Type t);
 void PrintType(Type t);
@@ -108,6 +110,7 @@ bool TypeIs_String(Type t);
 bool TypeIs_Bool(Type t);
 
 bool TypeIs_Enum(Type t);
+bool TypeIs_EnumMember(Type t);
 bool TypeIs_Struct(Type t);
 bool TypeIs_Void(Type t);
 

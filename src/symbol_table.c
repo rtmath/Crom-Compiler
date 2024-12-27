@@ -8,9 +8,9 @@
 
 static int symbol_guid = 0;
 static Symbol NOT_FOUND = {
-  .symbol_id = -1,
+  .symbol_guid = -1,
   .st_index = -1,
-  .parent_struct_symbol_id_ref = -1,
+  .parent_struct_symbol_guid_ref = -1,
 
   .declaration_state = DECL_NONE,
   .token = {
@@ -53,9 +53,9 @@ void DeleteSymbolTable(SymbolTable *st) {
 
 Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   Symbol s = {
-    .symbol_id = -1,
+    .symbol_guid = -1,
     .st_index = -1,
-    .parent_struct_symbol_id_ref = -1,
+    .parent_struct_symbol_guid_ref = -1,
 
     .declaration_state = d,
     .token = token,
@@ -69,9 +69,9 @@ Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   return s;
 }
 
-static Symbol GetSymbol(SymbolTable *st, int symbol_id) {
-  if (symbol_id < 0 || symbol_id >= st->count) return NOT_FOUND;
-  return DA_GET(st->symbols, symbol_id);
+static Symbol GetSymbol(SymbolTable *st, int symbol_guid) {
+  if (symbol_guid < 0 || symbol_guid >= st->count) return NOT_FOUND;
+  return DA_GET(st->symbols, symbol_guid);
 }
 
 static Symbol SetSymbol(SymbolTable *st, Symbol s) {
@@ -95,13 +95,13 @@ Symbol AddTo(SymbolTable *st, Symbol s) {
     existing_symbol.data_type = s.data_type;
     existing_symbol.token = s.token;
     existing_symbol.value = s.value;
-    existing_symbol.parent_struct_symbol_id_ref = s.parent_struct_symbol_id_ref;
+    existing_symbol.parent_struct_symbol_guid_ref = s.parent_struct_symbol_guid_ref;
 
     Symbol updated_symbol = SetSymbol(st, existing_symbol);
     return updated_symbol;
   }
 
-  s.symbol_id = symbol_guid++;
+  s.symbol_guid = symbol_guid++;
   Symbol stored_symbol = AddSymbol(st, s);
   st->count++;
 
@@ -184,7 +184,7 @@ Symbol SetSymbolParentStruct(SymbolTable *st, Token t, Symbol parent_struct) {
     return NOT_FOUND;
   }
 
-  s.parent_struct_symbol_id_ref = parent_struct.symbol_id;
+  s.parent_struct_symbol_guid_ref = parent_struct.symbol_guid;
   return AddTo(st, s);
 }
 
@@ -208,7 +208,7 @@ static void InlinePrintDeclarationState(enum DeclarationState ds) {
 }
 
 void PrintSymbol(Symbol s) {
-  Print("%d: %.*s\n", s.symbol_id, s.token.length, s.token.position_in_source);
+  Print("%d: %.*s\n", s.symbol_guid, s.token.length, s.token.position_in_source);
   InlinePrintDeclarationState(s.declaration_state);
   Print(" ");
   InlinePrintType(s.data_type);
@@ -217,7 +217,7 @@ void PrintSymbol(Symbol s) {
 }
 
 void InlinePrintSymbol(Symbol s) {
-  Print("Symbol %2d: '%.*s' ", s.symbol_id, s.token.length, s.token.position_in_source);
+  Print("Symbol %2d: '%.*s' ", s.symbol_guid, s.token.length, s.token.position_in_source);
   InlinePrintType(s.data_type);
   Print(" [");
   InlinePrintDeclarationState(s.declaration_state);
