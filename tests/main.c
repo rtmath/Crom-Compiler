@@ -30,7 +30,7 @@ void RunTest(char *compiler_path, char *test_path, char *file_name, char *group_
     exit(256);
   }
 
-  int expected = ExtractExpectedResult(test_path);
+  int expected = ExtractExpectedErrorCode(test_path);
 
   Assert(expected, status, file_name, group_name);
 }

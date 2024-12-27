@@ -134,7 +134,7 @@ char *CompilerProgramPath() {
   return ConcatPath(BuildSrcFullPath(), "t.out");
 }
 
-int ExtractExpectedResult(char *filename) {
+int ExtractExpectedErrorCode(char *filename) {
   char buf[200];
 
   FILE *fd = fopen(filename, "r");

@@ -10,7 +10,7 @@ struct Filepaths FolderPaths();
 struct Filepaths TestPaths(char *str);
 char *CompilerProgramPath();
 
-int ExtractExpectedResult(char *filename);
+int ExtractExpectedErrorCode(char *filename);
 char *ExtractEndOfPath(char *file_path);
 
 #endif
