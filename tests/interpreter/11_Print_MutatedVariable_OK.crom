@@ -1,0 +1,6 @@
+// OK
+
+i64 check = 20;
+check *= 2;
+
+print(check); // expected: 40

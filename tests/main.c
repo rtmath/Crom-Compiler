@@ -47,18 +47,31 @@ void RunTest(char *compiler_path, char *test_path, char *file_name, char *group_
   }
 
   char test_stdout[200] = {0};
-  if (fgets(&test_stdout[0], 200, tmp_fd) == NULL) return;
+  bool stdout_exists = (fgets(&test_stdout[0], 200, tmp_fd) != NULL);
 
   char *expected_stdout = ExtractExpectedPrintOutput(test_path);
-  if (expected_stdout) {
-    for (int i = 0; test_stdout[i] != '\0'; i++) {
-      if (test_stdout[i] == '\n') test_stdout[i] = '\0';
-    }
+  if (!stdout_exists && expected_stdout == NULL) goto cleanup;
 
-    bool strings_match = (expected_stdout != NULL) && (strncmp(&test_stdout[0], expected_stdout, strlen(expected_stdout)) == 0);
-
-    AssertPrintResult(strings_match, test_stdout, expected_stdout, file_name, group_name);
+  if (stdout_exists && expected_stdout == NULL) {
+    printf("Runtest(): File '%s' printed to stdout when nothing was expected\n", file_name);
+    goto cleanup;
   }
+
+  if (!stdout_exists && expected_stdout != NULL) {
+    printf("Runtest(): File '%s' did not print to stdout as expected", file_name);
+    goto cleanup;
+  }
+
+  for (int i = 0; test_stdout[i] != '\0'; i++) {
+    if (test_stdout[i] == '\n') test_stdout[i] = '\0';
+  }
+
+  bool strings_match = (expected_stdout != NULL) && (strncmp(&test_stdout[0], expected_stdout, strlen(expected_stdout)) == 0);
+
+  AssertPrintResult(strings_match, test_stdout, expected_stdout, file_name, group_name);
+
+cleanup:
+  fclose(tmp_fd);
 }
 
 int main() {

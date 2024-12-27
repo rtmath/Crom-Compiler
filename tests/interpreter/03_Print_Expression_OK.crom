@@ -1,0 +1,3 @@
+// OK
+
+print(10 + 16); // expected: 26

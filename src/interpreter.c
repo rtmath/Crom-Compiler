@@ -453,6 +453,13 @@ static void PrintCall(AST_Node *n) {
     InterpretPrint("%s\n", (value.as.boolean) ? "true" : "false");
     return;
   }
+
+  if (TypeIs_Enum(type)) {
+    InterpretPrint("%d\n", value.as.integer);
+    return;
+  }
+
+  InterpretPrint("PrintCall(): Not implemented yet\n");
 }
 
 static void InterpretRecurse(AST_Node *n) {
@@ -484,6 +491,7 @@ static void InterpretRecurse(AST_Node *n) {
     case BINARY_BITWISE_NODE: {
       BinaryBitwise(n);
     } break;
+    case ENUM_ASSIGNMENT_NODE:
     case ASSIGNMENT_NODE: {
       Assignment(n);
     } break;

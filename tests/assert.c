@@ -65,8 +65,8 @@ void AssertPrintResult(bool strings_match, char *test_stdout, char *expected_std
   if (!predicate) {
     LogError(MSG_SPACER "[%s]\n" MSG_SPACER "    Expected '%s', got '%s'",
              file_name,
-             test_stdout,
-             expected_stdout);
+             expected_stdout,
+             test_stdout);
   }
 
   LogResults(predicate, group_name);

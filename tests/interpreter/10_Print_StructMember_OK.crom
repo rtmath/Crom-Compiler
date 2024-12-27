@@ -1,0 +1,10 @@
+// OK
+
+struct Vector2 {
+  i64 x;
+  i64 y;
+}
+
+struct Vector2 check = { 1, 2 };
+
+print(check.y); // expected: 2

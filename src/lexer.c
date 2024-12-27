@@ -132,7 +132,7 @@ static Token Hex() {
 }
 
 static Token Binary() {
-  Lexer.start = Lexer.end; // Shave the '`' from the start of the lexeme
+  Lexer.start = Lexer.end; // Discard the '`' from the start of the lexeme
 
   while (Peek() == '0' || Peek() == '1' || Peek() == ' ') Advance();
 
@@ -140,7 +140,7 @@ static Token Binary() {
   Advance(); // consume the Peek()'d "`"
 
   Token t = MakeToken(BINARY_LITERAL);
-  t.length--; // Shave the "`" from the end of the lexeme
+  t.length--; // Discard the '`' from the end of the lexeme
 
   return t;
 }
@@ -167,6 +167,8 @@ static Token Number() {
 static Token Char() {
   if (Peek() == '\'') return MakeErrorToken("Empty char constant");
 
+  Lexer.start = Lexer.end; // Discard the beginning "'" from the lexeme
+
   Match('\\');
   Advance(); // consume char value
   if (Peek() != '\'') {
@@ -174,11 +176,14 @@ static Token Char() {
   }
   Advance(); // consume '
 
-  return MakeToken(CHAR_LITERAL);
+  Token t = MakeToken(CHAR_LITERAL);
+  t.length--; // Discard the ending "'" from the lexeme
+
+  return t;
 }
 
 static Token String() {
-  Lexer.start = Lexer.end; // Forget the '"' part of the lexeme
+  Lexer.start = Lexer.end; // Dicard the '"' part of the lexeme
 
   while (Peek() != '"' && !AtEOF()) {
     if (Peek() == '\0') return MakeErrorToken("Unterminated string");
@@ -192,7 +197,7 @@ static Token String() {
   Advance();
 
   Token t = MakeToken(STRING_LITERAL);
-  t.length--; // Shave the '"' from the end of the lexeme
+  t.length--; // Discard the '"' from the end of the lexeme
 
   return t;
 }

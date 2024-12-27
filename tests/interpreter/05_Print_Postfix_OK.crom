@@ -1,0 +1,5 @@
+// OK
+
+i32 check = 100;
+
+print(check--); // expected: 100

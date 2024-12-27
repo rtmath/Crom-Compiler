@@ -1,0 +1,5 @@
+// OK
+
+u8 check = `1111 0000 1111 0000`;
+
+print_binary(check); // expected: 11110000 11110000
