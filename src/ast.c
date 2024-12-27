@@ -40,6 +40,7 @@ static const char* const _NodeTypeTranslation[] =
   [FUNCTION_BODY_NODE] = "Fn Body",
   [FUNCTION_CALL_NODE] = "Fn Call",
   [FUNCTION_ARGUMENT_NODE] = "Fn Argument",
+  [PRINT_CALL_NODE] = "Print",
 
   [UNARY_OP_NODE] = "Unary",
   [BINARY_LOGICAL_NODE] = "Binary (Logical)",

@@ -25,7 +25,7 @@ Value NewValue(Type type, Token token) {
   } else if (TypeIs_Int(type)) {
     if (Int64Overflow(token)) {
       ERROR(ERR_OVERFLOW, token);
-      return (Value){ .type = NoType(), .as.integer = 0 };
+      return (Value){ .type = NewType(token.type), .as.integer = 0 };
     }
 
     int64_t integer = TokenToInt64(token);
@@ -34,7 +34,7 @@ Value NewValue(Type type, Token token) {
   } else if (TypeIs_Uint(type)) {
     if (Uint64Overflow(token)) {
       ERROR(ERR_OVERFLOW, token);
-      return (Value){ .type = NoType(), .as.uinteger = 0 };
+      return (Value){ .type = NewType(token.type), .as.uinteger = 0 };
     }
 
     uint64_t unsignedint = TokenToUint64(token);
@@ -43,7 +43,7 @@ Value NewValue(Type type, Token token) {
   } else if (TypeIs_Float(type)) {
     if (DoubleOverflow(token) || DoubleUnderflow(token)) {
       ERROR(ERR_OVERFLOW, token);
-      return (Value){ .type = NoType(), .as.floating = 0 };
+      return (Value){ .type = NewType(token.type), .as.floating = 0 };
     }
 
     double d = TokenToDouble(token);

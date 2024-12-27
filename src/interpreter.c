@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h> // for calloc
 #include <string.h> // for strncmp
 
@@ -43,11 +42,20 @@ static void EndScope() {
 }
 /* === End Scope Related === */
 
-void Literal(AST_Node *n) {
+static void InterpretPrint(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+
+  Print_VAList(fmt, args);
+
+  va_end(args);
+}
+
+static void Literal(AST_Node *n) {
   n->value = NewValue(n->data_type, n->token);
 }
 
-void Identifier(AST_Node *n) {
+static void Identifier(AST_Node *n) {
   Symbol stored_symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
 
   if (TypeIs_String(stored_symbol.value.type)) {
@@ -66,7 +74,7 @@ void Identifier(AST_Node *n) {
   }
 }
 
-Value ArrayInitializerList(AST_Node *n) {
+static Value ArrayInitializerList(AST_Node *n) {
   AST_Node **current = &n->left;
   Value *data = calloc(n->value.type.array_size, sizeof(Value));
   int i = 0;
@@ -95,7 +103,7 @@ Value ArrayInitializerList(AST_Node *n) {
   };
 }
 
-void Assignment(AST_Node *n) {
+static void Assignment(AST_Node *n) {
   Symbol symbol = {0};
   if (IsIn(SYMBOL_TABLE(), n->token)) {
     symbol = RetrieveFrom(SYMBOL_TABLE(), n->token);
@@ -115,7 +123,7 @@ void Assignment(AST_Node *n) {
   n->value = updated_symbol.value;
 }
 
-void TerseAssignment(AST_Node *n) {
+static void TerseAssignment(AST_Node *n) {
   AST_Node *identifier = n->left;
   AST_Node *value = n->right;
 
@@ -152,7 +160,7 @@ void TerseAssignment(AST_Node *n) {
   SetSymbolValue(SYMBOL_TABLE(), identifier->token, n->value);
 }
 
-void Unary(AST_Node *n) {
+static void Unary(AST_Node *n) {
   Type type = n->left->value.type;
   Value value = n->left->value;
 
@@ -195,7 +203,7 @@ void Unary(AST_Node *n) {
   }
 }
 
-void BinaryArithmetic(AST_Node *n) {
+static void BinaryArithmetic(AST_Node *n) {
   switch(n->token.type) {
     case PLUS: {
       n->value = AddValues(n->left->value,
@@ -223,7 +231,7 @@ void BinaryArithmetic(AST_Node *n) {
   }
 }
 
-void BinaryLogical(AST_Node *n) {
+static void BinaryLogical(AST_Node *n) {
   switch(n->token.type) {
     case EQUALITY: {
       n->value = Equality(n->left->value, n->right->value);
@@ -255,7 +263,7 @@ void BinaryLogical(AST_Node *n) {
   }
 }
 
-void BinaryBitwise(AST_Node *n) {
+static void BinaryBitwise(AST_Node *n) {
   switch(n->token.type) {
     case BITWISE_XOR: {
       n->value = NewUintValue(n->left->value.as.uinteger ^
@@ -283,7 +291,7 @@ void BinaryBitwise(AST_Node *n) {
   }
 }
 
-void FunctionCall(AST_Node *n) {
+static void FunctionCall(AST_Node *n) {
   // Linear search for function definition (TODO: Hashtable)
   AST_Node *fn_def = NULL;
   for (int i = 0; i < fdi; i++) {
@@ -325,7 +333,7 @@ void FunctionCall(AST_Node *n) {
   EndScope();
 }
 
-void StructDeclaration(AST_Node *struct_identifier) {
+static void StructDeclaration(AST_Node *struct_identifier) {
   AST_Node **current = &struct_identifier->left;
   while (*current != NULL) {
     if ((*current)->left == NULL) {
@@ -345,7 +353,7 @@ void StructDeclaration(AST_Node *struct_identifier) {
   }
 }
 
-void StructMemberAccess(AST_Node *struct_identifier) {
+static void StructMemberAccess(AST_Node *struct_identifier) {
   if (struct_identifier->right == NULL) {
     if (struct_identifier->left == NULL) {
       return;
@@ -357,7 +365,7 @@ void StructMemberAccess(AST_Node *struct_identifier) {
   //struct_identifier->value = GetStructValue(SYMBOL_TABLE(), struct_identifier->right->token, struct_identifier->token);
 }
 
-void PrefixIncrement(AST_Node *n) {
+static void PrefixIncrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   if (TypeIs_Int(s.value.type)) {
     s.value.as.integer++;
@@ -369,7 +377,7 @@ void PrefixIncrement(AST_Node *n) {
   n->value = stored_symbol.value;
 }
 
-void PostfixIncrement(AST_Node *n) {
+static void PostfixIncrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->token);
   n->value = s.value;
 
@@ -382,7 +390,7 @@ void PostfixIncrement(AST_Node *n) {
   AddTo(SYMBOL_TABLE(), s);
 }
 
-void PrefixDecrement(AST_Node *n) {
+static void PrefixDecrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->left->token);
   if (TypeIs_Int(s.value.type)) {
     s.value.as.integer--;
@@ -394,7 +402,7 @@ void PrefixDecrement(AST_Node *n) {
   n->value = stored_symbol.value;
 }
 
-void PostfixDecrement(AST_Node *n) {
+static void PostfixDecrement(AST_Node *n) {
   Symbol s = RetrieveFrom(SYMBOL_TABLE(), n->token);
   n->value = s.value;
 
@@ -405,6 +413,41 @@ void PostfixDecrement(AST_Node *n) {
   }
 
   AddTo(SYMBOL_TABLE(), s);
+}
+
+static void PrintCall(AST_Node *n) {
+  Type type = n->left->value.type;
+  Value value = n->left->value;
+
+  if (TypeIs_Int(type)) {
+    InterpretPrint("%ld\n", value.as.integer);
+    return;
+  }
+
+  if (TypeIs_Uint(type)) {
+    InterpretPrint("%lu\n", value.as.uinteger);
+    return;
+  }
+
+  if (TypeIs_Float(type)) {
+    InterpretPrint("%f\n", value.as.floating);
+    return;
+  }
+
+  if (TypeIs_Char(type)) {
+    InterpretPrint("%c\n", value.as.character);
+    return;
+  }
+
+  if (TypeIs_String(type)) {
+    InterpretPrint("%s\n", value.as.string);
+    return;
+  }
+
+  if (TypeIs_Bool(type)) {
+    InterpretPrint("%s\n", (value.as.boolean) ? "true" : "false");
+    return;
+  }
 }
 
 static void InterpretRecurse(AST_Node *n) {
@@ -462,6 +505,9 @@ static void InterpretRecurse(AST_Node *n) {
     } break;
     case FUNCTION_CALL_NODE: {
       FunctionCall(n);
+    } break;
+    case PRINT_CALL_NODE: {
+      PrintCall(n);
     } break;
     case RETURN_NODE: {
     } break;

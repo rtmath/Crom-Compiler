@@ -73,6 +73,7 @@ static AST_Node *ArraySubscripting(bool unused);
 static AST_Node *Enum(bool unused);
 static AST_Node *Struct(bool unused);
 static AST_Node *Literal(bool unused);
+static AST_Node *PrintCall(bool unused);
 
 static ParseRule Rules[] = {
   // Type Keywords
@@ -144,6 +145,8 @@ static ParseRule Rules[] = {
   [BITWISE_OR]          = {  NULL, Binary, BITWISE },
   [BITWISE_LEFT_SHIFT]  = {  NULL, Binary, BITWISE },
   [BITWISE_RIGHT_SHIFT] = {  NULL, Binary, BITWISE },
+
+  [PRINT]               = { PrintCall, NULL, NO_PRECEDENCE },
 
   // Misc
   [TOKEN_EOF]      = { NULL, NULL, PREC_EOF },
@@ -1277,6 +1280,15 @@ static AST_Node *Literal(bool) {
              ? NewArrayType(Parser.current.type, Parser.current.length)
              : NewType(Parser.current.type);
   return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, t);
+}
+
+static AST_Node *PrintCall(bool) {
+  Token remember = Parser.current;
+  Consume(LPAREN, "Print(): Expected '(' after print");
+  AST_Node *expr = Expression(_);
+  Consume(RPAREN, "Print(): Expected ')' after print");
+
+  return NewNodeFromToken(PRINT_CALL_NODE, expr, NULL, NULL, remember, NewType(VOID));
 }
 
 AST_Node *ParserBuildAST() {

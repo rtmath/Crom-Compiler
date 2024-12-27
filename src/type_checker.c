@@ -706,6 +706,7 @@ static void CheckTypesRecurse(AST_Node *node) {
     case ARRAY_SUBSCRIPT_NODE:
     case STRUCT_DECLARATION_NODE:
     case DECLARATION_NODE:
+    case PRINT_CALL_NODE:
     default: {
       // Use declared type, no action required
     } break;
