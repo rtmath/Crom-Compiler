@@ -99,7 +99,7 @@ void DebugPrintSymbolsOnExit() {
 void DebugReportErrorCode() {
 #ifndef RUNNING_TESTS
   DebugPrintSymbolsOnExit();
-  printf("\nExit Code: %s\n", ErrorCodeTranslation(error_code));
+  Print("\nExit Code: %s\n", ErrorCodeTranslation(error_code));
 #endif
 }
 

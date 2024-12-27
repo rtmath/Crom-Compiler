@@ -229,7 +229,10 @@ void InlinePrintSymbol(Symbol s) {
 }
 
 void PrintAllSymbols(SymbolTable *st) {
-  Print("\n|-- SYMBOLS --|\n");
+  if (st->count > 0) {
+    Print("\n|-- SYMBOLS --|\n");
+  }
+
   for (int i = 0; i < st->count; i++ ) {
     InlinePrintSymbol(DA_GET(st->symbols, i));
     Print("\n");
