@@ -11,7 +11,9 @@
 #include "io.h"
 #include "lexer.h"
 
-static bool IN_LOOP = false;
+static bool IN_LOOP;
+static bool IN_FUNCTION;
+static Token IN_FUNCTION_NAME;
 
 struct {
   Token current;
@@ -488,7 +490,7 @@ static AST_Node *Identifier(bool can_assign) {
   if (Match(LPAREN)) {
     if (NextTokenIsAnyType() ||
         (NextTokenIs(RPAREN) && TokenAfterNextIs(COLON_SEPARATOR)))
-    { // Declaration
+    { // Function declaration
       if (is_in_symbol_table && !DECLARED(identifier_symbol)) {
         ERROR(ERR_REDECLARED, identifier_token);
       }
@@ -498,9 +500,9 @@ static AST_Node *Identifier(bool can_assign) {
 
       return FunctionDeclaration(identifier_token);
     } else { // Function call
-      if (!is_in_symbol_table) {
+      if (!is_in_symbol_table && !TokenValuesMatch(identifier_token, IN_FUNCTION_NAME)) {
         ERROR(ERR_UNDECLARED, identifier_token);
-      } else if (!DEFINED(identifier_symbol)) {
+      } else if (!DEFINED(identifier_symbol) && !TokenValuesMatch(identifier_token, IN_FUNCTION_NAME)) {
         ERROR(ERR_UNDEFINED, identifier_token);
       }
 
@@ -850,13 +852,14 @@ static AST_Node *Continue(bool) {
 }
 
 static AST_Node *Return(bool) {
+  Token remember = Parser.current;
   AST_Node *expr = NULL;
 
   if (!NextTokenIs(SEMICOLON)) {
     expr = Expression(_);
   }
 
-  return NewNodeFromToken(RETURN_NODE, expr, NULL, NULL, Parser.current, (expr == NULL) ? NewType(VOID) : expr->data_type);
+  return NewNodeFromToken(RETURN_NODE, expr, NULL, NULL, remember, (expr == NULL) ? NewType(VOID) : expr->data_type);
 }
 
 static AST_Node *Parens(bool) {
@@ -1191,6 +1194,9 @@ static AST_Node *FunctionBody(Token function_name) {
   AST_Node **current = &body;
 
   BeginScope();
+  IN_FUNCTION = true;
+  IN_FUNCTION_NAME = function_name;
+
   AddParams(SYMBOL_TABLE(), function);
 
   while (!NextTokenIs(RCURLY) && !NextTokenIs(TOKEN_EOF)) {
@@ -1203,6 +1209,8 @@ static AST_Node *FunctionBody(Token function_name) {
   Consume(RCURLY, "FunctionBody(): Expected '}' after function body");
 
   EndScope();
+  IN_FUNCTION = false;
+  IN_FUNCTION_NAME = (Token){0};
 
   if (body->left == NULL) { // Insert a Void Return if there's no function body
     body->left = NewNode(RETURN_NODE, NULL, NULL, NULL, NewType(VOID));

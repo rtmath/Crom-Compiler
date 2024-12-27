@@ -414,6 +414,11 @@ static void Function(AST_Node *node) {
   }
 }
 
+static void FunctionCall(AST_Node *node) {
+  Symbol s = RetrieveFrom(SYMBOL_TABLE, node->token);
+  node->data_type = s.data_type;
+}
+
 static void UnaryOp(AST_Node *node) {
   AST_Node *check_node = (node)->left;
 
@@ -676,6 +681,9 @@ static void CheckTypesRecurse(AST_Node *node) {
     case FUNCTION_PARAM_NODE:
     case FUNCTION_RETURN_TYPE_NODE: {
       SetNodeDataType(node, node->data_type);
+    } break;
+    case FUNCTION_CALL_NODE: {
+      FunctionCall(node);
     } break;
     case IF_NODE: {
       IfStmt(node);

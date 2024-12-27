@@ -58,7 +58,7 @@ void RunTest(char *compiler_path, char *test_path, char *file_name, char *group_
   }
 
   if (!stdout_exists && expected_stdout != NULL) {
-    printf("Runtest(): File '%s' did not print to stdout as expected", file_name);
+    printf("Runtest(): File '%s' did not print to stdout as expected\n", file_name);
     goto cleanup;
   }
 
