@@ -134,6 +134,10 @@ char *CompilerProgramPath() {
   return ConcatPath(BuildSrcFullPath(), "t.out");
 }
 
+char *TmpFilePath() {
+  return ConcatPath(BuildSrcFullPath(), "tmp.txt");
+}
+
 int ExtractExpectedErrorCode(char *filename) {
   char buf[200];
 
@@ -161,6 +165,45 @@ int ExtractExpectedErrorCode(char *filename) {
   fclose(fd);
 
   return ErrorCodeLookup(str);
+}
+
+char *ExtractUntilNewline(char *str) {
+  int i = 0;
+  while (str[i] != '\n' && str[i] != '\0') {
+    i++;
+  }
+
+  char *new_str = calloc(i + 1, sizeof(char));
+  for (int j = 0; j < i; j++) {
+    new_str[j] = str[j];
+  }
+  new_str[i + 1] = '\0';
+
+  return new_str;
+}
+
+char *ExtractExpectedPrintOutput(char *filename) {
+  FILE *fd = fopen(filename, "r");
+  if (fd == NULL) {
+    printf("ExtractExpectedResult(): Could not open file '%s'\n", filename);
+    return 0;
+  }
+
+  char buf[200];
+
+  while (fgets(buf, 200, fd) != NULL) {
+    for (int i = 0; buf[i] != '\n' && i < 200; i++) {
+      char comment[] = "// expected: ";
+      int len = strlen(&comment[0]);
+
+      if (strncmp(&buf[i], &comment[0], len) == 0) {
+        // Extract everything after "// expected: " until the end of line
+        return ExtractUntilNewline(&buf[i + len]);
+      }
+    }
+  }
+
+  return NULL;
 }
 
 char *ExtractEndOfPath(char *file_path) {

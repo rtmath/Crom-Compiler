@@ -9,8 +9,12 @@
 #include "test_io.h"
 
 void RunTest(char *compiler_path, char *test_path, char *file_name, char *group_name) {
-  char *partial_command = Concat(compiler_path, " ");
-  char *full_command = Concat(partial_command, test_path);
+  // Here I'm piping each test's stdout to a tmp file so that the interpreter's
+  // print() output can be verified without polluting the normal stdout
+  char *partial_path = Concat(compiler_path, " ");
+  char *full_path = Concat(partial_path, test_path);
+  char *add_pipe = Concat(full_path, " > ");
+  char *full_command = Concat(add_pipe, TmpFilePath());
 
   errno = 0;
   int result = system(full_command);
@@ -30,9 +34,31 @@ void RunTest(char *compiler_path, char *test_path, char *file_name, char *group_
     exit(256);
   }
 
-  int expected = ExtractExpectedErrorCode(test_path);
+  // Assert error code matches
+  int expected_code = ExtractExpectedErrorCode(test_path);
+  Assert(expected_code, status, file_name, group_name);
 
-  Assert(expected, status, file_name, group_name);
+  // Assert print output matches, if applicable
+  // TODO: Cleanup
+  FILE *tmp_fd = fopen(TmpFilePath(), "r");
+  if (tmp_fd == NULL) {
+    printf("Could not open %s\n", TmpFilePath());
+    exit(300);
+  }
+
+  char test_stdout[200] = {0};
+  if (fgets(&test_stdout[0], 200, tmp_fd) == NULL) return;
+
+  char *expected_stdout = ExtractExpectedPrintOutput(test_path);
+  if (expected_stdout) {
+    for (int i = 0; test_stdout[i] != '\0'; i++) {
+      if (test_stdout[i] == '\n') test_stdout[i] = '\0';
+    }
+
+    bool strings_match = (expected_stdout != NULL) && (strncmp(&test_stdout[0], expected_stdout, strlen(expected_stdout)) == 0);
+
+    AssertPrintResult(strings_match, test_stdout, expected_stdout, file_name, group_name);
+  }
 }
 
 int main() {

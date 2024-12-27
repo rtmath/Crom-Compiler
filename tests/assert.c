@@ -1,5 +1,4 @@
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -54,6 +53,20 @@ void Assert(int expected_code, int actual_code, char *file_name, char *group_nam
              file_name,
              ErrorCodeTranslation(expected_code),
              ErrorCodeTranslation(actual_code));
+  }
+
+  LogResults(predicate, group_name);
+}
+
+void AssertPrintResult(bool strings_match, char *test_stdout, char *expected_stdout, char *file_name, char *group_name) {
+  if (ht == NULL) ht = NewHashTable();
+
+  bool predicate = strings_match;
+  if (!predicate) {
+    LogError(MSG_SPACER "[%s]\n" MSG_SPACER "    Expected '%s', got '%s'",
+             file_name,
+             test_stdout,
+             expected_stdout);
   }
 
   LogResults(predicate, group_name);

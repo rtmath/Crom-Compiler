@@ -9,8 +9,10 @@ struct Filepaths {
 struct Filepaths FolderPaths();
 struct Filepaths TestPaths(char *str);
 char *CompilerProgramPath();
+char *TmpFilePath();
 
 int ExtractExpectedErrorCode(char *filename);
+char *ExtractExpectedPrintOutput(char *filename);
 char *ExtractEndOfPath(char *file_path);
 
 #endif

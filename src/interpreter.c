@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdio.h>  // for vprintf
 #include <stdlib.h> // for calloc
 #include <string.h> // for strncmp
 
@@ -46,7 +47,11 @@ static void InterpretPrint(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
 
+#ifdef RUNNING_TESTS
+  vprintf(fmt, args);
+#else
   Print_VAList(fmt, args);
+#endif
 
   va_end(args);
 }
