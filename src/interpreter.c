@@ -13,7 +13,7 @@ static AST_Node *function_definitions[100]; // TODO: Dynamic array?
 static int fdi = 0;
 
 /* === Forward Declarations === */
-static void InterpretRecurse(AST_Node *n);
+static void InterpretRecurse(AST_Node *n, Value *return_value);
 
 /* === Scope Related === */
 SymbolTable *shadowed_symbol_table;
@@ -319,11 +319,18 @@ static void FunctionCall(AST_Node *n) {
   AST_Node *params = fn_def->middle;
   AST_Node *args   = n->middle;
   while (args != NULL) {
-    Symbol s = AddTo(SYMBOL_TABLE(),
-                     NewSymbol(params->token,
-                               params->value.type,
-                               DECL_DEFINED));
-    s.value = NewValue(args->value.type, args->token);
+    Value value;
+    if (args->token.type == IDENTIFIER) {
+      Symbol identifier = RetrieveFrom(SYMBOL_TABLE(), args->token);
+      value = identifier.value;
+    } else {
+      value = NewValue(n->data_type, args->token);
+    }
+
+    Symbol s = NewSymbol(params->token,
+                         params->data_type,
+                         DECL_DEFINED);
+    s.value = value;
     AddTo(SYMBOL_TABLE(), s);
 
     params = params->left;
@@ -332,7 +339,9 @@ static void FunctionCall(AST_Node *n) {
 
   // Evaluate function body
   if (fn_def->right != NULL) {
-    InterpretRecurse(fn_def->right);
+    Value return_value;
+    InterpretRecurse(fn_def->right, &return_value);
+    n->value = return_value; // Testing
   }
 
   EndScope();
@@ -462,15 +471,15 @@ static void PrintCall(AST_Node *n) {
   InterpretPrint("PrintCall(): Not implemented yet\n");
 }
 
-static void InterpretRecurse(AST_Node *n) {
+static void InterpretRecurse(AST_Node *n, Value *return_value) {
   if (NodeIs_Function(n)) {
     function_definitions[fdi++] = n;
     return;
   }
 
-  if (!NodeIs_NULL(n->left))   InterpretRecurse(n->left);
-  if (!NodeIs_NULL(n->middle)) InterpretRecurse(n->middle);
-  if (!NodeIs_NULL(n->right))  InterpretRecurse(n->right);
+  if (!NodeIs_NULL(n->left))   InterpretRecurse(n->left, return_value);
+  if (!NodeIs_NULL(n->middle)) InterpretRecurse(n->middle, return_value);
+  if (!NodeIs_NULL(n->right))  InterpretRecurse(n->right, return_value);
 
   switch(n->node_type) {
     case STRUCT_DECLARATION_NODE: {
@@ -523,6 +532,9 @@ static void InterpretRecurse(AST_Node *n) {
       PrintCall(n);
     } break;
     case RETURN_NODE: {
+      if (return_value != NULL) {
+        *return_value = n->left->value;
+      }
     } break;
     default: break;
   }
@@ -531,5 +543,5 @@ static void InterpretRecurse(AST_Node *n) {
 void Interpret(AST_Node *root, SymbolTable *st) {
   Scope.locals[Scope.depth] = st;
 
-  InterpretRecurse(root);
+  InterpretRecurse(root, NULL);
 }
