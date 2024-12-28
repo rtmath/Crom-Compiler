@@ -471,6 +471,45 @@ static void PrintCall(AST_Node *n) {
   InterpretPrint("PrintCall(): Not implemented yet\n");
 }
 
+static uint64_t ReverseBits(uint64_t regular) {
+#define BITS_PER_BYTE 8
+
+  uint64_t reversed = regular;
+  int total_shifting_needed = sizeof(reversed) * BITS_PER_BYTE - 1;
+
+  for (regular >>= 1; regular; regular >>= 1) {
+    reversed <<= 1;
+    reversed |= regular & 0x1;
+    total_shifting_needed--;
+  }
+
+  // when the high bits of 'regular' are all zero, this will shift the
+  // reversed bits into the appropriate place
+  reversed <<= total_shifting_needed;
+
+  return reversed;
+
+#undef BITS_PER_BYTE
+}
+
+static void PrintBinaryCall(AST_Node *n) {
+  Type type = n->left->value.type;
+  Value value = n->left->value;
+
+  int bit_width = GetTypeBitWidth(type);
+  int bytes = bit_width / 8;
+
+  uint64_t uint = ReverseBits(value.as.uinteger) >> (64 - bit_width);
+  for (int byte = 0; byte < bytes; byte++ ) {
+    if (byte > 0) printf(" ");
+
+    for (int bit = 0; bit < 8; bit++) {
+      printf("%lu", uint & 0x1);
+      uint >>= 1;
+    }
+  }
+}
+
 static void InterpretRecurse(AST_Node *n, Value *return_value) {
   if (NodeIs_Function(n)) {
     function_definitions[fdi++] = n;
@@ -530,6 +569,9 @@ static void InterpretRecurse(AST_Node *n, Value *return_value) {
     } break;
     case PRINT_CALL_NODE: {
       PrintCall(n);
+    } break;
+    case PRINT_BINARY_CALL_NODE: {
+      PrintBinaryCall(n);
     } break;
     case RETURN_NODE: {
       if (return_value != NULL) {

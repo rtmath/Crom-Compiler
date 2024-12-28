@@ -61,6 +61,8 @@ typedef struct FnParam {
   struct FnParam *next;
 } FnParam;
 
+int GetTypeBitWidth(Type t);
+
 Type SmallestContainingIntType(int64_t i64);
 Type SmallestContainingUintType(uint64_t u64);
 Type SmallestContainingFloatType(double d);

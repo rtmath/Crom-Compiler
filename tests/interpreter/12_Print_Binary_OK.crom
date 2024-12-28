@@ -1,5 +1,6 @@
 // OK
 
-u8 check = `1111 0000 1111 0000`;
+u16 a = `1010 1010 1010 1010`;
+u16 b = `0101 0101 0101 0101`;
 
-print_binary(check); // expected: 11110000 11110000
+print_binary(a | b); // expected: 11111111 11111111

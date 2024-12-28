@@ -27,6 +27,19 @@ static int GetBase(Token t) {
 #undef BASE_2
 }
 
+static char *RemoveSpaces(Token t) {
+  char *new_str = calloc(t.length, sizeof(char));
+
+  int c = 0;
+  for (int i = 0; i < t.length; i++) {
+    if (t.position_in_source[i] != ' ') {
+      new_str[c++] = t.position_in_source[i];
+    }
+  }
+
+  return new_str;
+}
+
 int64_t TokenToInt64(Token t) {
   bool literal_is_negative = (t.position_in_source - 1)[0] == '-';
   int base = GetBase(t);
@@ -46,8 +59,11 @@ int64_t TokenToInt64(Token t) {
 uint64_t TokenToUint64(Token t) {
   int base = GetBase(t);
 
+  // Remove spaces from binary literal, if any
+  const char *chars = (base == 2) ? RemoveSpaces(t) : t.position_in_source;
+
   errno = 0;
-  unsigned long long value = strtoull(t.position_in_source, NULL, base);
+  unsigned long long value = strtoull(chars, NULL, base);
   if (errno != 0) {
     SetErrorCode(ERR_OVERFLOW);
     COMPILER_ERROR("TokenToUint64() overflow");

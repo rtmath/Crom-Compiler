@@ -47,6 +47,7 @@ static const char* const _TokenTypeTranslation[] =
   [BITWISE_LEFT_SHIFT_EQUALS] = "LEFT_SHIFT_EQUALS", [BITWISE_RIGHT_SHIFT_EQUALS] = "RIGHT_SHIFT_EQUALS",
 
   [PRINT] = "PRINT",
+  [PRINT_BINARY] = "PRINT_BINARY",
   [ERROR] = "ERROR",
   [TOKEN_EOF] = "EOF"
 };

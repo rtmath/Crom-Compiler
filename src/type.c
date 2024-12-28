@@ -58,6 +58,16 @@ Type _NewType(TokenType t, int array_size) {
   }
 }
 
+int GetTypeBitWidth(Type t) {
+  if (t.specifier == T_I8  || t.specifier == T_U8) return 8;
+  if (t.specifier == T_I16 || t.specifier == T_U16) return 16;
+  if (t.specifier == T_I32 || t.specifier == T_U32 || t.specifier == T_F32) return 32;
+  if (t.specifier == T_I64 || t.specifier == T_U64 || t.specifier == T_F64) return 64;
+
+  // TODO: Implement other types?
+  return 0;
+}
+
 Type SmallestContainingIntType(int64_t i64) {
   if (i64 >= INT8_MIN  && i64 <= INT8_MAX)  return NewType(I8);
   if (i64 >= INT16_MIN && i64 <= INT16_MAX) return NewType(I16);
