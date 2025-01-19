@@ -1,7 +1,0 @@
-// OK
-
-Add(i64 x, i64 y) :: i64 {
-  return x + y;
-}
-
-print(Add(37, 10)); // expected: 47

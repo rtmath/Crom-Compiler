@@ -58,20 +58,6 @@ void Assert(int expected_code, int actual_code, char *file_name, char *group_nam
   LogResults(predicate, group_name);
 }
 
-void AssertPrintResult(bool strings_match, char *test_stdout, char *expected_stdout, char *file_name, char *group_name) {
-  if (ht == NULL) ht = NewHashTable();
-
-  bool predicate = strings_match;
-  if (!predicate) {
-    LogError(MSG_SPACER "[%s]\n" MSG_SPACER "    Expected '%s', got '%s'",
-             file_name,
-             expected_stdout,
-             test_stdout);
-  }
-
-  LogResults(predicate, group_name);
-}
-
 void PrintAssertionResults(char *group_name) {
   if (ht == NULL) return;
 

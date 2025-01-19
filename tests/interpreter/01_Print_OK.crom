@@ -1,3 +1,0 @@
-// OK
-
-print(10); // expected: 10

@@ -1,3 +1,0 @@
-// OK
-
-print('z'); // expected: z

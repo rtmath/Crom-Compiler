@@ -1,5 +1,0 @@
-// OK
-
-i64 check = 10;
-
-print(++check); // expected: 11

@@ -242,9 +242,6 @@ static TokenType IdentifierType() {
   if (LexemeEquals("true", 4))  return BOOL_LITERAL;
   if (LexemeEquals("false", 5)) return BOOL_LITERAL;
 
-  if (LexemeEquals("print", 5)) return PRINT;
-  if (LexemeEquals("print_binary", 12)) return PRINT_BINARY;
-
   return IDENTIFIER;
 }
 

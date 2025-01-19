@@ -28,8 +28,7 @@ Some existing and planned features include:
 - [x] Lexer
 - [x] Parser
 - [x] Type Checker
-- [ ] Interpreter (in progress)
-- [ ] IR generation
+- [ ] IR generation (in progress)
 - [ ] Code generation
 - [ ] Optimization
 

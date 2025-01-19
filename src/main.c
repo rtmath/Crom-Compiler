@@ -2,7 +2,6 @@
 
 #include "ast.h"
 #include "compiler.h"
-#include "interpreter.h"
 #include "io.h"
 #include "symbol_table.h"
 
@@ -18,8 +17,6 @@ int main(int argc, char **argv) {
 
   SymbolTable *st = NewSymbolTable();
   AST_Node *compiled_code = Compile(filename, contents, st);
-
-  Interpret(compiled_code, st);
 
   DebugReportErrorCode();
   return 0;

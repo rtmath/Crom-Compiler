@@ -1,5 +1,4 @@
 #include "compiler.h"
-#include "interpreter.h"
 #include "lexer.h"
 #include "parser.h"
 #include "symbol_table.h"
