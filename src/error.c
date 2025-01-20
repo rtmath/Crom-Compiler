@@ -32,6 +32,7 @@ const char *ErrorCodeTranslation(ErrorCode code) {
     case ERR_IMPROPER_VOID:        return "IMPROPER VOID";
     case ERR_INVALID_BREAK:        return "INVALID BREAK";
     case ERR_INVALID_CONTINUE:     return "INVALID CONTINUE";
+    case ERR_ARRAY_OUT_OF_BOUNDS:  return "ARRAY OUT OF BOUNDS";
     case ERR_OVERFLOW:             return "OVERFLOW";
     case ERR_UNDERFLOW:            return "UNDERFLOW";
     case ERR_TOO_MANY:             return "TOO MANY";
@@ -68,6 +69,7 @@ ErrorCode ErrorCodeLookup(char *str) {
   if (StringsMatch(str, "ERR_INVALID_CONTINUE")) return ERR_INVALID_CONTINUE;
   if (StringsMatch(str, "ERR_OVERFLOW")) return ERR_OVERFLOW;
   if (StringsMatch(str, "ERR_UNDERFLOW")) return ERR_UNDERFLOW;
+  if (StringsMatch(str, "ERR_ARRAY_OUT_OF_BOUNDS")) return ERR_ARRAY_OUT_OF_BOUNDS;
   if (StringsMatch(str, "ERR_TOO_MANY")) return ERR_TOO_MANY;
   if (StringsMatch(str, "ERR_TOO_FEW")) return ERR_TOO_FEW;
   if (StringsMatch(str, "ERR_EMPTY_PREDICATE")) return ERR_EMPTY_PREDICATE;
@@ -151,6 +153,9 @@ void Error(const char *file, int line, const char *func_name, ErrorCode error_co
     } break;
     case ERR_INVALID_CONTINUE: {
       Print("Continue cannot be used outside of a loop");
+    } break;
+    case ERR_ARRAY_OUT_OF_BOUNDS: {
+      Print("Array Out Of Bounds");
     } break;
     case ERR_OVERFLOW: {
       Print("Overflow");
