@@ -217,13 +217,11 @@ void PrintSymbol(Symbol s) {
 }
 
 void InlinePrintSymbol(Symbol s) {
-  Print("Symbol %2d: '%.*s' ", s.symbol_guid, s.token.length, s.token.position_in_source);
-  InlinePrintType(s.data_type);
-  Print(" [");
+  Print("[");
   InlinePrintDeclarationState(s.declaration_state);
-  Print("]");
+  Print("] ");
+  Print("Symbol %2d: '%.*s' ", s.symbol_guid, s.token.length, s.token.position_in_source);
   if (DEFINED(s)) {
-    Print(" | ");
     InlinePrintValue(s.value);
   }
 }
