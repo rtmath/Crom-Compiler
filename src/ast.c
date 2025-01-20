@@ -99,51 +99,51 @@ AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle
   return n;
 }
 
-void SetNodeDataType(AST_Node *node, Type t) {
-  node->data_type = t;
+void SetNodeDataType(AST_Node *n, Type t) {
+  n->data_type = t;
 }
 
-static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
+static void PrintASTRecurse(AST_Node *n, int depth, int unindent) {
   #define NUM_INDENT_SPACES 4
 
-  if (node == NULL) return;
-  if (NodeIs_Chain(node)        &&
-      NodeIs_NULL(node->left)   &&
-      NodeIs_NULL(node->middle) &&
-      NodeIs_NULL(node->right)) return;
+  if (n== NULL) return;
+  if (NodeIs_Chain(n)        &&
+      NodeIs_NULL(n->left)   &&
+      NodeIs_NULL(n->middle) &&
+      NodeIs_NULL(n->right)) return;
 
   char buf[100] = {0};
   int i = 0;
-  for (; i < (depth * NUM_INDENT_SPACES) - unindent && i + node->token.length < 100; i++) {
+  for (; i < (depth * NUM_INDENT_SPACES) - unindent && i + n->token.length < 100; i++) {
     buf[i] = (i == 0) ? '|' : ' ';
   }
   buf[i] = '\0';
 
   Print("%s", buf);
-  if (node->token.type != UNINITIALIZED) {
-    (node->token.type == STRING_LITERAL)
-    ? Print("\"%.*s\" ", node->token.length, node->token.position_in_source)
-    : Print("%.*s ", node->token.length, node->token.position_in_source);
+  if (n->token.type != UNINITIALIZED) {
+    (n->token.type == STRING_LITERAL)
+    ? Print("\"%.*s\" ", n->token.length, n->token.position_in_source)
+    : Print("%.*s ", n->token.length, n->token.position_in_source);
   }
 
-  if (!TypeIs_None(node->data_type) && node->node_type != START_NODE) {
-    InlinePrintType(node->data_type);
+  if (!TypeIs_None(n->data_type) && n->node_type != START_NODE) {
+    InlinePrintType(n->data_type);
     Print(" ");
   }
 
-  if (!NodeIs_Untyped(node) &&
-      !NodeIs_Chain(node)   &&
-      !NodeIs_Start(node)   &&
-      !NodeIs_Function(node)) {
-    Print("%s", NodeTypeTranslation(node->node_type));
+  if (!NodeIs_Untyped(n) &&
+      !NodeIs_Chain(n)   &&
+      !NodeIs_Start(n)   &&
+      !NodeIs_Function(n)) {
+    Print("%s", NodeTypeTranslation(n->node_type));
   }
 
   Print("\n");
 
-  if (NodeIs_Chain(node)) unindent += NUM_INDENT_SPACES;
-  PrintASTRecurse(node->left, depth + 1, unindent);
-  PrintASTRecurse(node->middle, depth + 1, unindent);
-  PrintASTRecurse(node->right, depth + 1, unindent);
+  if (NodeIs_Chain(n)) unindent += NUM_INDENT_SPACES;
+  PrintASTRecurse(n->left, depth + 1, unindent);
+  PrintASTRecurse(n->middle, depth + 1, unindent);
+  PrintASTRecurse(n->right, depth + 1, unindent);
 
   #undef NUM_INDENT_SPACES
 }
@@ -152,36 +152,36 @@ void PrintAST(AST_Node *root) {
   PrintASTRecurse(root, 0, 0);
 }
 
-static void InlinePrintNodeSummary(AST_Node *node) {
+static void InlinePrintNodeSummary(AST_Node *n) {
   Print("%16s Node | ",
-         NodeTypeTranslation(node->node_type));
-  InlinePrintToken(node->token);
+         NodeTypeTranslation(n->node_type));
+  InlinePrintToken(n->token);
   Print(" {");
-  InlinePrintType(node->data_type);
+  InlinePrintType(n->data_type);
   Print("}");
 }
 
-void PrintNode(AST_Node *node) {
-  Print("%16s Node ", NodeTypeTranslation(node->node_type));
-  Print("'%.*s'", node->token.length, node->token.position_in_source);
+void PrintNode(AST_Node *n) {
+  Print("%16s Node ", NodeTypeTranslation(n->node_type));
+  Print("'%.*s'", n->token.length, n->token.position_in_source);
   Print(" {");
-  InlinePrintType(node->data_type);
+  InlinePrintType(n->data_type);
   Print("}");
   Print("\n");
 
-  if (node->left != NULL) {
+  if (n->left != NULL) {
     Print("  LEFT: ");
-    InlinePrintNodeSummary(node->left);
+    InlinePrintNodeSummary(n->left);
     Print("\n");
   }
-  if (node->middle != NULL) {
+  if (n->middle != NULL) {
     Print("MIDDLE: ");
-    InlinePrintNodeSummary(node->middle);
+    InlinePrintNodeSummary(n->middle);
     Print("\n");
   }
-  if (node->right != NULL) {
+  if (n->right != NULL) {
     Print(" RIGHT: ");
-    InlinePrintNodeSummary(node->right);
+    InlinePrintNodeSummary(n->right);
     Print("\n");
   }
   Print("----------------------------------------------------------\n");
@@ -275,10 +275,10 @@ bool NodeIs_PostfixDecrement(AST_Node *n) {
   return n->node_type == POSTFIX_DECREMENT_NODE;
 }
 
-bool NodeIs_DeadEnd(AST_Node *node) {
-  return (node == NULL) ||
-         (NodeIs_Chain(node)        &&
-          NodeIs_NULL(node->left)   &&
-          NodeIs_NULL(node->middle) &&
-          NodeIs_NULL(node->right));
+bool NodeIs_DeadEnd(AST_Node *n) {
+  return (n == NULL) ||
+         (NodeIs_Chain(n)        &&
+          NodeIs_NULL(n->left)   &&
+          NodeIs_NULL(n->middle) &&
+          NodeIs_NULL(n->right));
 }

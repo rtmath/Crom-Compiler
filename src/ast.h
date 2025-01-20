@@ -7,7 +7,6 @@
 #include "symbol_table.h"
 #include "token.h"
 #include "type.h"
-#include "value.h"
 
 typedef enum {
   UNTYPED_NODE,
@@ -77,12 +76,12 @@ AST_Node *NewNode(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node
 AST_Node *NewNodeFromToken(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Token token, Type type);
 AST_Node *NewNodeFromSymbol(NodeType node_type, AST_Node *left, AST_Node *middle, AST_Node *right, Symbol symbol);
 
-void SetNodeDataType(AST_Node *node, Type t);
+void SetNodeDataType(AST_Node *n, Type t);
 
 const char *NodeTypeTranslation(NodeType t);
 
 void PrintAST(AST_Node *root);
-void PrintNode(AST_Node *node);
+void PrintNode(AST_Node *n);
 
 bool NodeIs_NULL(AST_Node *n);
 bool NodeIs_Untyped(AST_Node *n);
@@ -107,6 +106,6 @@ bool NodeIs_PrefixDecrement(AST_Node *n);
 bool NodeIs_PostfixIncrement(AST_Node *n);
 bool NodeIs_PostfixDecrement(AST_Node *n);
 
-bool NodeIs_DeadEnd(AST_Node *node);
+bool NodeIs_DeadEnd(AST_Node *n);
 
 #endif
