@@ -147,11 +147,14 @@ bool TypeIsConvertible(AST_Node *from, Type target_type) {
 static void Literal(AST_Node *n) {
   if (TypeIs_Int(n->data_type) && Int64Overflow(n->token)) {
     SetNodeDataType(n, NewType(U64));
+    SetSymbolValue(SYMBOL_TABLE, n->token, NewValue(n->data_type, n->token));
   }
 
   if (TypeIs_Uint(n->data_type) && Uint64Overflow(n->token)) {
     Overflow(n, NewType(U64));
   }
+
+  SetSymbolValue(SYMBOL_TABLE, n->token, NewValue(n->data_type, n->token));
 }
 
 static void ArrayInitializerList(AST_Node *list, Type target_type) {
@@ -223,6 +226,7 @@ static void Assignment(AST_Node *identifier) {
     }
 
     SetNodeDataType(identifier, value->data_type);
+    SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValue(value->data_type, value->token));
   }
 
   if (NodeIs_InitializerList(value)) {
@@ -250,6 +254,7 @@ static void Assignment(AST_Node *identifier) {
     // For strings, propagate the type information from child node
     // to parent in order to get the length of the string
     SetNodeDataType(identifier, value->data_type);
+    SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValue(value->data_type, value->token));
   }
 
   // Synchronize information between nodes
@@ -260,7 +265,14 @@ static void Assignment(AST_Node *identifier) {
 
   if (NodeIs_Identifier(value)) {
     Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
-    SetNodeDataType(identifier, s.data_type);
+
+    if (TypeIs_Char(value->data_type) &&
+        value->middle != NULL) {
+      SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValueFromStringIndex(s.value, value->middle->token));
+    } else {
+      SetNodeDataType(identifier, value->data_type);
+      SetSymbolValue(SYMBOL_TABLE, identifier->token, s.value);
+    }
   }
 
   SetNodeDataType(value, identifier->data_type);

@@ -28,6 +28,8 @@ Value NewCharValue(char c);
 Value NewStringValue(const char *s);
 Value NewBoolValue(bool b);
 
+Value NewValueFromStringIndex(Value str, Token index);
+
 Value AddValues(Value v1, Value v2);
 Value SubValues(Value v1, Value v2);
 Value MulValues(Value v1, Value v2);

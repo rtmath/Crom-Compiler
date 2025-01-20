@@ -118,6 +118,18 @@ Value NewBoolValue(bool b)  {
   };
 }
 
+Value NewValueFromStringIndex(Value str, Token subscript) {
+  int64_t index = TokenToInt64(subscript);
+  if (index < 0 || index > str.type.array_size - 1) {
+    ERROR_FMT(ERR_ARRAY_OUT_OF_BOUNDS, subscript, "Index is outside of array bounds (array size: %d)", str.type.array_size);
+  }
+
+  return (Value){
+    .type = NewType(CHAR),
+    .as.character = str.as.string[index]
+  };
+}
+
 Value AddValues(Value v1, Value v2) {
   if (TypeIs_Int(v1.type)) return NewIntValue(v1.as.integer + v2.as.integer);
   if (TypeIs_Uint(v1.type)) return NewUintValue(v1.as.uinteger + v2.as.uinteger);
