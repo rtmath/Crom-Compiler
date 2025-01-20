@@ -280,3 +280,11 @@ bool NodeIs_PostfixIncrement(AST_Node *n) {
 bool NodeIs_PostfixDecrement(AST_Node *n) {
   return n->node_type == POSTFIX_DECREMENT_NODE;
 }
+
+bool NodeIs_DeadEnd(AST_Node *node) {
+  return (node == NULL) ||
+         (NodeIs_Chain(node)        &&
+          NodeIs_NULL(node->left)   &&
+          NodeIs_NULL(node->middle) &&
+          NodeIs_NULL(node->right));
+}

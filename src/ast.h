@@ -108,4 +108,6 @@ bool NodeIs_PrefixDecrement(AST_Node *n);
 bool NodeIs_PostfixIncrement(AST_Node *n);
 bool NodeIs_PostfixDecrement(AST_Node *n);
 
+bool NodeIs_DeadEnd(AST_Node *node);
+
 #endif

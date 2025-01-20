@@ -297,18 +297,10 @@ static void Return(AST_Node* node) {
   SetNodeDataType(node, node->left->data_type);
 }
 
-static bool IsDeadEnd(AST_Node *node) {
-  return (node == NULL) ||
-         (NodeIs_Chain(node)        &&
-          NodeIs_NULL(node->left)   &&
-          NodeIs_NULL(node->middle) &&
-          NodeIs_NULL(node->right));
-}
-
 static void TypeCheckNestedReturns(AST_Node *node, AST_Node *return_type) {
   AST_Node **current = &node;
 
-  while(!IsDeadEnd(*current)) {
+  while(!NodeIs_DeadEnd(*current)) {
     AST_Node *left = (*current)->left;
     AST_Node *middle = (*current)->middle;
     AST_Node *right = (*current)->right;
@@ -366,7 +358,7 @@ static void Function(AST_Node *node) {
   AST_Node *body = node->right;
   AST_Node **check = &body;
 
-  while (!IsDeadEnd(*check)) {
+  while (!NodeIs_DeadEnd(*check)) {
     AST_Node *left = (*check)->left;
     AST_Node *right = (*check)->right;
     if (NodeIs_If(left)    ||
@@ -389,7 +381,7 @@ static void Function(AST_Node *node) {
         ERROR_MSG(ERR_TYPE_DISAGREEMENT, left->token, "Void return in non-void function");
 
       } else if (TypeIsConvertible(left, return_type->data_type)) {
-        if (!IsDeadEnd(right)) {
+        if (!NodeIs_DeadEnd(right)) {
           ERROR(ERR_UNREACHABLE_CODE, right->left->token);
         }
         return;
