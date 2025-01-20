@@ -138,11 +138,6 @@ static void PrintASTRecurse(AST_Node *node, int depth, int unindent) {
     Print("%s", NodeTypeTranslation(node->node_type));
   }
 
-  if (node->data_type.specifier != T_NONE && node->node_type != START_NODE) {
-    Print(" | ");
-    InlinePrintValue(node->value);
-  }
-
   Print("\n");
 
   if (NodeIs_Chain(node)) unindent += NUM_INDENT_SPACES;
@@ -171,8 +166,7 @@ void PrintNode(AST_Node *node) {
   Print("'%.*s'", node->token.length, node->token.position_in_source);
   Print(" {");
   InlinePrintType(node->data_type);
-  Print("} | Value: ");
-  PrintValue(node->value);
+  Print("}");
   Print("\n");
 
   if (node->left != NULL) {
