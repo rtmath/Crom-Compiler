@@ -204,6 +204,8 @@ static void Assignment(AST_Node *identifier) {
   }
 
   AST_Node *value = identifier->left;
+  Symbol value_symbol = RetrieveFrom(SYMBOL_TABLE, value->token);
+
   if (NodeIs_EnumAssignment(identifier) &&
       (!TypeIs_Int(value->data_type) || NodeIs_Identifier(value))) {
     ERROR_MSG(ERR_IMPROPER_ASSIGNMENT, value->token, "Assignment to enum identifier must be of type INT");
@@ -226,7 +228,7 @@ static void Assignment(AST_Node *identifier) {
     }
 
     SetNodeDataType(identifier, value->data_type);
-    SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValue(value->data_type, value->token));
+    return;
   }
 
   if (NodeIs_InitializerList(value)) {
@@ -264,18 +266,17 @@ static void Assignment(AST_Node *identifier) {
   }
 
   if (NodeIs_Identifier(value)) {
-    Symbol s = RetrieveFrom(SYMBOL_TABLE, value->token);
-
     if (TypeIs_Char(value->data_type) &&
         value->middle != NULL) {
-      SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValueFromStringIndex(s.value, value->middle->token));
+      SetSymbolValue(SYMBOL_TABLE, identifier->token, NewValueFromStringIndex(value_symbol.value, value->middle->token));
     } else {
       SetNodeDataType(identifier, value->data_type);
-      SetSymbolValue(SYMBOL_TABLE, identifier->token, s.value);
+      SetSymbolValue(SYMBOL_TABLE, identifier->token, value_symbol.value);
     }
   }
 
   SetNodeDataType(value, identifier->data_type);
+  SetSymbolValue(SYMBOL_TABLE, identifier->token, value_symbol.value);
 
   return;
 }
