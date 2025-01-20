@@ -1288,6 +1288,7 @@ static AST_Node *Literal(bool) {
   Type t = (Parser.current.type == STRING_LITERAL)
              ? NewArrayType(Parser.current.type, Parser.current.length)
              : NewType(Parser.current.type);
+  AddTo(SYMBOL_TABLE(), NewSymbol(Parser.current, t, DECL_DEFINED));
   return NewNodeFromToken(LITERAL_NODE, NULL, NULL, NULL, Parser.current, t);
 }
 
