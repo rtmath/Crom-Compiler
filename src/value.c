@@ -215,7 +215,7 @@ Value LogicalOR(Value v1, Value v2) {
 
 void InlinePrintValue(Value v) {
   if (TypeIs_None(v.type)) {
-    Print("NONE");
+    Print("-");
     return;
   }
 
