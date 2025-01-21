@@ -6,11 +6,13 @@
 
 #include <stdio.h>
 
+static int depth = 0;
 static int symbol_guid = 0;
 static Symbol NOT_FOUND = {
   .symbol_guid = -1,
   .st_index = -1,
   .parent_struct_symbol_guid_ref = -1,
+  .depth = -1,
 
   .declaration_state = DECL_NONE,
   .token = {
@@ -51,11 +53,29 @@ void DeleteSymbolTable(SymbolTable *st) {
   free(st);
 }
 
+void IncreaseDepth() {
+  depth++;
+}
+
+void DecreaseDepth() {
+  if (depth > 0) {
+    depth--;
+  } else {
+    SetErrorCode(ERR_PEBCAK);
+    COMPILER_ERROR("EndedScope at 0 depth.");
+  }
+}
+
+int GetDepth() {
+  return depth;
+}
+
 Symbol NewSymbol(Token token, Type type, enum DeclarationState d) {
   Symbol s = {
     .symbol_guid = -1,
     .st_index = -1,
     .parent_struct_symbol_guid_ref = -1,
+    .depth = depth,
 
     .declaration_state = d,
     .token = token,
@@ -112,6 +132,17 @@ Symbol RetrieveFrom(SymbolTable *st, Token t) {
   for (int i = 0; i < st->count; i++) {
     Symbol check = GetSymbol(st, i);
     if (TokenValuesMatch(check.token, t)) {
+      return check;
+    }
+  }
+
+  return NOT_FOUND;
+}
+
+Symbol RetrieveFromScope(SymbolTable*st, int depth, Token t) {
+  for (int i = 0; i < st->count; i++) {
+    Symbol check = GetSymbol(st, i);
+    if (check.depth == depth && TokenValuesMatch(check.token, t)) {
       return check;
     }
   }
@@ -204,7 +235,7 @@ static const char *DeclarationStateTranslation(enum DeclarationState ds) {
 }
 
 static void InlinePrintDeclarationState(enum DeclarationState ds) {
-  Print("%s", DeclarationStateTranslation(ds));
+  Print("%14s", DeclarationStateTranslation(ds));
 }
 
 void PrintSymbol(Symbol s) {
@@ -217,10 +248,10 @@ void PrintSymbol(Symbol s) {
 }
 
 void InlinePrintSymbol(Symbol s) {
-  Print("[");
   InlinePrintDeclarationState(s.declaration_state);
-  Print("] ");
-  Print("Symbol %2d: '%.*s' ", s.symbol_guid, s.token.length, s.token.position_in_source);
+  Print("| ");
+  Print("Depth: %2d | ", s.depth);
+  Print("GUID %2d: '%.*s' ", s.symbol_guid, s.token.length, s.token.position_in_source);
   if (DEFINED(s)) {
     InlinePrintValue(s.value);
   }

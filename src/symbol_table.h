@@ -22,6 +22,7 @@ typedef struct {
   int symbol_guid;
   int st_index;
   int parent_struct_symbol_guid_ref;
+  int depth;
 
   enum DeclarationState declaration_state;
   Token token;
@@ -41,6 +42,7 @@ Symbol NewSymbol(Token token, Type type, enum DeclarationState d);
 
 Symbol AddTo(SymbolTable *st, Symbol s);
 Symbol RetrieveFrom(SymbolTable *st, Token t);
+Symbol RetrieveFromScope(SymbolTable*st, int depth, Token t);
 Symbol GetSymbolById(SymbolTable *st, int id);
 bool IsIn(SymbolTable *st, Token t);
 
@@ -51,6 +53,10 @@ Symbol SetDecl(SymbolTable *st, Token t, enum DeclarationState ds);
 Symbol SetSymbolValue(SymbolTable *st, Token t, Value v);
 Symbol SetSymbolDataType(SymbolTable *st, Token t, Type type);
 Symbol SetSymbolParentStruct(SymbolTable *st, Token t, Symbol parent_struct);
+
+int GetDepth();
+void IncreaseDepth();
+void DecreaseDepth();
 
 void PrintSymbol(Symbol s);
 void InlinePrintSymbol(Symbol s);
